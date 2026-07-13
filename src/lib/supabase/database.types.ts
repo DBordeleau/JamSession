@@ -9,6 +9,110 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      genres: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          is_active?: boolean
+          name: string
+          slug: string
+          sort_order: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      instruments: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          parent_id: string | null
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          is_active?: boolean
+          name: string
+          parent_id?: string | null
+          slug: string
+          sort_order: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          parent_id?: string | null
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instruments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "instruments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      licenses: {
+        Row: {
+          allows_derivatives: boolean
+          code: string
+          created_at: string
+          is_active: boolean
+          name: string
+          requires_attribution: boolean
+          share_alike: boolean
+          sort_order: number
+          summary: string
+          url: string
+        }
+        Insert: {
+          allows_derivatives: boolean
+          code: string
+          created_at?: string
+          is_active?: boolean
+          name: string
+          requires_attribution: boolean
+          share_alike: boolean
+          sort_order: number
+          summary: string
+          url: string
+        }
+        Update: {
+          allows_derivatives?: boolean
+          code?: string
+          created_at?: string
+          is_active?: boolean
+          name?: string
+          requires_attribution?: boolean
+          share_alike?: boolean
+          sort_order?: number
+          summary?: string
+          url?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           bio: string | null
@@ -51,6 +155,220 @@ export type Database = {
         }
         Relationships: []
       }
+      project_genres: {
+        Row: {
+          created_at: string
+          genre_id: string
+          is_primary: boolean
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          genre_id: string
+          is_primary?: boolean
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          genre_id?: string
+          is_primary?: boolean
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_genres_genre_id_fkey"
+            columns: ["genre_id"]
+            isOneToOne: false
+            referencedRelation: "genres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_genres_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_members: {
+        Row: {
+          created_at: string
+          created_by: string
+          project_id: string
+          role: Database["public"]["Enums"]["member_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          project_id: string
+          role: Database["public"]["Enums"]["member_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          project_id?: string
+          role?: Database["public"]["Enums"]["member_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_members_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_tags: {
+        Row: {
+          created_at: string
+          project_id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string
+          project_id: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string
+          project_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_tags_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          bpm: number | null
+          create_request_id: string
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          id: string
+          license_code: string
+          lock_version: number
+          musical_key: string | null
+          open_to_contributions: boolean
+          owner_id: string
+          published_at: string | null
+          status: Database["public"]["Enums"]["project_status"]
+          time_signature_denominator: number
+          time_signature_numerator: number
+          title: string
+          updated_at: string
+          visibility: Database["public"]["Enums"]["project_visibility"]
+        }
+        Insert: {
+          bpm?: number | null
+          create_request_id: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          license_code: string
+          lock_version?: number
+          musical_key?: string | null
+          open_to_contributions?: boolean
+          owner_id: string
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          time_signature_denominator?: number
+          time_signature_numerator?: number
+          title: string
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["project_visibility"]
+        }
+        Update: {
+          bpm?: number | null
+          create_request_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          license_code?: string
+          lock_version?: number
+          musical_key?: string | null
+          open_to_contributions?: boolean
+          owner_id?: string
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          time_signature_denominator?: number
+          time_signature_numerator?: number
+          title?: string
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["project_visibility"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_license_code_fkey"
+            columns: ["license_code"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "projects_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reserved_usernames: {
         Row: {
           created_at: string
@@ -68,6 +386,51 @@ export type Database = {
           username_normalized?: string
         }
         Relationships: []
+      }
+      tags: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          display_name: string
+          id: string
+          is_active: boolean
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          display_name: string
+          id: string
+          is_active?: boolean
+          slug: string
+          sort_order: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tags_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tags_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -113,6 +476,26 @@ export type Database = {
           username_normalized: string
         }[]
       }
+      create_project: {
+        Args: {
+          p_bpm: number
+          p_description: string
+          p_genre_ids: string[]
+          p_license_code: string
+          p_musical_key: string
+          p_primary_genre_id: string
+          p_request_id: string
+          p_tag_ids: string[]
+          p_time_signature_denominator: number
+          p_time_signature_numerator: number
+          p_title: string
+        }
+        Returns: {
+          id: string
+          lock_version: number
+          title: string
+        }[]
+      }
       get_viewer_profile: {
         Args: never
         Returns: {
@@ -148,9 +531,33 @@ export type Database = {
           username_normalized: string
         }[]
       }
+      update_project_metadata: {
+        Args: {
+          p_bpm: number
+          p_description: string
+          p_expected_lock_version: number
+          p_genre_ids: string[]
+          p_license_code: string
+          p_musical_key: string
+          p_primary_genre_id: string
+          p_project_id: string
+          p_tag_ids: string[]
+          p_time_signature_denominator: number
+          p_time_signature_numerator: number
+          p_title: string
+        }
+        Returns: {
+          id: string
+          lock_version: number
+          title: string
+        }[]
+      }
     }
     Enums: {
       account_status: "active" | "suspended" | "deleted"
+      member_role: "owner" | "editor" | "viewer"
+      project_status: "draft" | "active" | "archived" | "deleted"
+      project_visibility: "private" | "unlisted" | "public"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -279,6 +686,9 @@ export const Constants = {
   public: {
     Enums: {
       account_status: ["active", "suspended", "deleted"],
+      member_role: ["owner", "editor", "viewer"],
+      project_status: ["draft", "active", "archived", "deleted"],
+      project_visibility: ["private", "unlisted", "public"],
     },
   },
 } as const

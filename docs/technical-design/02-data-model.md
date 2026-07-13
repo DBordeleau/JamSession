@@ -87,6 +87,14 @@ Do not duplicate email into `profiles`. Email comes from `auth.users` for the au
 
 ## Projects and membership
 
+PR 06 implements the private metadata foundation as `projects`, `project_members`,
+`project_genres`, and `project_tags`, with explicit `lock_version` optimistic
+concurrency and `(owner_id, create_request_id)` idempotency. The initial controlled
+catalog is 4 licenses, 12 genres, 16 tags, and 16 instruments with fixed IDs.
+`current_revision_id`, `source_project_id`, and `source_revision_id` are intentionally
+deferred until their referenced revision/fork tables exist; no dangling UUID columns
+are created.
+
 ### `projects`
 
 | Column                                     | Type                 | Rules                                                                     |

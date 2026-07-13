@@ -20,6 +20,25 @@ test.describe("identity vertical slice", () => {
     await page.getByRole("button", { name: "Complete profile" }).click();
     await expect(page.getByText("Profile saved.")).toBeVisible();
 
+    await page.getByRole("link", { name: "New project" }).click();
+    await page.getByLabel("Title").fill("E2E collaboration draft");
+    await page.getByLabel("Description").fill("A private project test.");
+    await page.getByLabel("BPM").fill("118.5");
+    await page.getByLabel("Musical key").selectOption("d-minor");
+    await page.getByLabel("Electronic", { exact: true }).check();
+    await page.getByLabel("Electronic as primary genre").check();
+    await page.getByLabel("Collaboration wanted", { exact: true }).check();
+    await page.getByRole("button", { name: "Create project" }).click();
+    await expect(
+      page.getByRole("heading", { name: "E2E collaboration draft" }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(page.getByText("118.5 BPM")).toBeVisible();
+    await page.getByRole("link", { name: "Edit metadata" }).click();
+    await page.getByLabel("Title").fill("Edited collaboration draft");
+    await page.getByRole("button", { name: "Save project" }).click();
+    await expect(page.getByText("Project saved.")).toBeVisible();
+
     await page.goto("/@E2EArtist");
     await expect(
       page.getByRole("heading", { name: "E2E Artist" }),

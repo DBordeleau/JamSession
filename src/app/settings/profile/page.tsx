@@ -38,6 +38,12 @@ export default async function ProfileSettingsPage({
                 Sign out
               </button>
             </form>
+            <Link
+              className="rounded-control bg-accent text-accent-contrast px-4 py-2 font-semibold"
+              href="/projects/new"
+            >
+              New project
+            </Link>
           </div>
           {saved && (
             <p
