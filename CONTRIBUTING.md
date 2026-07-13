@@ -42,6 +42,8 @@ npm run db:check
 
 The reset command deletes local database content and reapplies committed migrations and seed data. See the README for Docker setup and type generation.
 
+The normal interactive dev app uses the hosted Supabase project configured in `.env.local`; the local stack above is the migration/RLS/type-validation environment. Before investigating Supabase behavior, check the host in `NEXT_PUBLIC_SUPABASE_URL` without printing secrets and inspect the environment that actually received the request. Do not infer that the app uses local containers because they are running, and do not mutate hosted schema/data unless the task explicitly authorizes it.
+
 If routes or browser-visible flows changed, also install Chromium once and run E2E tests:
 
 ```powershell

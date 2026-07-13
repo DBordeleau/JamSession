@@ -5,6 +5,7 @@ import {
   cancelSourceAsset,
   completeSourceAsset,
   reserveSourceAsset,
+  retrySourceAssetVerification,
 } from "@/server/repositories/assets";
 
 export async function reserveUpload(input: unknown) {
@@ -25,10 +26,19 @@ export async function reserveUpload(input: unknown) {
   };
 }
 export async function completeUpload(assetId: string) {
-  const { error } = await completeSourceAsset(assetId);
+  const { error, kickDelayed } = await completeSourceAsset(assetId);
   if (error) return { error: error.message };
   revalidatePath("/uploads");
-  return { ok: true };
+  return { ok: true, kickDelayed };
+}
+
+export async function retryVerification(assetId: string) {
+  const parsed = sourceReservationSchema.shape.requestId.safeParse(assetId);
+  if (!parsed.success) return { error: "Invalid asset." };
+  const { error, kickDelayed } = await retrySourceAssetVerification(assetId);
+  if (error) return { error: error.message };
+  revalidatePath("/uploads");
+  return { ok: true, kickDelayed };
 }
 export async function cancelUpload(assetId: string) {
   const { error } = await cancelSourceAsset(assetId);

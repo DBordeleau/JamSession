@@ -1,6 +1,6 @@
 # System Architecture
 
-Status: Accepted MVP design; implemented through PR 11 / Phase C
+Status: Accepted MVP design; implemented through PR 11.5 / Phase C
 
 Audience: engineers and coding agents
 
@@ -181,6 +181,8 @@ Waveform Playlist and Tone.js are MIT-licensed. Preserve their notices, retain t
 - Treat client MIME type, filename and duration as untrusted hints.
 - Store original bytes immutably and calculate SHA-256, byte size and verified media metadata asynchronously.
 - Quarantine an upload until validation succeeds. It cannot be published or shared before `asset.status = 'ready'`.
+- PR 11.5 atomically enqueues a private verification job when upload completion commits, immediately invokes a `us-west-2` Supabase Edge Function with the user JWT, and uses a service-role-only two-minute lease for the single Storage download and terminal quota transition. Transient faults retry once; an indexed minute recovery check makes no Edge request while idle and recovers missed kicks or expired leases.
+- Verification status uses short bounded polling, not Realtime. Owners see queued/verifying/retrying/delayed/ready/failed states and may restart a dead job without uploading bytes again after a cooldown.
 - Generate waveform peaks and an optional compressed preview asynchronously. Do not make Vercel request duration the processing contract.
 - A job table/outbox can trigger an external worker later; the MVP may compute peaks client-side if results are validated and the original remains authoritative.
 

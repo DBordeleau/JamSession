@@ -1,6 +1,10 @@
 import "server-only";
+import { FunctionRegion } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { OwnedSourceAsset } from "@/features/assets/types";
+import type {
+  AssetVerificationStatus,
+  OwnedSourceAsset,
+} from "@/features/assets/types";
 import type { Database } from "@/lib/supabase/database.types";
 
 export async function listOwnedSourceAssets(): Promise<OwnedSourceAsset[]> {
@@ -46,9 +50,67 @@ export async function reserveSourceAsset(input: {
 }
 export async function completeSourceAsset(assetId: string) {
   const db = await createSupabaseServerClient();
-  return db.rpc("complete_source_upload", { p_asset_id: assetId } as never);
+  const completion = await db.rpc("complete_source_upload", {
+    p_asset_id: assetId,
+  } as never);
+  if (completion.error) return { error: completion.error, kickDelayed: false };
+  const { error: kickError } = await db.functions.invoke(
+    "verify-source-audio",
+    {
+      body: { assetId },
+      region: FunctionRegion.UsWest2,
+      timeout: 5_000,
+    },
+  );
+  return { error: null, kickDelayed: Boolean(kickError) };
 }
 export async function cancelSourceAsset(assetId: string) {
   const db = await createSupabaseServerClient();
   return db.rpc("cancel_source_upload", { p_asset_id: assetId } as never);
+}
+
+export async function getSourceVerificationStatus(
+  assetId: string,
+): Promise<AssetVerificationStatus> {
+  const db = await createSupabaseServerClient();
+  const { data, error } = await db.rpc("get_source_verification_status", {
+    p_asset_id: assetId,
+  } as never);
+  const row = (data as unknown as Record<string, unknown>[] | null)?.[0];
+  if (error || !row) throw new Error("verification_status_unavailable");
+  return {
+    assetStatus: String(
+      row.asset_status,
+    ) as AssetVerificationStatus["assetStatus"],
+    verificationState: String(
+      row.verification_state,
+    ) as AssetVerificationStatus["verificationState"],
+    attemptCount: Number(row.attempt_count),
+    nextAttemptAt:
+      row.next_attempt_at === null ? null : String(row.next_attempt_at),
+    failureCode: row.failure_code === null ? null : String(row.failure_code),
+    mediaType: row.media_type === null ? null : String(row.media_type),
+    byteSize: row.byte_size === null ? null : Number(row.byte_size),
+    durationMs: row.duration_ms === null ? null : Number(row.duration_ms),
+    sampleRateHz:
+      row.sample_rate_hz === null ? null : Number(row.sample_rate_hz),
+    channels: row.channels === null ? null : Number(row.channels),
+  };
+}
+
+export async function retrySourceAssetVerification(assetId: string) {
+  const db = await createSupabaseServerClient();
+  const retry = await db.rpc("retry_source_verification", {
+    p_asset_id: assetId,
+  } as never);
+  if (retry.error) return { error: retry.error, kickDelayed: false };
+  const { error: kickError } = await db.functions.invoke(
+    "verify-source-audio",
+    {
+      body: { assetId },
+      region: FunctionRegion.UsWest2,
+      timeout: 5_000,
+    },
+  );
+  return { error: null, kickDelayed: Boolean(kickError) };
 }

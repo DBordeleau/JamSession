@@ -1,6 +1,6 @@
 # Delivery Plan and Engineering Contract
 
-Status: Accepted; M0–M3 implementation complete through PR 11
+Status: Accepted; M0–M3 implementation complete through PR 11.5
 
 ## Delivery strategy
 
@@ -34,6 +34,7 @@ Exit: a new user can authenticate, claim a collision-safe username, edit a profi
 
 - Create private project, metadata and taxonomy selection.
 - Resumable audio upload, verification lifecycle and signed playback.
+- Automatic region-pinned source verification with durable leases, one bounded retry, idle-free recovery invocation, and owner-visible status.
 - Draft workspace save with optimistic concurrency.
 - Publish immutable revision and display project/player page.
 

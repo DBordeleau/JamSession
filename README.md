@@ -2,7 +2,7 @@
 
 Jam Session is an asynchronous music-collaboration platform inspired by Git and open-source development. Musicians create projects from stems, preserve immutable revision history, and will be able to propose contributions and fork songs into new creative directions while retaining attribution.
 
-> **Current status:** PRs 01–11 and Phase C are complete. Global responsive navigation, invite-only Google sign-in/onboarding, private projects, resumable verified source uploads, immutable revision publishing, authenticated synchronized playback, owner-only conflict-safe workspaces, later-revision publishing, direct authorized stem downloads, and browser-rendered WAV mix export are implemented. Navigation changes from sign-in actions to account/project actions after verified Auth claims load. Contributions, forks, discovery, moderation, and release hardening remain planned.
+> **Current status:** PRs 01–11.5 and Phase C are complete. Global responsive navigation, invite-only Google sign-in/onboarding, private projects, resumable source uploads with automatic trusted verification, immutable revision publishing, authenticated synchronized playback, owner-only conflict-safe workspaces, later-revision publishing, direct authorized stem downloads, and browser-rendered WAV mix export are implemented. Navigation changes from sign-in actions to account/project actions after verified Auth claims load. Contributions, forks, discovery, moderation, and release hardening remain planned.
 
 ## Planned MVP
 
@@ -93,7 +93,15 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000), and stop the server with `Ctrl+C`.
 
-## Local Supabase setup
+## Supabase environments
+
+The normal interactive development app currently targets the actual hosted Supabase project through the uncommitted `.env.local`. This is intentional so real Google OAuth, invitations, PostgREST, and Storage behavior use the shared hosted environment. `npm run dev` always follows `NEXT_PUBLIC_SUPABASE_URL`; starting local Supabase does not redirect the app to it.
+
+Before debugging missing rows, RLS, Auth, RPCs, or Storage, check the host configured by `NEXT_PUBLIC_SUPABASE_URL` without exposing any keys. Use the logs and schema for that environment. Local containers and hosted Supabase are independent databases, so local logs cannot explain a request sent to the hosted URL, and locally applied migrations do not automatically update hosted Supabase.
+
+Do not overwrite the existing hosted `.env.local` or apply migrations/repairs to hosted Supabase unless the task explicitly calls for that change. The local stack is the safe authority for clean migration resets, pgTAP/RLS tests, generated types, deterministic fixtures, and browser flows that explicitly opt into local Auth or Storage.
+
+### Local Supabase validation stack
 
 Start Docker Desktop, then launch local Postgres:
 
@@ -116,7 +124,7 @@ On macOS/Linux:
 cp .env.example .env.local
 ```
 
-Use `npm run supabase:status` to obtain the local API URL and Publishable key, then set those values and one canonical `SITE_URL` in `.env.local`. Use either `http://localhost:3000` everywhere or `http://127.0.0.1:3000` everywhere; mixing them breaks OAuth PKCE cookies. The application never needs the Secret/service-role key in browser configuration. Never commit `.env`, `.env.local`, credentials, or service-role keys.
+Only when intentionally switching an app session to the local backend, use `npm run supabase:status` to obtain the local API URL and Publishable key, then place those values and one canonical `SITE_URL` in a temporary local environment configuration. Preserve the hosted `.env.local` values so they can be restored exactly. Use either `http://localhost:3000` everywhere or `http://127.0.0.1:3000` everywhere; mixing them breaks OAuth PKCE cookies. The application never needs the Secret/service-role key in browser configuration. Never commit `.env`, `.env.local`, credentials, or service-role keys.
 
 Reset migrations and deterministic seed data, run the database checks, then stop the stack when finished:
 
@@ -128,7 +136,7 @@ npm run supabase:stop
 
 `npm run db:reset` permanently deletes all local database content before reapplying migrations and seed data. Confirm the CLI is targeting the intended local project before running destructive commands. `npm run db:types` regenerates the committed TypeScript definitions atomically from the running local database; `npm run db:types:check` detects drift without modifying tracked files.
 
-A hosted Supabase project is optional for local-only development but is required for real Google OAuth and eventual deployment. Invitations must be inserted into the same database named by `NEXT_PUBLIC_SUPABASE_URL`; inserting into local Postgres does not invite a user to a hosted project.
+The configured hosted Supabase project is the normal interactive-development backend. Invitations and hosted migrations must be applied to the same project named by `NEXT_PUBLIC_SUPABASE_URL`; inserting into or migrating local Postgres does not change the hosted application.
 
 ## Common commands
 
@@ -159,7 +167,7 @@ Run commands from the repository root:
 | `npm run db:check`               | Lint/test the database and check generated-type drift           |
 | `npm run db:types`               | Atomically regenerate committed database types                  |
 | `npm run auth:e2e:setup`         | Prepare the gated local/CI test Auth actor                      |
-| `npm run assets:verify`          | Trusted verification of a processing source asset               |
+| `npm run assets:verify`          | Lease-aware fallback verification of a processing source asset  |
 | `npm run assets:cleanup`         | Dry-run reference-aware asset cleanup                           |
 
 Before the first browser-test run, download Playwright's Chromium build once:
@@ -254,7 +262,7 @@ Start Supabase, run `npm run db:reset`, then run `npm run db:types`. Commit the 
 
 ### Authentication development
 
-Use `npm run supabase:start:auth` when exercising Auth, PostgREST, and browser identity flows; database-only checks continue to use the lighter `npm run supabase:start`. Configure `.env.local` from `.env.example` with the local API URL, publishable key, and `SITE_URL`.
+Use `npm run supabase:start:auth` when explicitly exercising Auth, PostgREST, and browser identity flows against local Supabase; database-only checks continue to use the lighter `npm run supabase:start`. Normal interactive development remains pointed at hosted Supabase. If deliberately switching to local, configure a temporary environment from `.env.example` with the local API URL, publishable key, and `SITE_URL`, then restore the hosted `.env.local` afterward.
 
 Product sign-in is Google-only. Google Cloud, hosted Supabase, exact callback URLs, invitation provisioning, and the production smoke checklist are documented in [docs/setup/google-auth.md](docs/setup/google-auth.md). Local/CI browser automation can prepare the seeded `.test` actor with `npm run auth:e2e:setup`; it requires an ephemeral `TEST_AUTH_PASSWORD`, and the test route additionally requires `ENABLE_TEST_AUTH=true`.
 

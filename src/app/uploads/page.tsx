@@ -1,5 +1,7 @@
 import { requireViewer } from "@/features/auth/guards";
+import { AssetVerificationStatus } from "@/features/assets/asset-verification-status";
 import { SourceUpload } from "@/features/assets/source-upload";
+import { sourceVerificationFailureMessage } from "@/features/assets/types";
 import { listOwnedSourceAssets } from "@/server/repositories/assets";
 export default async function UploadsPage() {
   await requireViewer("/uploads");
@@ -29,13 +31,11 @@ export default async function UploadsPage() {
               </p>
             )}
             {asset.status === "processing" && (
-              <p className="mt-1 text-sm text-zinc-400">
-                Uploaded; awaiting trusted verification.
-              </p>
+              <AssetVerificationStatus assetId={asset.id} />
             )}
             {asset.failureCode && (
               <p className="mt-1 text-sm text-red-300">
-                {asset.failureCode.replaceAll("_", " ")}
+                {sourceVerificationFailureMessage(asset.failureCode)}
               </p>
             )}
           </li>
