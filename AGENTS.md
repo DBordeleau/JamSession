@@ -26,7 +26,7 @@ If code, task instructions, and these documents disagree, stop and surface the c
 
 ## Current project state
 
-PRs 01–16 and Phase C are implemented. The repository contains the responsive Next.js product shell; invite-only identity/onboarding; private immutable audio, revisions, credits, workspaces, exports, contribution review, and acceptance; copy-on-write forks with lineage; and owner-controlled public projects backed by a safe anonymous catalog, bounded search/filtering, public profile history, and metadata-only public project pages. Source audio remains private and participant-scoped even for public projects. User upload history intentionally excludes internal workspace snapshots. Broader navigation, moderation/retention operations, and release hardening are not implemented. npm is the sole package manager and Node.js 24 LTS is required.
+PRs 01–17 and Phase C are implemented. The repository contains the responsive Next.js product shell; invite-only identity/onboarding; private immutable audio, revisions, credits, workspaces, exports, contribution review, and acceptance; copy-on-write forks with lineage; owner-controlled public discovery; independently paginated public profiles; bounded private dashboards/project/contribution indexes; throttled operational activity; and trusted private-original/public-derived profile avatars. Source audio remains private and participant-scoped even for public projects. User upload history intentionally excludes internal workspace snapshots. Moderation/retention operations and release hardening are not implemented. npm is the sole package manager and Node.js 24 LTS is required.
 
 Before implementing a task:
 
@@ -60,6 +60,8 @@ Keep this section exact and runnable from the repository root.
 | Prepare test Auth actor   | `npm run auth:e2e:setup`         |
 | Verify source asset       | `npm run assets:verify`          |
 | Preview asset cleanup     | `npm run assets:cleanup`         |
+| Process profile image     | `npm run avatars:process`        |
+| Preview avatar cleanup    | `npm run avatars:cleanup`        |
 | End-to-end tests          | `npm run test:e2e`               |
 | Production build          | `npm run build`                  |
 

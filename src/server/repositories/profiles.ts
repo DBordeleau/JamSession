@@ -4,31 +4,30 @@ import { createSupabaseAnonymousClient } from "@/lib/supabase/anonymous";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ProfileInput } from "@/features/profiles/schema";
 import type {
+  AcceptedContributionHistoryItem,
   PublicProfile,
-  PublicProfileHistory,
+  PublicProfilePage,
   ViewerProfile,
 } from "@/features/profiles/types";
-import type { AcceptedContributionHistoryItem } from "@/features/profiles/types";
+import {
+  decodeNavigationCursor,
+  encodeNavigationCursor,
+} from "@/features/navigation/cursor";
+import { getDiscoveryVersion } from "@/server/repositories/discovery";
 import { z } from "zod";
 
-const publicProfileHistorySchema = z.object({
-  projects: z.array(
-    z.object({
-      projectId: z.string().uuid(),
-      title: z.string(),
-      publishedAt: z.string(),
-    }),
-  ),
-  acceptedContributions: z.array(
-    z.object({
-      projectId: z.string().uuid(),
-      projectTitle: z.string(),
-      revisionId: z.string().uuid(),
-      revisionNumber: z.number().int().positive(),
-      acceptedAt: z.string(),
-      creditName: z.string(),
-    }),
-  ),
+const publicProjectSchema = z.object({
+  projectId: z.string().uuid(),
+  title: z.string(),
+  publishedAt: z.string(),
+});
+const acceptedContributionSchema = z.object({
+  projectId: z.string().uuid(),
+  projectTitle: z.string(),
+  revisionId: z.string().uuid(),
+  revisionNumber: z.number().int().positive(),
+  acceptedAt: z.string(),
+  creditName: z.string(),
 });
 
 export async function getViewerProfile(): Promise<ViewerProfile | null> {
@@ -40,6 +39,12 @@ export async function getViewerProfile(): Promise<ViewerProfile | null> {
   }
   const row = data[0];
   if (!row) throw new Error("viewer_profile_missing");
+  const { data: safeProfile, error: safeError } = await supabase
+    .from("public_profiles")
+    .select("avatar_path,avatar_version_id")
+    .eq("id", row.id)
+    .single();
+  if (safeError) throw new Error("viewer_profile_avatar_unavailable");
   return {
     id: row.id,
     username: row.username,
@@ -48,6 +53,8 @@ export async function getViewerProfile(): Promise<ViewerProfile | null> {
     bio: row.bio,
     status: row.status,
     profileCompletedAt: row.profile_completed_at,
+    avatarPath: safeProfile.avatar_path,
+    avatarVersionId: safeProfile.avatar_version_id,
   };
 }
 
@@ -91,7 +98,9 @@ export async function getPublicProfile(
   const supabase = createSupabaseAnonymousClient();
   const { data, error } = await supabase
     .from("public_profiles")
-    .select("id, username, display_name, credit_name, bio")
+    .select(
+      "id, username, display_name, credit_name, bio, avatar_path, avatar_version_id",
+    )
     .eq("username_normalized", handle.toLowerCase())
     .maybeSingle();
   if (
@@ -109,16 +118,127 @@ export async function getPublicProfile(
     displayName: data.display_name,
     creditName: data.credit_name,
     bio: data.bio,
+    avatarPath: data.avatar_path,
+    avatarVersionId: data.avatar_version_id,
   };
 }
 
-export async function getPublicProfileHistory(
-  profileId: string,
-): Promise<PublicProfileHistory> {
+export function getPublicAvatarUrl(path: string | null) {
+  if (!path) return null;
   const supabase = createSupabaseAnonymousClient();
-  const { data, error } = await supabase.rpc("get_public_profile_history", {
-    p_profile_id: profileId,
+  return supabase.storage.from("public-avatars").getPublicUrl(path).data
+    .publicUrl;
+}
+
+function validProfileCursor(input: {
+  value?: string;
+  kind: "profile-projects" | "profile-contributions";
+  profileId: string;
+  discoveryVersion: number;
+}) {
+  const cursor = decodeNavigationCursor(input.value);
+  if (!input.value) return null;
+  if (
+    !cursor ||
+    cursor.kind !== input.kind ||
+    cursor.subject !== input.profileId ||
+    cursor.discoveryVersion !== input.discoveryVersion
+  )
+    throw new Error("profile_cursor_stale");
+  return cursor;
+}
+
+export async function listPublicProfileProjects(
+  profileId: string,
+  after?: string,
+): Promise<PublicProfilePage<z.infer<typeof publicProjectSchema>>> {
+  const discoveryVersion = await getDiscoveryVersion();
+  const cursor = validProfileCursor({
+    value: after,
+    kind: "profile-projects",
+    profileId,
+    discoveryVersion,
   });
-  if (error) throw new Error("public_profile_history_unavailable");
-  return publicProfileHistorySchema.parse(data);
+  const supabase = createSupabaseAnonymousClient();
+  const { data, error } = await supabase.rpc("list_public_profile_projects", {
+    p_profile_id: profileId,
+    p_discovery_version: discoveryVersion,
+    p_after_published_at: cursor?.timestamp,
+    p_after_project_id: cursor?.id,
+  });
+  if (error)
+    throw new Error(
+      error.code === "PT409"
+        ? "profile_cursor_stale"
+        : "public_profile_history_unavailable",
+    );
+  const rows = z.array(publicProjectSchema).parse(data);
+  const items = rows.slice(0, 12);
+  const last = rows.length > 12 ? items.at(-1) : null;
+  return {
+    items,
+    nextCursor: last
+      ? encodeNavigationCursor({
+          v: 1,
+          kind: "profile-projects",
+          subject: profileId,
+          filter: "",
+          timestamp: last.publishedAt,
+          id: last.projectId,
+          discoveryVersion,
+        })
+      : null,
+  };
+}
+
+export async function listPublicProfileContributions(
+  profileId: string,
+  after?: string,
+): Promise<PublicProfilePage<AcceptedContributionHistoryItem>> {
+  const discoveryVersion = await getDiscoveryVersion();
+  const cursor = validProfileCursor({
+    value: after,
+    kind: "profile-contributions",
+    profileId,
+    discoveryVersion,
+  });
+  const supabase = createSupabaseAnonymousClient();
+  const { data, error } = await supabase.rpc(
+    "list_public_profile_contributions",
+    {
+      p_profile_id: profileId,
+      p_discovery_version: discoveryVersion,
+      p_after_accepted_at: cursor?.timestamp,
+      p_after_revision_id: cursor?.id,
+    },
+  );
+  if (error)
+    throw new Error(
+      error.code === "PT409"
+        ? "profile_cursor_stale"
+        : "public_profile_history_unavailable",
+    );
+  const rows = z.array(acceptedContributionSchema).parse(data);
+  const items = rows.slice(0, 12);
+  const last = rows.length > 12 ? items.at(-1) : null;
+  return {
+    items,
+    nextCursor: last
+      ? encodeNavigationCursor({
+          v: 1,
+          kind: "profile-contributions",
+          subject: profileId,
+          filter: "",
+          timestamp: last.acceptedAt,
+          id: last.revisionId,
+          discoveryVersion,
+        })
+      : null,
+  };
+}
+
+export async function touchViewerActivity() {
+  const db = await createSupabaseServerClient();
+  const { error } = await db.rpc("touch_viewer_activity");
+  return !error;
 }

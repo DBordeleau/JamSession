@@ -53,7 +53,7 @@ export function HeaderNav() {
         <PrimaryNavigation />
         <Link
           href="/settings/profile"
-          className="cta-gradient text-accent-contrast order-2 inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-sm font-semibold transition-transform hover:-translate-y-px sm:order-3"
+          className="cta-gradient text-accent-contrast order-2 hidden min-h-11 shrink-0 items-center rounded-full px-4 text-sm font-semibold transition-transform hover:-translate-y-px sm:order-3 sm:inline-flex"
         >
           Account
         </Link>

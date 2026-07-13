@@ -8,6 +8,8 @@ export type ViewerProfile = {
   bio: string | null;
   status: AccountStatus;
   profileCompletedAt: string | null;
+  avatarPath: string | null;
+  avatarVersionId: string | null;
 };
 
 export type PublicProfile = {
@@ -16,6 +18,8 @@ export type PublicProfile = {
   displayName: string;
   creditName: string;
   bio: string | null;
+  avatarPath: string | null;
+  avatarVersionId: string | null;
 };
 
 export type PublicProfileHistory = {
@@ -26,6 +30,8 @@ export type PublicProfileHistory = {
   }>;
   acceptedContributions: AcceptedContributionHistoryItem[];
 };
+
+export type PublicProfilePage<T> = { items: T[]; nextCursor: string | null };
 
 export type AcceptedContributionHistoryItem = {
   revisionId: string;

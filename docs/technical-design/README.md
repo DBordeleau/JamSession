@@ -37,8 +37,9 @@ The following vertical slices are implemented and are the baseline for future wo
 - explicit ordered self/external source-credit confirmation, immutable per-revision track snapshots, distinct publisher and accepted-contributor attribution, and privacy-safe authenticated/public history;
 - copy-on-write forks with exact lineage and no source-byte duplication; and
 - owner-controlled public visibility, anonymous metadata/credit pages, bounded Explore search/filtering, deterministic recent/trending ordering, and public fork/contribution entry without public source audio.
+- independently paginated public profile history, a bounded authenticated dashboard and private indexes, throttled recent activity, responsive disclosure navigation, and trusted private-original/public-derived profile avatars.
 
-Public discovery and navigable fork lineage are implemented through PR 16. Broader dashboards, moderation/retention jobs, and final release hardening remain unimplemented. Historical PR 05 spike evidence is retained; the evidence directory records the production path through PR 16.
+Profiles and private-work navigation are implemented through PR 17. Moderation/retention jobs and final release hardening remain unimplemented. Historical PR 05 spike evidence is retained; the evidence directory records the production path through PR 17.
 
 ## Executive recommendation
 

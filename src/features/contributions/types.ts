@@ -34,6 +34,11 @@ export type ContributionListItem = {
   updatedAt: string;
 };
 
+export type ContributionListPage = {
+  contributions: ContributionListItem[];
+  nextCursor: string | null;
+};
+
 export type ContributionReviewSummary = {
   id: string;
   versionId: string;

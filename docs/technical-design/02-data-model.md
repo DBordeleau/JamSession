@@ -74,6 +74,9 @@ Workspace status is constrained text (`active` or `archived`). PR 12 added the c
 | `created_at`           | `timestamptz`      | default `now()`                                               |
 | `updated_at`           | `timestamptz`      | trigger-maintained                                            |
 | `last_active_at`       | `timestamptz null` | throttled update, not every request                           |
+| `avatar_version_id`    | `uuid null`        | current trusted derivative version                            |
+| `avatar_path`          | `text null`        | safe versioned path in `public-avatars`                       |
+| `avatar_updated_at`    | `timestamptz null` | current pointer installation/removal time                     |
 
 Recommended checks:
 
@@ -90,7 +93,7 @@ The Auth trigger inserts only the user ID and ignores provider metadata, produci
 
 Reserve names such as `admin`, `api`, `auth`, `explore`, `projects`, `settings`, `support` in a non-readable `reserved_usernames` table. Claim through one self-authorized security-definer function with a fixed empty `search_path`, row lock and unique index on `username_normalized`. Claims are idempotent for the same normalized name; renames and reassignment are deferred.
 
-Administrator membership lives in unexposed `private.app_admins`; the no-argument `private.is_admin()` helper checks only the current authenticated user and grants no automatic RLS bypass. Avatar persistence is deferred until the asset pipeline can enforce asset ownership and image-kind integrity.
+Administrator membership lives in unexposed `private.app_admins`; the no-argument `private.is_admin()` helper checks only the current authenticated user and grants no automatic RLS bypass. `touch_viewer_activity()` writes only the verified caller and only when the prior value is at least 15 minutes old. Avatar reservations create `assets(kind='image')` private originals plus one `profile_avatar_versions` candidate; trusted finalization atomically swaps the safe profile pointer and queues superseded private/public objects for lease-bound cleanup.
 
 The `profiles.id` foreign key deliberately uses `on delete restrict`: deleting an Auth user must wait for the future account-deletion workflow to anonymize identity safely without erasing attribution.
 

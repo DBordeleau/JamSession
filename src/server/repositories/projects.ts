@@ -5,8 +5,14 @@ import type {
   ProjectDetail,
   ProjectFormOptions,
   ProjectSummary,
+  ProjectSummaryPage,
 } from "@/features/projects/types";
 import type { Database } from "@/lib/supabase/database.types";
+import { z } from "zod";
+import {
+  decodeNavigationCursor,
+  encodeNavigationCursor,
+} from "@/features/navigation/cursor";
 
 export async function listProjectFormOptions(): Promise<ProjectFormOptions> {
   const db = await createSupabaseServerClient();
@@ -43,27 +49,66 @@ export async function listProjectFormOptions(): Promise<ProjectFormOptions> {
 
 export async function listProjectsForViewer(
   viewerId: string,
-): Promise<ProjectSummary[]> {
+  options: { scope?: "all" | "owned"; review?: boolean; after?: string } = {},
+): Promise<ProjectSummaryPage> {
+  const scope = options.scope ?? "all";
+  const filter = `${scope}:${options.review ? "review" : "all"}`;
+  const cursor = decodeNavigationCursor(options.after);
+  if (
+    options.after &&
+    (!cursor ||
+      cursor.kind !== "projects" ||
+      cursor.subject !== viewerId ||
+      cursor.filter !== filter)
+  )
+    throw new Error("projects_cursor_invalid");
   const db = await createSupabaseServerClient();
-  const { data, error } = await db
-    .from("projects")
-    .select(
-      "id,title,description,status,current_revision_id,updated_at,project_members!inner(user_id,role)",
-    )
-    .eq("project_members.user_id", viewerId)
-    .is("deleted_at", null)
-    .neq("status", "deleted")
-    .order("updated_at", { ascending: false });
+  const { data, error } = await db.rpc("list_viewer_projects", {
+    p_scope: scope,
+    p_review: options.review ?? false,
+    p_after_updated_at: cursor?.timestamp,
+    p_after_id: cursor?.id,
+  });
   if (error) throw new Error("projects_unavailable");
-  return data.map((project) => ({
-    id: project.id,
+  const rows = z
+    .array(
+      z.object({
+        project_id: z.string().uuid(),
+        title: z.string(),
+        description: z.string().nullable(),
+        status: z.enum(["draft", "active", "archived"]),
+        role: z.enum(["owner", "editor", "viewer"]),
+        current_revision_id: z.string().uuid().nullable(),
+        updated_at: z.string(),
+        needs_review: z.boolean(),
+      }),
+    )
+    .parse(data);
+  const visible = rows.slice(0, 24);
+  const projects: ProjectSummary[] = visible.map((project) => ({
+    id: project.project_id,
     title: project.title,
     description: project.description,
-    status: project.status as ProjectSummary["status"],
-    role: project.project_members[0]!.role,
+    status: project.status,
+    role: project.role,
     currentRevisionId: project.current_revision_id,
     updatedAt: project.updated_at,
+    needsReview: project.needs_review,
   }));
+  const last = rows.length > 24 ? visible.at(-1) : null;
+  return {
+    projects,
+    nextCursor: last
+      ? encodeNavigationCursor({
+          v: 1,
+          kind: "projects",
+          subject: viewerId,
+          filter,
+          timestamp: last.updated_at,
+          id: last.project_id,
+        })
+      : null,
+  };
 }
 
 const rpcArgs = (input: ProjectInput) => ({
