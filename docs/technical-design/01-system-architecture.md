@@ -36,6 +36,14 @@ flowchart LR
 - The application service layer owns multi-table workflows such as publish, submit, accept and fork.
 - Middleware/proxy only refreshes auth cookies and performs optimistic redirects. It is not an authorization boundary.
 
+### Product shell and navigation
+
+- The root layout owns one skip link, persistent header, and footer so public, Auth, profile, project, upload, revision, and studio routes share navigable product chrome.
+- The header exposes only implemented top-level destinations: home through the brand link, new project, uploads, and a sign-in/account action. Project-specific edit, publish, and studio links remain contextual to the project page.
+- Public HTML renders a complete signed-out shell without a server-side Auth dependency. A small Client Component listens for Supabase Auth changes and route transitions, calls `getClaims()` to verify identity, and progressively replaces sign-in links with account or create-project destinations.
+- This Auth-aware display is convenience only. Server Components, server actions, Route Handlers, database commands, and RLS independently authorize every protected destination.
+- Navigation and landing-page actions must remain keyboard accessible at the 320 px minimum layout. Primary mint-accent actions use a dark foreground with WCAG 2.2 AA contrast; do not reintroduce white text on the light accent.
+
 ### Supabase
 
 - Auth: Google OIDC identities; `auth.users` is private identity authority. Additional providers are post-MVP.

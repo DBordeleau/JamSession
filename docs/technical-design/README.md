@@ -21,7 +21,7 @@ This document set turns the product requirements into an implementation contract
 
 The following vertical slices are implemented and are the baseline for future work:
 
-- repository/Next.js quality scaffold and responsive product shell;
+- repository/Next.js quality scaffold and responsive global product shell with progressively enhanced Auth-aware navigation;
 - local Supabase migrations, pgTAP, generated database types, and user-scoped clients;
 - identity schema, invite-only Google OAuth, onboarding, settings, and safe public profiles;
 - private project metadata, owner membership, controlled licenses/genres/tags/instruments, idempotency, and optimistic metadata updates;

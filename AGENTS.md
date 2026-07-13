@@ -25,7 +25,7 @@ If code, task instructions, and these documents disagree, stop and surface the c
 
 ## Current project state
 
-PRs 01–09 are implemented. The repository contains the Next.js product shell; invite-only Google OAuth and profile onboarding; private project metadata; immutable, trusted-verified source assets uploaded directly and resumably to Supabase Storage; atomic first publishing into immutable revisions; and authenticated, lazy-loaded Waveform Playlist playback for the current revision through short-lived signed URLs. Workspace editing/autosave, later revision publishing from a workspace, contributions, forks, discovery, moderation, and release hardening are not implemented. npm is the sole package manager and Node.js 24 LTS is required.
+PRs 01–09 are implemented. The repository contains the responsive Next.js product shell with global navigation and progressively enhanced Auth-aware account links; invite-only Google OAuth and profile onboarding; private project metadata; immutable, trusted-verified source assets uploaded directly and resumably to Supabase Storage; atomic first publishing into immutable revisions; and authenticated, lazy-loaded Waveform Playlist playback for the current revision through short-lived signed URLs. Workspace editing/autosave, later revision publishing from a workspace, contributions, forks, discovery, moderation, and release hardening are not implemented. npm is the sole package manager and Node.js 24 LTS is required.
 
 Before implementing a task:
 
@@ -80,7 +80,7 @@ Database commands require a running Docker-compatible container engine. `npm run
 - All application-facing tables in exposed schemas have RLS enabled and policy tests. The service-role key is server-only and exceptional, not the normal application data path.
 - Email remains in Supabase Auth and must not be copied into publicly selectable profile data.
 - Provider metadata is untrusted for public identity; new Auth users begin with incomplete profiles that are not publicly visible.
-- Use verified Auth claims/user calls for identity decisions; never authorize from `getSession()` user data. Keep public layouts Auth-independent, sanitize callback destinations to explicit application-relative routes, and keep test Auth unreachable in production.
+- Use verified Auth claims/user calls for identity decisions; never authorize from `getSession()` user data. Keep public layouts Auth-independent: shared navigation may progressively enhance display-only account links from verified browser claims, but its signed-out server render must remain usable and it must never become an authorization boundary. Sanitize callback destinations to explicit application-relative routes, and keep test Auth unreachable in production.
 - Read public profiles through a safe projection and never expose lifecycle or activity columns through broad base-table selects.
 - Store usernames without `@`; render them as `@username`. Normalize and claim usernames atomically in the database.
 - Database timestamps are UTC `timestamptz`; serialized application timestamps are ISO 8601 strings.
