@@ -4,8 +4,10 @@ import { Container } from "@/components/layout/container";
 import { signOut } from "@/features/auth/actions";
 import { requireViewer } from "@/features/auth/guards";
 import { ProfileForm } from "@/features/profiles/profile-form";
+import { AvatarUploader } from "@/features/profiles/avatar-uploader";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { listViewerAcceptedContributions } from "@/server/repositories/profiles";
+import { getPublicAvatarUrl } from "@/server/repositories/profiles";
 
 export default async function ProfileSettingsPage({
   searchParams,
@@ -60,6 +62,12 @@ export default async function ProfileSettingsPage({
               </Link>
             </p>
           )}
+          <AvatarUploader
+            profileId={profile.id}
+            name={profile.displayName ?? "Jam Session member"}
+            avatarUrl={getPublicAvatarUrl(profile.avatarPath)}
+            avatarVersionId={profile.avatarVersionId}
+          />
           <ProfileForm profile={profile} />
           <section className="border-subtle mt-10 border-t pt-8">
             <h2 className="text-2xl font-bold">Accepted contributions</h2>

@@ -40,7 +40,7 @@ flowchart LR
 ### Product shell and navigation
 
 - The root layout owns one skip link, persistent header, and footer so public, Auth, profile, project, upload, revision, and studio routes share navigable product chrome.
-- The header exposes only implemented top-level destinations: home through the brand link, the authenticated member project index, new project, uploads, and a sign-in/account action. Active-route treatment orients users within these workspaces. Project-specific edit, publish, and studio links remain contextual to project cards and pages.
+- The header exposes implemented top-level destinations: dashboard, Explore, projects, contributions, uploads, new project, and account. Desktop uses active pill navigation; narrow layouts use a semantic disclosure rather than horizontal overflow. Project-specific edit, publish, and studio links remain contextual.
 - Public HTML renders a complete signed-out shell without a server-side Auth dependency. A small Client Component listens for Supabase Auth changes and route transitions, calls `getClaims()` to verify identity, and progressively replaces sign-in links with account or create-project destinations.
 - This Auth-aware display is convenience only. Server Components, server actions, Route Handlers, database commands, and RLS independently authorize every protected destination.
 - Navigation and landing-page actions must remain keyboard accessible at the 320 px minimum layout. User-facing surfaces follow the warm studio-night system in [`docs/design/brand.md`](../design/brand.md): primary coral-to-gold actions use the dark accent foreground with WCAG 2.2 AA contrast, and shared buttons use the landing page's pill shape. Do not place white or light text on coral or gold fills.
@@ -59,6 +59,7 @@ flowchart LR
 | `/`                                       | Implemented | Server-rendered                   | Public product shell                                       |
 | `/explore`                                | Implemented | Server-rendered, version-cached   | Bounded canonical GET filters and keyset pagination        |
 | `/@{username}`                            | Implemented | Server-rendered                   | Canonical profile display uses `@`; database stores no `@` |
+| `/dashboard`                              | Implemented | Authenticated Server Component    | Bounded private work summaries and review count            |
 | `/projects`                               | Implemented | Authenticated Server Component    | RLS-scoped member project index and next-action links      |
 | `/projects/{projectId}`                   | Implemented | Public/member Server Component    | Safe anonymous metadata branch or full member presentation |
 | `/projects/{projectId}/studio`            | Implemented | Server shell + lazy client studio | Editor/Tone/browser audio load only after explicit open    |
@@ -77,7 +78,7 @@ Use stable opaque IDs in project URLs for MVP. Human-readable slugs can be added
 4. Username claim is a single database function/transaction backed by a unique normalized index and reserved-name policy.
 5. Server code obtains the user with a verified Supabase auth call and relies on RLS plus explicit service authorization.
 
-Only completed, active rows from the safe public-profile projection become `PublicUser` values. Database onboarding fields are nullable; the public domain shape is deliberately non-nullable. Email does not belong in the public profile table or public `User` DTO. Avatar persistence is deferred until the asset pipeline can enforce image ownership and integrity, so clients use a deterministic placeholder meanwhile. Define two eventual shapes:
+Only completed, active rows from the safe public-profile projection become `PublicUser` values. Database onboarding fields are nullable; the public domain shape is deliberately non-nullable. Email does not belong in the public profile table or public `User` DTO. PR 17 implements avatars as private immutable originals processed by a trusted lease-bound Edge worker into versioned, sanitized 512×512 WebP derivatives in the public `public-avatars` bucket. Public DTOs expose only the derivative path/version and use deterministic initials as fallback. The domain shapes are:
 
 ```ts
 type PublicUser = {

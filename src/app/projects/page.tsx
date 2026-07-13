@@ -14,9 +14,20 @@ const statusLabels = {
   draft: "Draft",
 } as const;
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ scope?: string; review?: string; after?: string }>;
+}) {
   const viewer = await requireViewer("/projects");
-  const projects = await listProjectsForViewer(viewer.id);
+  const query = await searchParams;
+  const scope = query.scope === "owned" ? "owned" : "all";
+  const review = query.review === "1" && scope === "owned";
+  const { projects, nextCursor } = await listProjectsForViewer(viewer.id, {
+    scope,
+    review,
+    after: query.after,
+  });
 
   return (
     <main id="main-content">
@@ -72,6 +83,9 @@ export default async function ProjectsPage() {
                         <span className="text-muted">Published</span>
                       </>
                     )}
+                    {project.needsReview && (
+                      <span className="text-accent">/ Review pending</span>
+                    )}
                   </div>
                   <h3 className="mt-4 text-2xl font-semibold tracking-tight">
                     <Link
@@ -119,6 +133,16 @@ export default async function ProjectsPage() {
                 </li>
               ))}
             </ul>
+            {nextCursor && (
+              <div className="mt-8">
+                <ButtonLink
+                  variant="secondary"
+                  href={`/projects?scope=${scope}${review ? "&review=1" : ""}&after=${encodeURIComponent(nextCursor)}`}
+                >
+                  Next projects
+                </ButtonLink>
+              </div>
+            )}
           </section>
         ) : (
           <section className="rounded-card border-strong bg-surface mt-10 border border-dashed p-8 text-center sm:p-12">

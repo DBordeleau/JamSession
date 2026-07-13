@@ -17,13 +17,19 @@ export default async function ProjectContributionsPage({
 }) {
   const { projectId } = await params;
   if (!projectIdSchema.safeParse(projectId).success) notFound();
-  await requireViewer("/projects/" + projectId + "/contributions");
+  const viewer = await requireViewer(
+    "/projects/" + projectId + "/contributions",
+  );
   const project = await getProjectForViewer(projectId);
   if (!project) notFound();
   const contributions =
     project.viewerRole === "owner"
       ? await listContributionsForOwnerReview(projectId)
-      : await listContributionsByAuthor();
+      : [
+          ...(await listContributionsByAuthor(viewer.id)).contributions,
+          ...(await listContributionsByAuthor(viewer.id, { status: "history" }))
+            .contributions,
+        ];
   const visible = contributions.filter((item) => item.projectId === projectId);
   return (
     <main id="main-content">

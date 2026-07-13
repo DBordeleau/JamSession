@@ -64,9 +64,9 @@ Exit: a second account can contribute a stem and the owner can accept it without
 - Copy-on-write fork with complete lineage and license checks. **Implemented in PR 15.**
 - Browse/search filters for genre, tags, BPM, key and instrument. **Implemented in PR 16.**
 - Recent and explainable trending ordering. **Implemented in PR 16.**
-- Public profile project/contribution lists. **Implemented in PR 16.**
+- Paginated public profile project/contribution lists, bounded dashboard/private indexes, trusted avatars, throttled activity, and complete responsive navigation. **Implemented in PR 17.**
 
-Exit: **Met in PR 16** — fork lineage is navigable and discovery results respect visibility/RLS.
+Exit: **Met in PR 17** — fork lineage/discovery respect visibility/RLS, and profile/private work is efficiently navigable.
 
 ### M6 — Launch hardening
 

@@ -2,7 +2,7 @@
 
 Jam Session is an asynchronous music-collaboration platform inspired by Git and open-source development. Musicians create projects from stems, preserve immutable revision history, propose contributions with durable attribution, and create copy-on-write forks with navigable lineage.
 
-> **Current status:** PRs 01–16 are complete. Global responsive navigation, invite-only Google sign-in/onboarding, private immutable audio and history, synchronized playback, conflict-safe workspaces, contribution review/acceptance, durable attribution, copy-on-write forks, owner-controlled public projects, safe metadata-only public pages, public profile history, and bounded Explore search are implemented. Moderation, retention operations, broader navigation, and release hardening remain planned.
+> **Current status:** PRs 01–17 are complete. Global responsive navigation, invite-only identity, private immutable audio/history, synchronized workspaces, contribution review/acceptance, durable attribution, copy-on-write forks, public discovery, paginated profiles, bounded private dashboards/indexes, throttled activity, and trusted sanitized avatars are implemented. Moderation, retention operations, and release hardening remain planned.
 
 ## MVP scope
 
@@ -169,6 +169,8 @@ Run commands from the repository root:
 | `npm run auth:e2e:setup`         | Prepare the gated local/CI test Auth actor                      |
 | `npm run assets:verify`          | Lease-aware fallback verification of a processing source asset  |
 | `npm run assets:cleanup`         | Dry-run reference-aware asset cleanup                           |
+| `npm run avatars:process`        | Recover pending or expired profile-image processing jobs        |
+| `npm run avatars:cleanup`        | Dry-run cleanup of expired private avatar uploads               |
 
 Before the first browser-test run, download Playwright's Chromium build once:
 

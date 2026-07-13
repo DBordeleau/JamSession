@@ -70,14 +70,14 @@ export default async function ProjectPage({
     await import("@/features/projects/member-stem-downloads");
   const [revisions, contributions, lineage] = await Promise.all([
     getRevisionHistory(projectId),
-    listContributionsByAuthor(),
+    listContributionsByAuthor(viewer.id),
     getProjectLineage({
       projectId,
       sourceProjectId: project.sourceProjectId,
       sourceRevisionId: project.sourceRevisionId,
     }),
   ]);
-  const liveContribution = contributions.find(
+  const liveContribution = contributions.contributions.find(
     (item) =>
       item.projectId === projectId &&
       !["withdrawn", "accepted", "rejected"].includes(item.status),

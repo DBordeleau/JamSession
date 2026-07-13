@@ -32,6 +32,9 @@
     "auth:e2e:setup": "node scripts/setup-auth-e2e.mjs",
     "assets:verify": "node scripts/verify-source-asset.mjs",
     "assets:cleanup": "node scripts/cleanup-assets.mjs --dry-run",
+    "avatars:process": "node scripts/recover-profile-images.mjs",
+    "avatars:cleanup": "node scripts/cleanup-profile-images.mjs",
+    "avatars:cleanup:execute": "node scripts/cleanup-profile-images.mjs --execute",
     "supabase:start:storage": "supabase start -x realtime,imgproxy,studio,edge-runtime,logflare,vector,supavisor,mailpit,postgres-meta",
     "db:check": "npm run db:lint && npm run db:test && npm run db:types:check",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build"

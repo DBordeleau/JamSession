@@ -23,6 +23,12 @@ export type ProjectSummary = {
   role: "owner" | "editor" | "viewer";
   currentRevisionId: string | null;
   updatedAt: string;
+  needsReview?: boolean;
+};
+
+export type ProjectSummaryPage = {
+  projects: ProjectSummary[];
+  nextCursor: string | null;
 };
 export type ProjectDetail = {
   id: string;

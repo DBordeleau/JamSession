@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/layout/container";
+import { Avatar } from "@/components/ui/avatar";
 import Link from "next/link";
 import {
   getPublicProfile,
-  getPublicProfileHistory,
+  getPublicAvatarUrl,
+  listPublicProfileContributions,
+  listPublicProfileProjects,
 } from "@/server/repositories/profiles";
 
 async function find(raw: string) {
@@ -36,22 +39,44 @@ export async function generateMetadata({
 
 export default async function PublicProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ username: string }>;
+  searchParams: Promise<{
+    projectsAfter?: string;
+    contributionsAfter?: string;
+  }>;
 }) {
   const profile = await find((await params).username);
   if (!profile) notFound();
-  const history = await getPublicProfileHistory(profile.id);
+  const query = await searchParams;
+  let projects;
+  let contributions;
+  let cursorStale = false;
+  try {
+    [projects, contributions] = await Promise.all([
+      listPublicProfileProjects(profile.id, query.projectsAfter),
+      listPublicProfileContributions(profile.id, query.contributionsAfter),
+    ]);
+  } catch (error) {
+    if (error instanceof Error && error.message === "profile_cursor_stale")
+      cursorStale = true;
+    else throw error;
+    [projects, contributions] = await Promise.all([
+      listPublicProfileProjects(profile.id),
+      listPublicProfileContributions(profile.id),
+    ]);
+  }
+  const base = `/@${profile.username}`;
   return (
     <main id="main-content">
       <Container className="py-20">
         <article className="mx-auto max-w-3xl">
-          <div
-            aria-hidden="true"
-            className="bg-surface-raised border-strong flex size-24 items-center justify-center rounded-full border text-3xl font-bold"
-          >
-            {profile.displayName.slice(0, 1).toUpperCase()}
-          </div>
+          <Avatar
+            src={getPublicAvatarUrl(profile.avatarPath)}
+            name={profile.displayName}
+            size="lg"
+          />
           <h1 className="mt-6 text-4xl font-bold">{profile.displayName}</h1>
           <p className="text-accent mt-2 text-lg">@{profile.username}</p>
           <p className="text-muted mt-1">Music credits: {profile.creditName}</p>
@@ -60,11 +85,20 @@ export default async function PublicProfilePage({
               {profile.bio}
             </p>
           )}
+          {cursorStale && (
+            <p
+              role="status"
+              className="rounded-control border-accent mt-8 border p-4"
+            >
+              This profile changed while you were browsing. Showing the newest
+              results.
+            </p>
+          )}
           <section className="border-subtle mt-10 border-t pt-8">
             <h2 className="text-2xl font-bold">Public projects</h2>
-            {history.projects.length > 0 ? (
+            {projects.items.length > 0 ? (
               <ul className="mt-3 space-y-2">
-                {history.projects.map((project) => (
+                {projects.items.map((project) => (
                   <li key={project.projectId}>
                     <Link
                       className="underline"
@@ -78,12 +112,20 @@ export default async function PublicProfilePage({
             ) : (
               <p className="text-muted mt-3">No public projects yet.</p>
             )}
+            {projects.nextCursor && (
+              <Link
+                className="border-strong mt-5 inline-flex min-h-11 items-center rounded-full border px-5 font-semibold"
+                href={`${base}?projectsAfter=${encodeURIComponent(projects.nextCursor)}${query.contributionsAfter ? `&contributionsAfter=${encodeURIComponent(query.contributionsAfter)}` : ""}`}
+              >
+                Next projects
+              </Link>
+            )}
           </section>
           <section className="border-subtle mt-10 border-t pt-8">
             <h2 className="text-2xl font-bold">Accepted contributions</h2>
-            {history.acceptedContributions.length > 0 ? (
+            {contributions.items.length > 0 ? (
               <ul className="mt-3 space-y-2">
-                {history.acceptedContributions.map((item) => (
+                {contributions.items.map((item) => (
                   <li key={item.revisionId}>
                     <Link
                       className="underline"
@@ -101,6 +143,14 @@ export default async function PublicProfilePage({
               <p className="text-muted mt-3">
                 No public accepted contributions yet.
               </p>
+            )}
+            {contributions.nextCursor && (
+              <Link
+                className="border-strong mt-5 inline-flex min-h-11 items-center rounded-full border px-5 font-semibold"
+                href={`${base}?contributionsAfter=${encodeURIComponent(contributions.nextCursor)}${query.projectsAfter ? `&projectsAfter=${encodeURIComponent(query.projectsAfter)}` : ""}`}
+              >
+                Next contributions
+              </Link>
             )}
           </section>
         </article>

@@ -14,41 +14,42 @@ describe("PrimaryNavigation", () => {
   it("exposes every implemented top-level workspace", () => {
     render(<PrimaryNavigation />);
 
-    expect(screen.getByRole("link", { name: "My projects" })).toHaveAttribute(
-      "href",
-      "/projects",
-    );
-    expect(screen.getByRole("link", { name: "New project" })).toHaveAttribute(
-      "href",
-      "/projects/new",
-    );
-    expect(screen.getByRole("link", { name: "Uploads" })).toHaveAttribute(
-      "href",
-      "/uploads",
-    );
-    expect(screen.getByRole("link", { name: "Contributions" })).toHaveAttribute(
-      "href",
-      "/contributions",
-    );
+    for (const [name, href] of [
+      ["Dashboard", "/dashboard"],
+      ["My projects", "/projects"],
+      ["New project", "/projects/new"],
+      ["Uploads", "/uploads"],
+      ["Contributions", "/contributions"],
+    ] as const)
+      expect(
+        screen
+          .getAllByRole("link", { name })
+          .every((link) => link.getAttribute("href") === href),
+      ).toBe(true);
+    expect(screen.getByText("Menu")).toBeInTheDocument();
   });
 
   it("marks project routes as the current workspace without masking creation", () => {
     usePathname.mockReturnValue("/projects/project-id/studio");
     const { rerender } = render(<PrimaryNavigation />);
-    expect(screen.getByRole("link", { name: "My projects" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    expect(
+      screen
+        .getAllByRole("link", { name: "My projects" })
+        .every((link) => link.getAttribute("aria-current") === "page"),
+    ).toBe(true);
 
     usePathname.mockReturnValue("/projects/new");
     rerender(<PrimaryNavigation />);
-    expect(screen.getByRole("link", { name: "New project" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
     expect(
-      screen.getByRole("link", { name: "My projects" }),
-    ).not.toHaveAttribute("aria-current");
+      screen
+        .getAllByRole("link", { name: "New project" })
+        .every((link) => link.getAttribute("aria-current") === "page"),
+    ).toBe(true);
+    expect(
+      screen
+        .getAllByRole("link", { name: "My projects" })
+        .every((link) => !link.hasAttribute("aria-current")),
+    ).toBe(true);
   });
 
   it("marks only Contributions current on nested contribution routes", () => {
@@ -56,12 +57,15 @@ describe("PrimaryNavigation", () => {
       "/projects/project-id/contributions/contribution-id",
     );
     render(<PrimaryNavigation />);
-    expect(screen.getByRole("link", { name: "Contributions" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
     expect(
-      screen.getByRole("link", { name: "My projects" }),
-    ).not.toHaveAttribute("aria-current");
+      screen
+        .getAllByRole("link", { name: "Contributions" })
+        .every((link) => link.getAttribute("aria-current") === "page"),
+    ).toBe(true);
+    expect(
+      screen
+        .getAllByRole("link", { name: "My projects" })
+        .every((link) => !link.hasAttribute("aria-current")),
+    ).toBe(true);
   });
 });

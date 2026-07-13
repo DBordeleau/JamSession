@@ -14,6 +14,10 @@ import type { RevisionPlayback } from "@/server/repositories/revisions";
 import type { Database } from "@/lib/supabase/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import {
+  decodeNavigationCursor,
+  encodeNavigationCursor,
+} from "@/features/navigation/cursor";
 
 const contributionProjectContextSchema = z.object({
   title: z.string(),
@@ -29,38 +33,73 @@ const contributionProjectContextSchema = z.object({
   }),
 });
 
-export async function listContributionsByAuthor(): Promise<
-  ContributionListItem[]
-> {
+export async function listContributionsByAuthor(
+  viewerId: string,
+  options: { status?: "active" | "submitted" | "history"; after?: string } = {},
+) {
+  const status = options.status ?? "active";
+  const cursor = decodeNavigationCursor(options.after);
+  if (
+    options.after &&
+    (!cursor ||
+      cursor.kind !== "contributions" ||
+      cursor.subject !== viewerId ||
+      cursor.filter !== status)
+  )
+    throw new Error("contributions_cursor_invalid");
   const db = await createSupabaseServerClient();
-  const { data, error } = await db
-    .from("contributions")
-    .select(
-      "id,project_id,title,status,base_revision_id,current_version_id,updated_at",
-    )
-    .order("updated_at", { ascending: false })
-    .limit(50);
+  const { data, error } = await db.rpc("list_viewer_contributions", {
+    p_status: status,
+    p_after_updated_at: cursor?.timestamp,
+    p_after_id: cursor?.id,
+  });
   if (error) throw new Error("contributions_unavailable");
-  const contexts = await Promise.all(
-    data.map(async (row) => {
-      const { data: context, error: contextError } = await db.rpc(
-        "get_contribution_project_context",
-        { p_contribution_id: row.id },
-      );
-      if (contextError) throw new Error("contributions_unavailable");
-      return contributionProjectContextSchema.parse(context);
-    }),
-  );
-  return data.map((row, index) => ({
-    id: row.id,
+  const rows = z
+    .array(
+      z.object({
+        contribution_id: z.string().uuid(),
+        project_id: z.string().uuid(),
+        project_title: z.string(),
+        title: z.string(),
+        status: z.enum([
+          "draft",
+          "submitted",
+          "changes_requested",
+          "accepted",
+          "rejected",
+          "withdrawn",
+        ]),
+        base_revision_id: z.string().uuid(),
+        current_version_number: z.number().int().positive().nullable(),
+        updated_at: z.string(),
+      }),
+    )
+    .parse(data);
+  const visible = rows.slice(0, 24);
+  const contributions: ContributionListItem[] = visible.map((row) => ({
+    id: row.contribution_id,
     projectId: row.project_id,
-    projectTitle: contexts[index]!.title,
+    projectTitle: row.project_title,
     title: row.title,
     status: row.status,
     baseRevisionId: row.base_revision_id,
-    currentVersionNumber: null,
+    currentVersionNumber: row.current_version_number,
     updatedAt: row.updated_at,
   }));
+  const last = rows.length > 24 ? visible.at(-1) : null;
+  return {
+    contributions,
+    nextCursor: last
+      ? encodeNavigationCursor({
+          v: 1,
+          kind: "contributions",
+          subject: viewerId,
+          filter: status,
+          timestamp: last.updated_at,
+          id: last.contribution_id,
+        })
+      : null,
+  };
 }
 
 export async function listContributionsForOwnerReview(
