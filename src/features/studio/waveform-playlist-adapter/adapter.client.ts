@@ -15,6 +15,7 @@ import {
   type TrackRef,
 } from "../studio-adapter.types";
 import { editorTracksToManifest, manifestTrackToClipTrack } from "./mapping";
+import { loadSources } from "./source-loader.client";
 
 type RuntimeBridge = {
   play(): Promise<void>;
@@ -58,7 +59,13 @@ export class WaveformPlaylistStudioAdapter implements StudioAdapter {
     this.emit();
   }
 
-  async load({ manifest, assets }: StudioLoadInput) {
+  async load({
+    manifest,
+    sources,
+    refreshSources,
+    signal,
+    onProgress,
+  }: StudioLoadInput) {
     this.assertLive();
     if (!("AudioContext" in window) || !("OfflineAudioContext" in window)) {
       throw new StudioAdapterError(
@@ -70,25 +77,14 @@ export class WaveformPlaylistStudioAdapter implements StudioAdapter {
     try {
       this.manifest = parseWorkspaceManifest(manifest);
       this.decodeContext ??= new AudioContext();
-      const buffers = new Map<string, AudioBuffer>();
-      await Promise.all(
-        this.manifest.tracks.map(async (track) => {
-          const asset = assets.find(({ assetId }) => assetId === track.assetId);
-          if (!asset)
-            throw new StudioAdapterError(
-              "missing_asset",
-              `No source was supplied for asset ${track.assetId}.`,
-            );
-          const response = await fetch(asset.url);
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          buffers.set(
-            track.assetId,
-            await this.decodeContext!.decodeAudioData(
-              await response.arrayBuffer(),
-            ),
-          );
-        }),
-      );
+      const buffers = await loadSources({
+        assetIds: this.manifest.tracks.map((track) => track.assetId),
+        sources,
+        refresh: refreshSources,
+        signal,
+        onProgress,
+        decode: (bytes) => this.decodeContext!.decodeAudioData(bytes),
+      });
       this.tracks = this.manifest.tracks.map((track) =>
         manifestTrackToClipTrack(track, buffers.get(track.assetId)!),
       );
@@ -111,7 +107,15 @@ export class WaveformPlaylistStudioAdapter implements StudioAdapter {
         "invalid_state",
         "The playlist controls are not ready yet.",
       );
-    await this.runtime.play();
+    try {
+      await this.runtime.play();
+    } catch (error) {
+      throw new StudioAdapterError(
+        "audio_suspended",
+        "Audio is paused by the browser. Enable audio and try again.",
+        { cause: error },
+      );
+    }
     this.setStatus("playing");
   }
 

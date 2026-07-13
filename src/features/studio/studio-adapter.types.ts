@@ -1,9 +1,13 @@
 import type { WorkspaceManifestV1, WorkspaceTrackV1 } from "./manifest/schema";
 
+import type { SignedAudioSource } from "./source-contract";
 export type StudioAssetSource = { assetId: string; url: string };
 export type StudioLoadInput = {
   manifest: WorkspaceManifestV1;
-  assets: readonly StudioAssetSource[];
+  sources: readonly SignedAudioSource[];
+  refreshSources: () => Promise<readonly SignedAudioSource[]>;
+  signal: AbortSignal;
+  onProgress?: (loaded: number, total: number) => void;
 };
 export type AddAudioAssetInput = {
   asset: StudioAssetSource;
@@ -32,7 +36,13 @@ export class StudioAdapterError extends Error {
   constructor(
     readonly code:
       | "unsupported"
+      | "unauthorized_source"
+      | "expired_source"
+      | "missing_source"
+      | "fetch_failed"
       | "decode_failed"
+      | "audio_suspended"
+      | "cancelled"
       | "invalid_state"
       | "missing_asset"
       | "export_failed",

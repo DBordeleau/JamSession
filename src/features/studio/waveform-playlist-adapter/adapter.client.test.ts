@@ -8,6 +8,16 @@ import { WaveformPlaylistStudioAdapter } from "./adapter.client";
 
 const close = vi.fn(async () => undefined);
 const fakeBuffer = { length: 88_200, sampleRate: 44_100 } as AudioBuffer;
+const sources = STUDIO_FIXTURE_ASSETS.map(({ assetId, url }) => ({
+  assetId,
+  signedUrl: url,
+  expiresAt: new Date(Date.now() + 600_000).toISOString(),
+}));
+const loadOptions = {
+  sources,
+  refreshSources: async () => sources,
+  signal: new AbortController().signal,
+};
 
 class FakeAudioContext {
   close = close;
@@ -35,7 +45,7 @@ describe("WaveformPlaylistStudioAdapter", () => {
     const adapter = new WaveformPlaylistStudioAdapter();
     await adapter.load({
       manifest: STUDIO_FIXTURE_MANIFEST,
-      assets: STUDIO_FIXTURE_ASSETS,
+      ...loadOptions,
     });
     adapter.updateTrack("00000000-0000-4000-8000-000000000011", {
       muted: true,
@@ -50,7 +60,7 @@ describe("WaveformPlaylistStudioAdapter", () => {
     const adapter = new WaveformPlaylistStudioAdapter();
     await adapter.load({
       manifest: STUDIO_FIXTURE_MANIFEST,
-      assets: STUDIO_FIXTURE_ASSETS,
+      ...loadOptions,
     });
     await adapter.dispose();
     await adapter.dispose();
@@ -63,10 +73,14 @@ describe("WaveformPlaylistStudioAdapter", () => {
   it("maps a missing source to an actionable typed error", async () => {
     const adapter = new WaveformPlaylistStudioAdapter();
     await expect(
-      adapter.load({ manifest: STUDIO_FIXTURE_MANIFEST, assets: [] }),
+      adapter.load({
+        manifest: STUDIO_FIXTURE_MANIFEST,
+        ...loadOptions,
+        sources: [],
+      }),
     ).rejects.toEqual(
       expect.objectContaining<Partial<StudioAdapterError>>({
-        code: "missing_asset",
+        code: "missing_source",
       }),
     );
   });

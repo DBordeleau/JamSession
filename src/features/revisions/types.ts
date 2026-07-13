@@ -9,6 +9,14 @@ export type PublishAssetOption = {
   creditName: string;
 };
 export type InstrumentOption = { id: string; name: string };
+export type RevisionPlaybackTrack = {
+  trackId: string;
+  assetId: string;
+  displayName: string;
+  verifiedDurationMs: number;
+  instrumentName: string | null;
+  creditName: string;
+};
 export type RevisionTrack = {
   id: string;
   assetId: string;

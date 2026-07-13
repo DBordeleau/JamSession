@@ -6,7 +6,95 @@ import type {
   PublishAssetOption,
   RevisionSummary,
 } from "@/features/revisions/types";
-import type { WorkspaceManifestV1 } from "@/features/studio/manifest/schema";
+import {
+  parseVersionedWorkspaceManifest,
+  sha256PostgresJsonb,
+  STUDIO_ENGINE_VERSION,
+  type WorkspaceManifestV1,
+} from "@/features/studio/manifest/schema";
+
+export type RevisionPlayback = {
+  projectId: string;
+  revisionId: string;
+  revisionNumber: number;
+  manifest: WorkspaceManifestV1;
+  manifestSha256: string;
+  durationMs: number;
+  tracks: Array<{
+    trackId: string;
+    assetId: string;
+    displayName: string;
+    verifiedDurationMs: number;
+    instrumentName: string | null;
+    creditName: string;
+  }>;
+};
+
+export async function getRevisionPlayback(input: {
+  projectId: string;
+  revisionId: string;
+}): Promise<RevisionPlayback | null> {
+  const db = await createSupabaseServerClient();
+  const { data, error } = await db
+    .from("project_revisions")
+    .select(
+      "id,project_id,revision_number,manifest,manifest_version,engine,engine_version,manifest_sha256,duration_ms,revision_tracks(id,asset_id,name,duration_ms,sort_order,instruments(name),assets(duration_ms,asset_credits(credit_name,position)))",
+    )
+    .eq("project_id", input.projectId)
+    .eq("id", input.revisionId)
+    .maybeSingle();
+  if (error) throw new Error("revision_playback_unavailable");
+  if (!data) return null;
+  if (
+    data.manifest_version !== 1 ||
+    data.engine !== "waveform-playlist" ||
+    data.engine_version !== STUDIO_ENGINE_VERSION
+  )
+    throw new Error("revision_playback_invalid");
+  const manifest = parseVersionedWorkspaceManifest(data.manifest);
+  if (
+    manifest.workspaceId !== input.projectId ||
+    (await sha256PostgresJsonb(manifest)) !== data.manifest_sha256
+  )
+    throw new Error("revision_playback_invalid");
+  const normalized = [...data.revision_tracks].sort(
+    (a, b) => a.sort_order - b.sort_order,
+  );
+  if (
+    normalized.length !== manifest.tracks.length ||
+    normalized.some((track, index) => {
+      const item = manifest.tracks[index];
+      return (
+        !item ||
+        item.trackId !== track.id ||
+        item.assetId !== track.asset_id ||
+        item.name !== track.name ||
+        item.durationMs !== track.duration_ms ||
+        item.sortOrder !== track.sort_order ||
+        track.assets.duration_ms === null
+      );
+    })
+  )
+    throw new Error("revision_playback_invalid");
+  return {
+    projectId: data.project_id,
+    revisionId: data.id,
+    revisionNumber: data.revision_number,
+    manifest,
+    manifestSha256: data.manifest_sha256,
+    durationMs: data.duration_ms,
+    tracks: normalized.map((track) => ({
+      trackId: track.id,
+      assetId: track.asset_id,
+      displayName: track.name,
+      verifiedDurationMs: track.assets.duration_ms!,
+      instrumentName: track.instruments?.name ?? null,
+      creditName:
+        track.assets.asset_credits.find((credit) => credit.position === 0)
+          ?.credit_name ?? "Unknown creator",
+    })),
+  };
+}
 
 export async function listPublishOptions(): Promise<{
   assets: PublishAssetOption[];

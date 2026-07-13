@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -10,27 +11,51 @@ import {
 import {
   Waveform,
   WaveformPlaylistProvider,
+  usePlaybackAnimation,
   usePlaylistControls,
   usePlaylistData,
 } from "@waveform-playlist/browser";
-import { useExportWav } from "@waveform-playlist/browser/tone";
 import { resumeGlobalAudioContext } from "@waveform-playlist/playout";
 import type { WorkspaceManifestV1 } from "../manifest/schema";
-import { parseVersionedWorkspaceManifest } from "../manifest/schema";
-import type { StudioAssetSource } from "../studio-adapter.types";
+import type { SignedAudioSource } from "../source-contract";
+import { StudioAdapterError } from "../studio-adapter.types";
 import { WaveformPlaylistStudioAdapter } from "./adapter.client";
 
-const STORAGE_KEY = "jam-session:studio-spike:manifest-v1";
+type TrackMeta = {
+  trackId: string;
+  instrumentName: string | null;
+  creditName: string;
+};
 
-function RuntimeBridge({
+const formatTime = (seconds: number) => {
+  const safe = Math.max(0, seconds);
+  return `${Math.floor(safe / 60)}:${Math.floor(safe % 60)
+    .toString()
+    .padStart(2, "0")}`;
+};
+
+function PlaybackControls({
   adapter,
+  duration,
+  tracks,
 }: {
   adapter: WaveformPlaylistStudioAdapter;
+  duration: number;
+  tracks: TrackMeta[];
 }) {
   const controls = usePlaylistControls();
-  const { trackStates } = usePlaylistData();
-  const { exportWav } = useExportWav();
-
+  const data = usePlaylistData();
+  const { isPlaying } = usePlaybackAnimation();
+  const [time, setTime] = useState(0);
+  const [audioIssue, setAudioIssue] = useState(false);
+  const attemptPlay = useCallback(async () => {
+    try {
+      await adapter.play();
+      setAudioIssue(false);
+    } catch {
+      setAudioIssue(true);
+    }
+  }, [adapter]);
   useEffect(() => {
     adapter.attachRuntime({
       play: async () => {
@@ -39,307 +64,291 @@ function RuntimeBridge({
       },
       pause: controls.pause,
       seek: controls.seekTo,
-      renderMix: async (tracks) => (await exportWav(tracks, trackStates)).blob,
+      renderMix: async () => {
+        throw new Error("read_only");
+      },
     });
-    return () => adapter.attachRuntime(null);
-  }, [adapter, controls, exportWav, trackStates]);
-  return null;
+    const timer = window.setInterval(
+      () => setTime(data.playoutRef.current?.getCurrentTime() ?? 0),
+      200,
+    );
+    return () => {
+      window.clearInterval(timer);
+      adapter.attachRuntime(null);
+    };
+  }, [adapter, controls, data.playoutRef]);
+  useEffect(() => {
+    const keyboard = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.matches("input,select,textarea,[contenteditable='true']"))
+        return;
+      if (event.code === "Space") {
+        event.preventDefault();
+        void attemptPlay();
+      }
+      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.preventDefault();
+        controls.seekTo(
+          Math.max(
+            0,
+            Math.min(duration, time + (event.key === "ArrowLeft" ? -5 : 5)),
+          ),
+        );
+      }
+    };
+    window.addEventListener("keydown", keyboard);
+    return () => window.removeEventListener("keydown", keyboard);
+  }, [attemptPlay, controls, duration, time]);
+  return (
+    <>
+      <div
+        className="rounded-card border-subtle bg-surface flex flex-wrap items-center gap-3 border p-4"
+        aria-label="Playback transport"
+      >
+        <button
+          className="bg-accent rounded-control min-h-11 px-5 font-semibold text-white"
+          type="button"
+          aria-label={isPlaying ? "Pause playback" : "Play playback"}
+          onClick={() => (isPlaying ? adapter.pause() : void attemptPlay())}
+        >
+          {isPlaying ? "Pause" : "Play"}
+        </button>
+        {audioIssue && (
+          <button
+            className="rounded-control border-accent min-h-11 border px-4"
+            type="button"
+            onClick={() => void attemptPlay()}
+          >
+            Enable audio
+          </button>
+        )}
+        <button
+          className="rounded-control border-strong min-h-11 border px-4"
+          type="button"
+          onClick={() => controls.seekTo(Math.max(0, time - 5))}
+        >
+          Back 5 seconds
+        </button>
+        <button
+          className="rounded-control border-strong min-h-11 border px-4"
+          type="button"
+          onClick={() => controls.seekTo(Math.min(duration, time + 5))}
+        >
+          Forward 5 seconds
+        </button>
+        <span className="font-mono text-sm">
+          {formatTime(time)} / {formatTime(duration)}
+        </span>
+        <label className="min-w-52 flex-1">
+          <span className="sr-only">Seek playback position</span>
+          <input
+            className="w-full"
+            aria-label="Seek playback position"
+            type="range"
+            min="0"
+            max={duration}
+            step="0.1"
+            value={Math.min(time, duration)}
+            onChange={(e) => controls.seekTo(Number(e.target.value))}
+          />
+        </label>
+      </div>
+      <div className="rounded-card border-subtle bg-surface-raised overflow-x-auto border p-3">
+        <Waveform />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {data.tracks.map((track, index) => {
+          const meta = tracks.find((item) => item.trackId === track.id);
+          const current = data.trackStates[index]!;
+          return (
+            <fieldset
+              key={track.id}
+              className="rounded-card border-subtle bg-surface space-y-4 border p-4"
+            >
+              <legend className="px-2 font-semibold">{track.name}</legend>
+              <p className="text-muted text-sm">
+                {meta?.instrumentName ?? "No instrument"} ·{" "}
+                {meta?.creditName ?? "Unknown creator"}
+              </p>
+              <label className="block">
+                Gain{" "}
+                <span className="text-muted">
+                  {Math.round(current.volume * 100)}%
+                </span>
+                <input
+                  aria-label={`${track.name} gain`}
+                  className="w-full"
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.01"
+                  value={current.volume}
+                  onChange={(e) =>
+                    controls.setTrackVolume(index, Number(e.target.value))
+                  }
+                />
+              </label>
+              <label className="block">
+                Pan <span className="text-muted">{current.pan.toFixed(1)}</span>
+                <input
+                  aria-label={`${track.name} pan`}
+                  className="w-full"
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.1"
+                  value={current.pan}
+                  onChange={(e) =>
+                    controls.setTrackPan(index, Number(e.target.value))
+                  }
+                />
+              </label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  aria-pressed={current.muted}
+                  className="rounded-control border-strong min-h-11 border px-4"
+                  onClick={() => controls.setTrackMute(index, !current.muted)}
+                >
+                  {current.muted ? "Muted" : "Mute"}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={current.soloed}
+                  className="rounded-control border-strong min-h-11 border px-4"
+                  onClick={() => controls.setTrackSolo(index, !current.soloed)}
+                >
+                  {current.soloed ? "Soloed" : "Solo"}
+                </button>
+              </div>
+            </fieldset>
+          );
+        })}
+      </div>
+    </>
+  );
 }
 
 export function StudioSurface({
-  initialManifest,
-  assets,
+  projectId,
+  revisionId,
+  manifest,
+  durationMs,
+  tracks,
 }: {
-  initialManifest: WorkspaceManifestV1;
-  assets: readonly StudioAssetSource[];
+  projectId: string;
+  revisionId: string;
+  manifest: WorkspaceManifestV1;
+  durationMs: number;
+  tracks: TrackMeta[];
 }) {
-  const adapter = useMemo(() => new WaveformPlaylistStudioAdapter(), []);
+  const [adapter, setAdapter] = useState(
+    () => new WaveformPlaylistStudioAdapter(),
+  );
   const snapshot = useSyncExternalStore(
     adapter.subscribe,
     adapter.getSnapshot,
     adapter.getSnapshot,
   );
-  const [message, setMessage] = useState("Audio is not loaded.");
-  const [seekSeconds, setSeekSeconds] = useState(0);
-  const loadStarted = useRef(false);
+  const [message, setMessage] = useState("Requesting private audio access…");
+  const controller = useRef<AbortController | null>(null);
   const disposalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  const assetIds = useMemo(
+    () => manifest.tracks.map((track) => track.assetId),
+    [manifest],
+  );
+  const sign = useCallback(async (): Promise<SignedAudioSource[]> => {
+    const response = await fetch(
+      `/api/projects/${projectId}/revisions/${revisionId}/audio-sources`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assetIds }),
+        cache: "no-store",
+      },
+    );
+    if (!response.ok)
+      throw new StudioAdapterError(
+        response.status === 401 ? "unauthorized_source" : "fetch_failed",
+        response.status === 401
+          ? "Sign in again to access this audio."
+          : "Private audio access is unavailable. Retry the studio.",
+      );
+    const value = (await response.json()) as { sources: SignedAudioSource[] };
+    return value.sources;
+  }, [assetIds, projectId, revisionId]);
   useEffect(() => {
     if (disposalTimer.current) clearTimeout(disposalTimer.current);
-    const cleanup = () => void adapter.dispose();
-    window.addEventListener("pagehide", cleanup);
-    if (!loadStarted.current) {
-      loadStarted.current = true;
-      void (async () => {
-        try {
-          const stored = localStorage.getItem(STORAGE_KEY);
-          const manifest = stored
-            ? parseVersionedWorkspaceManifest(JSON.parse(stored))
-            : initialManifest;
-          await adapter.load({ manifest, assets });
-          setMessage("Ready. Audio was fetched only after this open action.");
-        } catch (error) {
-          setMessage(
-            error instanceof Error
-              ? error.message
-              : "Could not open the studio.",
-          );
-        }
-      })();
-    }
-    return () => {
-      window.removeEventListener("pagehide", cleanup);
-      // A zero-delay grace period survives React Strict Mode's setup/cleanup/setup probe.
-      disposalTimer.current = setTimeout(cleanup, 0);
+    const abort = new AbortController();
+    controller.current = abort;
+    const pagehide = () => {
+      abort.abort();
+      void adapter.dispose();
     };
-  }, [adapter, assets, initialManifest]);
-
-  async function exportWav() {
-    try {
-      const blob = await adapter.renderMix();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "jam-session-spike.wav";
-      link.click();
-      URL.revokeObjectURL(url);
-      setMessage(`Exported a ${blob.size.toLocaleString()} byte WAV.`);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Export failed.");
-    }
-  }
-
-  function persist() {
-    const manifest = adapter.exportManifest();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(manifest));
-    setMessage(
-      "Manifest v1 saved locally. Hard refresh and reopen to verify restoration.",
-    );
-  }
-
-  async function addTrack() {
-    await adapter.addAudioAsset({
-      asset: {
-        assetId: "00000000-0000-4000-8000-000000000023",
-        url: assets[0].url,
-      },
-      track: {
-        trackId: "00000000-0000-4000-8000-000000000013",
-        assetId: "00000000-0000-4000-8000-000000000023",
-        instrumentId: null,
-        name: "Pulse copy",
-        positionMs: 1000,
-        trimStartMs: 0,
-        durationMs: 1000,
-        gainDb: -9,
-        pan: 0,
-        muted: false,
-        soloed: false,
-        sortOrder: snapshot.manifest?.tracks.length ?? 2,
-      },
-    });
-    setMessage(
-      "Added a third logical track with stable fake asset and track IDs.",
-    );
-  }
-
+    window.addEventListener("pagehide", pagehide);
+    void (async () => {
+      try {
+        const sources = await sign();
+        await adapter.load({
+          manifest,
+          sources,
+          refreshSources: sign,
+          signal: abort.signal,
+          onProgress: (loaded, total) =>
+            setMessage(`Loading ${loaded} of ${total} stems`),
+        });
+        setMessage("Ready. Listening changes are session-only.");
+      } catch (error) {
+        if (!abort.signal.aborted)
+          setMessage(
+            error instanceof Error ? error.message : "Studio could not open.",
+          );
+      }
+    })();
+    return () => {
+      window.removeEventListener("pagehide", pagehide);
+      abort.abort();
+      disposalTimer.current = setTimeout(() => void adapter.dispose(), 0);
+    };
+  }, [adapter, manifest, sign]);
   const ready = ["ready", "playing", "paused"].includes(snapshot.status);
   return (
-    <section className="space-y-6" aria-labelledby="studio-heading">
-      <div>
-        <p className="text-accent text-sm font-semibold tracking-widest uppercase">
-          Architecture spike
-        </p>
-        <h1 id="studio-heading" className="mt-2 text-3xl font-bold">
-          Waveform Playlist studio boundary
-        </h1>
-        <p className="text-muted mt-3 max-w-3xl">
-          This removable route proves deterministic manifest hydration, mixer
-          edits, timeline positioning, synchronized playback, and WAV export.
-        </p>
-      </div>
-
+    <section className="space-y-6">
       <div
-        className="rounded-card border-subtle bg-surface p-5"
         aria-live="polite"
+        className="rounded-control border-subtle bg-surface border p-4"
       >
-        <p>
-          <strong>Status:</strong> {snapshot.status}
-        </p>
-        <p className="text-muted mt-1">{message}</p>
+        <strong>Status:</strong> {message}
       </div>
-
       {!ready ? (
-        <p role="status">
-          {snapshot.status === "error"
-            ? "Studio failed to open."
-            : "Opening studio and decoding fixtures…"}
-        </p>
+        <button
+          type="button"
+          className="rounded-control border-strong min-h-11 border px-5"
+          onClick={() => {
+            controller.current?.abort();
+            setAdapter(new WaveformPlaylistStudioAdapter());
+          }}
+        >
+          Retry
+        </button>
       ) : (
-        <>
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => void adapter.play()}
-              className="rounded-control bg-accent text-accent-contrast min-h-11 px-4 font-semibold"
-            >
-              Play
-            </button>
-            <button
-              type="button"
-              onClick={() => adapter.pause()}
-              className="rounded-control border-strong bg-surface min-h-11 border px-4"
-            >
-              Pause
-            </button>
-            <label className="flex min-h-11 items-center gap-2">
-              <span>Seek (seconds)</span>
-              <input
-                aria-label="Seek seconds"
-                type="range"
-                min="0"
-                max="2"
-                step="0.1"
-                value={seekSeconds}
-                onChange={(event) => {
-                  const value = Number(event.target.value);
-                  setSeekSeconds(value);
-                  adapter.seek(value);
-                }}
-              />
-            </label>
-            <button
-              type="button"
-              onClick={persist}
-              className="rounded-control border-strong bg-surface min-h-11 border px-4"
-            >
-              Save manifest
-            </button>
-            <button
-              type="button"
-              onClick={() => void exportWav()}
-              className="rounded-control border-strong bg-surface min-h-11 border px-4"
-            >
-              Export WAV
-            </button>
-            {snapshot.tracks.length < 3 && (
-              <button
-                type="button"
-                onClick={() => void addTrack()}
-                className="rounded-control border-strong bg-surface min-h-11 border px-4"
-              >
-                Add fixture track
-              </button>
-            )}
-          </div>
-
-          <div className="rounded-card border-subtle bg-surface-raised overflow-x-auto border p-3">
-            <WaveformPlaylistProvider
-              tracks={snapshot.tracks}
-              onTracksChange={(tracks) => adapter.acceptEditorTracks(tracks)}
-              timescale
-              controls={{ show: false, width: 0 }}
-              waveHeight={96}
-              samplesPerPixel={512}
-            >
-              <RuntimeBridge adapter={adapter} />
-              <Waveform />
-            </WaveformPlaylistProvider>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            {snapshot.manifest?.tracks.map((track) => (
-              <fieldset
-                key={track.trackId}
-                className="rounded-card border-subtle bg-surface space-y-3 border p-4"
-              >
-                <legend className="px-2 font-semibold">
-                  {track.name}{" "}
-                  <span className="text-muted text-xs">{track.trackId}</span>
-                </legend>
-                <label className="block">
-                  Gain dB{" "}
-                  <input
-                    className="w-full"
-                    type="range"
-                    min="-60"
-                    max="6"
-                    step="1"
-                    value={track.gainDb}
-                    onChange={(e) =>
-                      adapter.updateTrack(track.trackId, {
-                        gainDb: Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <label className="block">
-                  Pan{" "}
-                  <input
-                    className="w-full"
-                    type="range"
-                    min="-1"
-                    max="1"
-                    step="0.1"
-                    value={track.pan}
-                    onChange={(e) =>
-                      adapter.updateTrack(track.trackId, {
-                        pan: Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <label className="block">
-                  Position ms{" "}
-                  <input
-                    className="w-full"
-                    type="range"
-                    min="0"
-                    max="2000"
-                    step="100"
-                    value={track.positionMs}
-                    onChange={(e) =>
-                      adapter.updateTrack(track.trackId, {
-                        positionMs: Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <label className="mr-4">
-                  <input
-                    type="checkbox"
-                    checked={track.muted}
-                    onChange={(e) =>
-                      adapter.updateTrack(track.trackId, {
-                        muted: e.target.checked,
-                      })
-                    }
-                  />{" "}
-                  Mute
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={track.soloed}
-                    onChange={(e) =>
-                      adapter.updateTrack(track.trackId, {
-                        soloed: e.target.checked,
-                      })
-                    }
-                  />{" "}
-                  Solo
-                </label>
-              </fieldset>
-            ))}
-          </div>
-          <details>
-            <summary>Serialized manifest</summary>
-            <pre className="mt-2 overflow-auto text-xs">
-              {JSON.stringify(adapter.exportManifest(), null, 2)}
-            </pre>
-          </details>
-        </>
+        snapshot.tracks.length > 0 && (
+          <WaveformPlaylistProvider
+            tracks={snapshot.tracks}
+            timescale
+            controls={{ show: false, width: 0 }}
+            waveHeight={96}
+            samplesPerPixel={512}
+          >
+            <PlaybackControls
+              adapter={adapter}
+              duration={durationMs / 1000}
+              tracks={tracks}
+            />
+          </WaveformPlaylistProvider>
+        )
       )}
+      <p className="text-muted text-sm">Listening changes are session-only.</p>
     </section>
   );
 }

@@ -119,6 +119,12 @@ export default async function ProjectPage({
                   </li>
                 ))}
               </ol>
+              <Link
+                className="bg-accent rounded-control mt-6 inline-flex min-h-11 items-center px-5 font-semibold text-white"
+                href={`/projects/${project.id}/studio`}
+              >
+                Open studio
+              </Link>
             </section>
           ) : (
             <section className="rounded-card border-strong mt-8 border border-dashed p-8 text-center">

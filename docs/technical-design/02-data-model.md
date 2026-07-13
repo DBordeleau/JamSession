@@ -294,15 +294,15 @@ Every foreign-key column used for delete/reference checks needs a supporting ind
 
 RLS predicates should call small, stable helper functions such as `is_project_member(project_id, minimum_role)` where useful. Mark security-definer helpers carefully, set `search_path`, and revoke public execute unless intended.
 
-| Resource                          | Anonymous                                                                               | Signed-in user                                         | Owner/reviewer                  |
-| --------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------- |
-| Public active profile             | select                                                                                  | select                                                 | update own limited fields       |
-| Public published project/revision | select                                                                                  | select                                                 | mutate project through commands |
-| Unlisted project                  | select with unguessable ID/link                                                         | same                                                   | full project access             |
-| Private project                   | none                                                                                    | member select                                          | owner mutation                  |
-| Workspace                         | none                                                                                    | owner select/update                                    | no access unless same user      |
-| Contribution                      | none                                                                                    | author select; submitted visible to project owner      | owner review                    |
-| Source asset                      | no direct row/object access unless referenced by viewable revision and download allowed | signed access based on project/contribution membership | signed access                   |
+| Resource                          | Anonymous                       | Signed-in user                                                                                                                              | Owner/reviewer                                   |
+| --------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Public active profile             | select                          | select                                                                                                                                      | update own limited fields                        |
+| Public published project/revision | select                          | select                                                                                                                                      | mutate project through commands                  |
+| Unlisted project                  | select with unguessable ID/link | same                                                                                                                                        | full project access                              |
+| Private project                   | none                            | member select                                                                                                                               | owner mutation                                   |
+| Workspace                         | none                            | owner select/update                                                                                                                         | no access unless same user                       |
+| Contribution                      | none                            | author select; submitted visible to project owner                                                                                           | owner review                                     |
+| Source asset                      | none                            | owner access; active completed project members may read ready source rows/objects only when referenced by that project's immutable revision | same, through short-lived exact-revision signing |
 
 Avoid permissive direct updates to lifecycle columns. Expose functions such as:
 
