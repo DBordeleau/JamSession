@@ -14,6 +14,7 @@ export async function listOwnedSourceAssets(): Promise<OwnedSourceAsset[]> {
     .select(
       "id,original_filename,status,media_type,byte_size,duration_ms,sample_rate_hz,channels,failure_code,created_at",
     )
+    .eq("kind", "source_audio")
     .order("created_at", { ascending: false })
     .limit(30);
   if (error) throw new Error("uploads_unavailable");
