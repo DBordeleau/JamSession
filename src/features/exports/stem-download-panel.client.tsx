@@ -98,9 +98,14 @@ export function StemDownloadPanel({
         revisionId: metadata.revisionId,
         revisionNumber: metadata.revisionNumber,
         workspaceId: metadata.workspaceId,
-        files: metadata.files.map(
-          ({ signedUrl: _signedUrl, expiresAt: _expiresAt, ...file }) => file,
-        ),
+        files: metadata.files.map((file) => ({
+          assetId: file.assetId,
+          filename: file.filename,
+          mediaType: file.mediaType,
+          byteSize: file.byteSize,
+          sha256: file.sha256,
+          creditName: file.creditName,
+        })),
       };
       saveBlob(
         new Blob([JSON.stringify(safeManifest, null, 2)], {

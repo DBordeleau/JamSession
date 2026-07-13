@@ -16,7 +16,7 @@ Date: 2026-07-13
 
 | Check                                    | Result                                                                                                                                               |
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Clean migration reset                    | Passed; the final reset includes the restart idempotency hardening                                                                                    |
+| Clean migration reset                    | Passed; the final reset includes the restart idempotency hardening                                                                                   |
 | Focused PR 11 pgTAP                      | Passed: 22 tests                                                                                                                                     |
 | Database type generation                 | Passed                                                                                                                                               |
 | Focused export/adapter Vitest invocation | 7 passed, 1 filename expectation failed; the sanitizer was corrected afterward and was not rerun at the user's request to stop optional verification |
