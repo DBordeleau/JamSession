@@ -25,7 +25,7 @@ If code, task instructions, and these documents disagree, stop and surface the c
 
 ## Current project state
 
-PRs 01–11.5 and Phase C are implemented. The repository contains the responsive Next.js product shell with global navigation and progressively enhanced Auth-aware account links; invite-only Google OAuth and profile onboarding; private project metadata; immutable source assets uploaded directly and resumably to Supabase Storage and automatically trusted-verified through a durable, lease-bound Edge worker; atomic publishing into immutable revisions; authenticated, lazy-loaded Waveform Playlist playback; owner-only editable workspaces with optimistic, conflict-safe autosave and private recovery snapshots; canonical later-revision publishing from a saved workspace; stale-draft restart without automatic rebase; authorized direct-to-Storage source downloads; and bounded browser-rendered 16-bit WAV mix export. Contributions, forks, discovery, moderation, and release hardening are not implemented. npm is the sole package manager and Node.js 24 LTS is required.
+PRs 01–11.5 and Phase C are implemented. The repository contains the responsive Next.js product shell with active-route navigation and an authenticated member-project index; progressively enhanced Auth-aware account links; invite-only Google OAuth and profile onboarding; private project metadata; immutable source assets uploaded directly and resumably to Supabase Storage and automatically trusted-verified through a durable, lease-bound Edge worker; atomic publishing into immutable revisions; authenticated, lazy-loaded Waveform Playlist playback; owner-only editable workspaces with optimistic, conflict-safe autosave and private recovery snapshots; canonical later-revision publishing from a saved workspace; stale-draft restart without automatic rebase; authorized direct-to-Storage source downloads; and bounded browser-rendered 16-bit WAV mix export. User upload history intentionally excludes internal workspace snapshots. Contributions, forks, discovery, moderation, and release hardening are not implemented. npm is the sole package manager and Node.js 24 LTS is required.
 
 Before implementing a task:
 
@@ -135,6 +135,7 @@ Prefer a working vertical slice over speculative abstraction. Do not silently re
 - Use TypeScript strict mode. Avoid `any`; validate `unknown` at trust boundaries.
 - Prefer Server Components. Add `"use client"` only at the smallest interactive boundary.
 - Keep browser-only and server-only dependency graphs visibly separate.
+- While Next.js 16.2.10 is pinned, do not add a `loading.tsx` at `src/app/projects/[projectId]` or its studio segment. The removed boundary triggered an upstream Firefox development streaming bug (`vercel/next.js#94128`) that hard-refreshed the studio indefinitely. Reconsider only during a deliberate Next.js upgrade with a focused Firefox navigation check.
 - Validate server-action and route-handler inputs with shared runtime schemas. TypeScript types alone are not validation.
 - Domain types are smaller than database row types. Map `snake_case` database records to `camelCase` domain objects at the repository boundary.
 - Generate Supabase database types from the actual schema; do not hand-maintain a duplicate schema interface or edit generated output manually.
@@ -163,6 +164,7 @@ For every RLS-sensitive feature, test at least: anonymous user, resource author,
 - Current limits are 45 MiB and 10 minutes per audio file, 12 stems and 250 MiB per project, 200 MiB per user, and an 850 MiB global soft stop.
 - Upload large files directly and resumably to Supabase Storage; do not proxy audio bytes through a Vercel Function.
 - Source assets are immutable. Replacing audio creates a new asset ID.
+- User-facing upload history lists only `source_audio`; workspace snapshots and other internal/derived asset kinds must not appear as uploads.
 - Quotas count uniquely stored source assets, not revision or fork references.
 - Signed URLs are short-lived and must never be logged.
 - Asset deletion is reference-aware and follows the documented retention/legal-hold rules.

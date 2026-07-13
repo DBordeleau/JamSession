@@ -17,7 +17,7 @@ This document set turns the product requirements into an implementation contract
 | [03-delivery-plan.md](03-delivery-plan.md)             | Milestones, vertical slices, testing, observability and agent execution rules          |
 | [decisions/README.md](decisions/README.md)             | Architectural decisions that must remain stable across implementation tasks            |
 
-## Implementation pulse after PR 11.5
+## Current implementation pulse
 
 The following vertical slices are implemented and are the baseline for future work:
 
@@ -25,9 +25,9 @@ The following vertical slices are implemented and are the baseline for future wo
 - local Supabase migrations, pgTAP, generated database types, and user-scoped clients;
 - identity schema, invite-only Google OAuth, onboarding, settings, and safe public profiles;
 - private project metadata, owner membership, controlled licenses/genres/tags/instruments, idempotency, and optimistic metadata updates;
-- private immutable WAV/FLAC/MP3 assets, direct resumable Storage uploads, automatic lease-bound trusted verification with bounded recovery/retry, and user/global quota projections;
+- private immutable WAV/FLAC/MP3 assets, direct resumable Storage uploads, automatic lease-bound trusted verification with bounded recovery/retry, source-only user upload history, and user/global quota projections;
 - strict manifest v1, immutable revisions/tracks, append-only project asset references, project storage projection, and atomic idempotent first publish;
-- authenticated current-revision studio playback with lazy Waveform Playlist hydration, exact-revision short-lived signed URLs, synchronized transport, and session-only mixer controls;
+- authenticated current-revision studio playback with lazy Waveform Playlist hydration, exact-revision short-lived signed URLs, synchronized transport, session-only mixer controls, initialized-state guards, and the documented Next.js 16.2.10 Firefox streaming workaround;
 - owner-only editable workspaces created from the exact current revision, normalized workspace-track projections, private immutable recovery snapshots, debounced autosave, optimistic lock conflicts, and local crash recovery;
 - owner workspace publication through the canonical immutable-revision transaction, idempotent workspace advancement, explicit stale-draft restart, authorized direct-to-Storage stem downloads, and bounded browser-rendered 16-bit WAV mix export.
 

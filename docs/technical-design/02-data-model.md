@@ -226,6 +226,8 @@ PR 11.5 adds one durable private job per processing source asset. `state` is `pe
 
 `complete_source_upload()` changes the asset to `processing` and creates the job atomically. Successful verification calls the existing atomic promotion/quota/credit transition; permanent validation failure calls the existing quota-release transition. Terminal job evidence and Cron history are retained for seven days. The private table is outside the Data API and direct application access is revoked.
 
+The user-facing upload repository explicitly filters `assets.kind = 'source_audio'`. RLS ownership of a `workspace_snapshot` row is necessary for save/recovery workflows, but it does not make the server-generated `manifest-v1.json` object a user upload or eligible for upload-history presentation.
+
 ## Workspaces and contributions
 
 ### `workspaces`
@@ -250,17 +252,21 @@ Queryable mutable projection of the workspace manifest. It mirrors the engine-ne
 
 ### `contributions` (planned — PR 12)
 
-- `id`, `project_id`, `author_id`, `base_revision_id`
+- `id`, `project_id`, `author_id`, idempotent `create_request_id`, `base_revision_id`
 - `title`, `description`
 - `status`, `current_version_id`
-- `submitted_at`, `reviewed_at`, `reviewed_by`
+- `submitted_at`, `withdrawn_at`, `reviewed_at`, `reviewed_by`
 - `review_note`, `created_at`, `updated_at`
 
-State transitions occur only through database functions/service commands. Authors can withdraw; owners can request changes, accept or reject. Accepted/rejected records remain immutable audit history.
+State transitions occur only through database functions/service commands. Authors can withdraw; owners can request changes, accept or reject. Accepted/rejected contribution records are retained as audit history, while every submitted version and its track projection remain immutable.
 
 ### `contribution_versions` (planned — PR 12)
 
-Immutable submission attempts: `id`, `contribution_id`, positive `version_number`, `snapshot_asset_id`, `manifest`, engine fields, `created_by`, `created_at`. Unique `(contribution_id, version_number)`. A contribution’s `current_version_id` must belong to it.
+Immutable submission attempts: `id`, `contribution_id`, positive `version_number`, idempotent `submission_request_id`, exact `base_revision_id`, `snapshot_asset_id`, canonical `manifest`, engine/version/checksum/duration fields, versioned contributor attestation, `created_by`, and `created_at`. Unique `(contribution_id, version_number)` and `(contribution_id, submission_request_id)`. A contribution’s `current_version_id` must belong to it.
+
+### `contribution_version_tracks` (planned — PR 12)
+
+Immutable queryable projection of each submitted manifest, mirroring the engine-neutral arrangement fields in `revision_tracks` and retaining `added_by` provenance. Asset, instrument, ordering, and track relationships remain normalized for review, retention, and future acceptance instead of being hidden only in JSONB. The submitted manifest remains the portable authority, and the command must prove projection equivalence before commit.
 
 Rejected and withdrawn contributions remain selectable by their author and the project owner while the project exists. They are excluded from public project pages, discovery, activity feeds and public profile contribution lists. An author may request earlier deletion unless the contribution was accepted or is under a moderation/legal hold.
 

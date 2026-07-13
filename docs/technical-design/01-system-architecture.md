@@ -1,6 +1,6 @@
 # System Architecture
 
-Status: Accepted MVP design; implemented through PR 11.5 / Phase C
+Status: Accepted MVP design; implemented through PR 11.5 / Phase C plus post-phase navigation and studio/upload presentation fixes
 
 Audience: engineers and coding agents
 
@@ -62,6 +62,7 @@ flowchart LR
 | `/projects`                           | Implemented | Authenticated Server Component    | RLS-scoped member project index and next-action links       |
 | `/projects/{projectId}`               | Implemented | Authenticated Server Component    | Private metadata, revision history, export and studio links |
 | `/projects/{projectId}/studio`        | Implemented | Server shell + lazy client studio | Editor/Tone/browser audio load only after explicit open     |
+| `/contributions`                      | Planned     | Authenticated Server Component    | Author-owned contribution status and version index          |
 | `/projects/{projectId}/contributions` | Planned     | Authenticated server page         | Owner review queue or contributor-owned submissions         |
 | `/auth/callback`                      | Implemented | Route Handler                     | Exchanges OAuth code and redirects to onboarding if needed  |
 
@@ -186,6 +187,7 @@ Waveform Playlist and Tone.js are MIT-licensed. Preserve their notices, retain t
 - Verification status uses short bounded polling, not Realtime. Owners see queued/verifying/retrying/delayed/ready/failed states and may restart a dead job without uploading bytes again after a cooldown.
 - Generate waveform peaks and an optional compressed preview asynchronously. Do not make Vercel request duration the processing contract.
 - A job table/outbox can trigger an external worker later; the MVP may compute peaks client-side if results are validated and the original remains authoritative.
+- The user-facing upload history selects only `assets.kind = 'source_audio'`. Workspace snapshot manifests and future derived assets are internal implementation records, not user uploads, even though RLS may permit their owner to select the rows for authorized workflows.
 
 ## Security and privacy
 
@@ -229,3 +231,5 @@ Users may delete their own rejected contribution earlier if it has not been acce
 ## Availability and browser support
 
 Target support is current stable Chrome/Edge, Safari, and Firefox desktop. The implemented studio feature-detects the required Web Audio APIs, secure context, desktop-sized screen, and precise pointer; mobile pages remain responsive while the studio shows a desktop-required message. Automated Chromium evidence exists, while audible and full multi-browser verification remains conditional in the evidence documents. Never infer capability solely from user agent.
+
+The repository is currently pinned to Next.js 16.2.10. A route-level `loading.tsx` at or above the dynamic studio route caused the Next.js development debug channel to misclassify Firefox streaming navigation as a cache restore and hard-refresh indefinitely (`vercel/next.js#94128`). The studio therefore intentionally has no such loading boundary. Restore one only as part of a deliberate Next.js upgrade after the fix is present in the pinned stable release and a focused Firefox studio-navigation regression check passes.

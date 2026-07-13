@@ -1,6 +1,6 @@
 # Delivery Plan and Engineering Contract
 
-Status: Accepted; M0–M3 implementation complete through PR 11.5
+Status: Accepted; M0–M3 implementation complete through PR 11.5 plus post-phase navigation and studio/upload presentation fixes
 
 ## Delivery strategy
 
@@ -8,7 +8,7 @@ Build thin vertical slices that end in observable user behavior. A focused Wavef
 
 ## Milestones
 
-M0–M3 are implemented. Conditional manual browser/audio/Preview checks remain recorded in the corresponding evidence documents and are not represented as completed when they were not run. M4–M6 remain planned.
+M0–M3 are implemented. The current shell also includes an authenticated member-project index and active-route navigation; upload history excludes internal snapshot assets; and the pinned Next.js 16.2.10 studio omits the route loading boundary that caused a Firefox development refresh loop. Conditional manual browser/audio/Preview checks remain recorded in the corresponding evidence documents and are not represented as completed when they were not run. M4–M6 remain planned.
 
 ### M0 — Decisions and feasibility
 
