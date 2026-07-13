@@ -25,6 +25,8 @@ Discuss changes that alter product scope, the data model, authorization, persist
 
 ## Validate your work
 
+Use focused checks while iterating. Run only the affected test file, type check, database test, or browser scenario that can disprove the current change. Once the implementation is stable, run each applicable broad completion gate once; do not repeatedly rerun successful suites after documentation or another change that cannot affect them.
+
 Before requesting review, run:
 
 ```powershell
@@ -48,6 +50,8 @@ npm run test:e2e
 ```
 
 Report any check you could not run and why. Never claim a check passed without running it.
+
+Environment-dependent checks have a two-attempt troubleshooting ceiling by default. If Docker, Auth/Storage setup, Chromium installation, a test actor, or a fixture remains unavailable after two focused attempts, stop and report the observed cause instead of consuming unbounded time or resources. Manual multi-browser, audible-audio, Preview, performance, and extended interruption matrices should be agreed explicitly when they materially increase cost.
 
 For visible UI changes, also inspect the affected pages at 320, 768, 1280, and 1536 CSS pixels. Verify keyboard order, visible focus, reduced-motion behavior, readable zoom, and the absence of horizontal overflow. Keep public pages server-first; add a Client Component only around behavior that requires browser APIs or interaction.
 

@@ -1,12 +1,14 @@
 # Delivery Plan and Engineering Contract
 
-Status: Proposed
+Status: Accepted; M0–M3 implementation complete through PR 11
 
 ## Delivery strategy
 
 Build thin vertical slices that end in observable user behavior. A focused Waveform Playlist integration spike precedes project persistence so the adapter, manifest round trip, browser behavior and bundle cost are proven early.
 
 ## Milestones
+
+M0–M3 are implemented. Conditional manual browser/audio/Preview checks remain recorded in the corresponding evidence documents and are not represented as completed when they were not run. M4–M6 remain planned.
 
 ### M0 — Decisions and feasibility
 

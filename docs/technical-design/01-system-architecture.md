@@ -1,6 +1,7 @@
 # System Architecture
 
-Status: Proposed  
+Status: Accepted MVP design; implemented through PR 11 / Phase C
+
 Audience: engineers and coding agents
 
 ## Context
@@ -53,14 +54,15 @@ flowchart LR
 
 ## Rendering and route map
 
-| Route                                 | Rendering                         | Notes                                                       |
-| ------------------------------------- | --------------------------------- | ----------------------------------------------------------- |
-| `/` and `/explore`                    | Server-rendered, cached briefly   | Public discovery; query parameters form the filter contract |
-| `/@{username}`                        | Server-rendered                   | Canonical profile display uses `@`; database stores no `@`  |
-| `/projects/{projectId}`               | Authenticated Server Component    | Private metadata, current revision and explicit studio link |
-| `/projects/{projectId}/studio`        | Server shell + lazy client studio | Editor/Tone/browser audio load only after explicit open     |
-| `/projects/{projectId}/contributions` | Authenticated server page         | Owner review queue or contributor-owned submissions         |
-| `/auth/callback`                      | Route Handler                     | Exchanges OAuth code and redirects to onboarding if needed  |
+| Route                                 | State       | Rendering                         | Notes                                                       |
+| ------------------------------------- | ----------- | --------------------------------- | ----------------------------------------------------------- |
+| `/`                                   | Implemented | Server-rendered                   | Public product shell                                        |
+| `/explore`                            | Planned     | Server-rendered, cached briefly   | Discovery query parameters form the future filter contract  |
+| `/@{username}`                        | Implemented | Server-rendered                   | Canonical profile display uses `@`; database stores no `@`  |
+| `/projects/{projectId}`               | Implemented | Authenticated Server Component    | Private metadata, revision history, export and studio links |
+| `/projects/{projectId}/studio`        | Implemented | Server shell + lazy client studio | Editor/Tone/browser audio load only after explicit open     |
+| `/projects/{projectId}/contributions` | Planned     | Authenticated server page         | Owner review queue or contributor-owned submissions         |
+| `/auth/callback`                      | Implemented | Route Handler                     | Exchanges OAuth code and redirects to onboarding if needed  |
 
 Use stable opaque IDs in project URLs for MVP. Human-readable slugs can be added later without changing identity.
 
@@ -135,9 +137,15 @@ Create a Jam Session `StudioAdapter` interface and one `WaveformPlaylistStudioAd
 ```ts
 interface StudioAdapter {
   load(input: StudioLoadInput): Promise<void>;
-  addAudioAsset(asset: SignedAudioAsset): Promise<TrackRef>;
-  exportManifest(): Promise<WorkspaceManifest>;
-  renderPreview(options: PreviewOptions): Promise<Blob>;
+  play(): Promise<void>;
+  pause(): void;
+  seek(seconds: number): void;
+  addAudioAsset(input: AddAudioAssetInput): Promise<TrackRef>;
+  removeTrack(id: string): void;
+  updateTrack(id: string, patch: TrackPatch): void;
+  reorderTracks(trackIds: readonly string[]): void;
+  exportManifest(): WorkspaceManifestV1;
+  renderMix(): Promise<Blob>;
   dispose(): Promise<void>;
 }
 ```
@@ -146,7 +154,7 @@ Persist a versioned **Jam Session manifest** containing asset IDs, stable track 
 
 ### Completed integration spike and productionization gate
 
-PR 05 proved the following in a disposable vertical slice before persistence depended on the editor. PR 09 removed the spike route and productionized its read-only playback subset. PR 10 promotes the supported editing subset—add/remove/reorder, position, trim, label, instrument, gain, pan, mute and solo—into the validated manifest and conflict-safe workspace boundary. Historical results are in [`evidence/pr-05-waveform-playlist-spike.md`](evidence/pr-05-waveform-playlist-spike.md); current evidence is in [`evidence/pr-09-production-studio.md`](evidence/pr-09-production-studio.md) and [`evidence/pr-10-editable-workspaces.md`](evidence/pr-10-editable-workspaces.md).
+PR 05 proved the following in a disposable vertical slice before persistence depended on the editor. PR 09 removed the spike route and productionized its read-only playback subset. PR 10 promoted the supported editing subset—add/remove/reorder, position, trim, label, instrument, gain, pan, mute and solo—into the validated manifest and conflict-safe workspace boundary. PR 11 wired the proven WAV export hook into the production adapter and added authorized direct source downloads. Historical results are in [`evidence/pr-05-waveform-playlist-spike.md`](evidence/pr-05-waveform-playlist-spike.md); current evidence is in [`evidence/pr-09-production-studio.md`](evidence/pr-09-production-studio.md), [`evidence/pr-10-editable-workspaces.md`](evidence/pr-10-editable-workspaces.md), and [`evidence/pr-11-export-download-publishing.md`](evidence/pr-11-export-download-publishing.md).
 
 - Open a project in the Next.js client boundary without SSR/build failures.
 - Import two signed Storage audio URLs, play them sample-synchronously and seek.
@@ -217,4 +225,4 @@ Users may delete their own rejected contribution earlier if it has not been acce
 
 ## Availability and browser support
 
-Initial support: current stable Chrome/Edge and Safari desktop, with Firefox tested during the spike. Mobile pages are responsive but the studio may show a desktop-required message. Feature-detect AudioWorklet, WebAssembly, OPFS and required codecs; never infer capability solely from user agent.
+Target support is current stable Chrome/Edge, Safari, and Firefox desktop. The implemented studio feature-detects the required Web Audio APIs, secure context, desktop-sized screen, and precise pointer; mobile pages remain responsive while the studio shows a desktop-required message. Automated Chromium evidence exists, while audible and full multi-browser verification remains conditional in the evidence documents. Never infer capability solely from user agent.

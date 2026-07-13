@@ -1,6 +1,7 @@
 # Data Model and Supabase Design
 
-Status: Proposed  
+Status: Accepted MVP design; implemented through PR 11
+
 Database: Supabase Postgres
 
 ## Modeling principles
@@ -39,12 +40,14 @@ create type account_status as enum ('active', 'suspended', 'deleted');
 create type project_visibility as enum ('private', 'unlisted', 'public');
 create type project_status as enum ('draft', 'active', 'archived', 'deleted');
 create type member_role as enum ('owner', 'editor', 'viewer');
-create type asset_status as enum ('uploading', 'processing', 'ready', 'failed', 'deleted');
-create type asset_kind as enum ('audio', 'project_snapshot', 'mix_preview', 'waveform_peaks', 'image');
-create type workspace_status as enum ('active', 'submitted', 'abandoned');
-create type contribution_status as enum
-  ('draft', 'submitted', 'changes_requested', 'accepted', 'rejected', 'withdrawn');
+create type asset_status as enum ('reserved', 'uploading', 'processing', 'ready', 'failed', 'deleted');
+create type asset_kind as enum
+  ('source_audio', 'workspace_snapshot', 'mix_preview', 'waveform_peaks', 'image');
+create type asset_credit_role as enum
+  ('creator', 'performer', 'producer', 'engineer', 'other');
 ```
+
+Workspace status is currently constrained text (`active` or `archived`), not an enum. Contribution lifecycle values remain planned until PR 12 creates the contribution schema.
 
 ## Identity
 
@@ -207,7 +210,7 @@ Storage paths must not embed mutable usernames:
 
 ```text
 source-audio bucket: {owner_uuid}/{asset_uuid}/source
-workspace-snapshots bucket: {owner_uuid}/{asset_uuid}/workspace.json
+workspace-snapshots bucket: {owner_uuid}/workspaces/{workspace_uuid}/snapshots/{asset_uuid}/manifest-v1.json
 derived-assets bucket (planned objects): {asset_uuid}/preview.webm
 derived-assets bucket (planned objects): {asset_uuid}/peaks.v1.bin
 future avatar bucket: {user_uuid}/{asset_uuid}/avatar.webp
@@ -224,10 +227,12 @@ Implemented `asset_credits(asset_id, user_id nullable, credit_name, role, positi
 Implemented mutable private owner drafts:
 
 - `id`, `project_id`, `owner_id`
+- `create_request_id` for owner-scoped idempotent creation
 - `base_revision_id null`
 - `snapshot_asset_id null`, `manifest jsonb`, `manifest_version`, `engine`, `engine_version`, `manifest_sha256`
-- `status`, `lock_version integer`, `created_at`, `updated_at`
-- optional `contribution_id`
+- `status` constrained to `active` or `archived`, `lock_version integer`, `created_at`, `updated_at`
+
+`contribution_id` does not exist yet. PR 12 may add it with the contribution-workspace uniqueness rules when the referenced table exists.
 
 PR 10 allows one active owner workspace per project through a partial unique index. `create_project_workspace()` copies the exact current revision and its track projection. `reserve_workspace_snapshot()` creates a server-named, private, insert-only Storage reservation. `save_workspace()` locks the draft, requires the expected `lock_version`, validates the complete manifest and snapshot reservation, synchronizes `workspace_tracks`, assigns the immutable snapshot, and increments the version atomically. Stale, duplicate, unauthorized, suspended, or mismatched-project saves fail without changing the draft or published history.
 
@@ -235,9 +240,9 @@ PR 11 adds `publish_workspace_revision()`, which delegates immutable revision cr
 
 ### `workspace_tracks`
 
-Queryable mutable projection of the workspace manifest. It mirrors the engine-neutral fields in `revision_tracks` and uses primary key `(workspace_id, id)`, with retention/discovery indexes on `asset_id` and `instrument_id`. Application roles may select their own rows but cannot mutate the projection directly; only workspace commands replace it after manifest validation.
+Queryable mutable projection of the workspace manifest. It mirrors the engine-neutral fields in `revision_tracks` and uses primary key `(workspace_id, track_id)`, with retention/discovery indexes on `asset_id` and `instrument_id`. Application roles may select their own rows but cannot mutate the projection directly; only workspace commands replace it after manifest validation.
 
-### `contributions`
+### `contributions` (planned — PR 12)
 
 - `id`, `project_id`, `author_id`, `base_revision_id`
 - `title`, `description`
@@ -247,7 +252,7 @@ Queryable mutable projection of the workspace manifest. It mirrors the engine-ne
 
 State transitions occur only through database functions/service commands. Authors can withdraw; owners can request changes, accept or reject. Accepted/rejected records remain immutable audit history.
 
-### `contribution_versions`
+### `contribution_versions` (planned — PR 12)
 
 Immutable submission attempts: `id`, `contribution_id`, positive `version_number`, `snapshot_asset_id`, `manifest`, engine fields, `created_by`, `created_at`. Unique `(contribution_id, version_number)`. A contribution’s `current_version_id` must belong to it.
 
@@ -258,13 +263,15 @@ Rejected and withdrawn contributions remain selectable by their author and the p
 Quota usage is calculated from active, uniquely stored source assets rather than revision references, so revisions and forks do not double-count bytes:
 
 - `user_storage_usage(user_id, source_bytes, updated_at)` is a transactionally maintained cache; authority remains the referenced `assets` rows.
-- `project_storage_usage(project_id, source_bytes, stem_count, updated_at)` accelerates admission checks.
+- `project_storage_usage(project_id, source_bytes, unique_source_count, updated_at)` accelerates admission checks.
 - Upload-finalization and publish functions recheck 45 MiB/file, 10 minutes/file, 12 stems/project, 250 MiB/project and 200 MiB/user under a transaction lock.
 - A server-side capacity check rejects new source uploads at the global 850 MiB soft stop. Clients cannot override it.
 
-Add `moderation_reports(id, reporter_id, target_type, target_id, reason, details, status, assigned_to, created_at, resolved_at)` and `moderation_actions(id, report_id, moderator_id, action, reason, expires_at, created_at)`. Target type and ID are validated by a report command rather than allowing arbitrary polymorphic inserts. Only the reporter may see their submitted report status; report detail and all actions are administrator-only.
+Planned moderation tables are `moderation_reports(id, reporter_id, target_type, target_id, reason, details, status, assigned_to, created_at, resolved_at)` and `moderation_actions(id, report_id, moderator_id, action, reason, expires_at, created_at)`. Target type and ID are validated by a report command rather than allowing arbitrary polymorphic inserts. Only the reporter may see their submitted report status; report detail and all actions are administrator-only.
 
 ## Discovery and activity
+
+The following discovery projections and search indexes are planned for Phase E; the bounded activity events emitted by current publish commands are already implemented.
 
 - `project_stats(project_id PK, play_count, fork_count, contribution_count, accepted_contribution_count, last_activity_at, trending_score, updated_at)` is a derived cache, never authorization authority.
 - `activity_events(id bigint identity, actor_id, event_type, project_id, subject_id, payload jsonb, created_at)` is append-only and contains no secrets.
@@ -274,7 +281,7 @@ Add `moderation_reports(id, reporter_id, target_type, target_id, reason, details
 
 ## Important indexes
 
-At minimum:
+The following is the target minimum across implemented and planned phases. Indexes that refer to contributions or public discovery are not present through PR 11.
 
 ```sql
 create unique index profiles_username_normalized_uq on profiles (username_normalized);
@@ -298,13 +305,15 @@ Every foreign-key column used for delete/reference checks needs a supporting ind
 
 RLS predicates should call small, stable helper functions such as `is_project_member(project_id, minimum_role)` where useful. Mark security-definer helpers carefully, set `search_path`, and revoke public execute unless intended.
 
+This is the MVP target matrix. Through PR 11, projects remain private and the contribution/public-discovery rows are not yet application-reachable; the implemented private-project, workspace, source-asset, profile, and revision policies follow the applicable rows below.
+
 | Resource                          | Anonymous                       | Signed-in user                                                                                                                              | Owner/reviewer                                   |
 | --------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | Public active profile             | select                          | select                                                                                                                                      | update own limited fields                        |
 | Public published project/revision | select                          | select                                                                                                                                      | mutate project through commands                  |
 | Unlisted project                  | select with unguessable ID/link | same                                                                                                                                        | full project access                              |
 | Private project                   | none                            | member select                                                                                                                               | owner mutation                                   |
-| Workspace                         | none                            | owner select/update                                                                                                                         | no access unless same user                       |
+| Workspace                         | none                            | owner select; mutation only through authorized commands                                                                                     | no access unless same user                       |
 | Contribution                      | none                            | author select; submitted visible to project owner                                                                                           | owner review                                     |
 | Source asset                      | none                            | owner access; active completed project members may read ready source rows/objects only when referenced by that project's immutable revision | same, through short-lived exact-revision signing |
 
@@ -313,6 +322,11 @@ Avoid permissive direct updates to lifecycle columns. Expose functions such as:
 - `claim_username(p_username text)`
 - `create_project(...)`
 - `publish_project_revision(...)`
+- `create_project_workspace(...)`
+- `reserve_workspace_snapshot(...)`
+- `save_workspace(...)`
+- `publish_workspace_revision(...)`
+- `restart_project_workspace(...)`
 - `submit_contribution(...)`
 - `review_contribution(...)`
 - `fork_project(...)`

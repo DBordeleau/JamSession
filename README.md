@@ -2,7 +2,7 @@
 
 Jam Session is an asynchronous music-collaboration platform inspired by Git and open-source development. Musicians create projects from stems, preserve immutable revision history, and will be able to propose contributions and fork songs into new creative directions while retaining attribution.
 
-> **Current status:** PRs 01–10 are complete. Global responsive navigation, invite-only Google sign-in/onboarding, private projects, resumable verified source uploads, atomic immutable first publishing, authenticated synchronized playback, and owner-only editable workspaces with conflict-safe autosave are implemented. Navigation changes from sign-in actions to account/project actions after verified Auth claims load. Publishing a later revision from a workspace, contributions, forks, discovery, moderation, and release hardening remain planned.
+> **Current status:** PRs 01–11 and Phase C are complete. Global responsive navigation, invite-only Google sign-in/onboarding, private projects, resumable verified source uploads, immutable revision publishing, authenticated synchronized playback, owner-only conflict-safe workspaces, later-revision publishing, direct authorized stem downloads, and browser-rendered WAV mix export are implemented. Navigation changes from sign-in actions to account/project actions after verified Auth claims load. Contributions, forks, discovery, moderation, and release hardening remain planned.
 
 ## Planned MVP
 
@@ -175,7 +175,7 @@ That browser download is only needed for E2E tests, not normal development.
 ```text
 src/app/           Next.js routes, layouts, styles, and route-owned UI
 src/components/    Reusable layout and UI primitives used by current routes
-src/features/      Feature-owned auth, profile, project, asset, revision, and studio code
+src/features/      Feature-owned auth, profile, project, asset, revision, workspace, export, and studio code
 src/lib/env/       Runtime configuration validation
 src/lib/supabase/  Generated database types and user-scoped client factories
 src/test/          Shared unit-test setup
@@ -260,7 +260,7 @@ Product sign-in is Google-only. Google Cloud, hosted Supabase, exact callback UR
 
 If OAuth reports a callback mismatch, compare the canonical `SITE_URL`, Supabase redirect allowlist, and Google/Supabase callback URI exactly. Do not alternate between `localhost` and `127.0.0.1`. If an invited account is rejected, confirm the normalized invitation is active in the same hosted/local database the app uses and that the Before User Created hook was enabled after migration. If OAuth succeeds but onboarding reports `viewer_profile_PT500`, verify the `on_auth_user_created` trigger and backfill a profile for any Auth user created before that trigger. Clear stale cookies after changing origins or resetting Auth.
 
-The production studio is available at `/projects/{projectId}/studio` for an authenticated member of a project with a published current revision. It lazy-loads Waveform Playlist only after **Open studio**, signs exact referenced source assets for ten minutes, and keeps gain/pan/mute/solo changes session-only. The former `/__spikes__/studio` route and `ENABLE_STUDIO_SPIKE` flag no longer exist.
+The production studio is available at `/projects/{projectId}/studio` for an authenticated member of a project with a published current revision. It lazy-loads Waveform Playlist only after **Open studio** and signs exact referenced source assets for ten minutes. Members receive synchronized playback with session-only mixer changes. Owners can create or reopen a private workspace, autosave the promoted editing subset, publish a later immutable revision, download original stems directly from Storage, and render a bounded 16-bit WAV mix locally. The former `/__spikes__/studio` route and `ENABLE_STUDIO_SPIKE` flag no longer exist.
 
 ### Supabase configuration is missing
 

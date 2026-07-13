@@ -27,8 +27,8 @@ The following vertical slices are implemented and are the baseline for future wo
 - private project metadata, owner membership, controlled licenses/genres/tags/instruments, idempotency, and optimistic metadata updates;
 - private immutable WAV/FLAC/MP3 assets, direct resumable Storage uploads, trusted verification, and user/global quota projections;
 - strict manifest v1, immutable revisions/tracks, append-only project asset references, project storage projection, and atomic idempotent first publish;
-- authenticated current-revision studio playback with lazy Waveform Playlist hydration, exact-revision short-lived signed URLs, synchronized transport, and session-only mixer controls.
-- owner-only editable workspaces created from the exact current revision, normalized workspace-track projections, private immutable recovery snapshots, debounced autosave, optimistic lock conflicts, and local crash recovery.
+- authenticated current-revision studio playback with lazy Waveform Playlist hydration, exact-revision short-lived signed URLs, synchronized transport, and session-only mixer controls;
+- owner-only editable workspaces created from the exact current revision, normalized workspace-track projections, private immutable recovery snapshots, debounced autosave, optimistic lock conflicts, and local crash recovery;
 - owner workspace publication through the canonical immutable-revision transaction, idempotent workspace advancement, explicit stale-draft restart, authorized direct-to-Storage stem downloads, and bounded browser-rendered 16-bit WAV mix export.
 
 The next planned slice adds contribution drafts and immutable submission versions. Contribution review/acceptance, attribution UI, forks, public discovery, dashboards, moderation/retention jobs, and final release hardening remain unimplemented. Historical PR 05 spike evidence is retained; [PR 09 evidence](evidence/pr-09-production-studio.md), [PR 10 evidence](evidence/pr-10-editable-workspaces.md), and [PR 11 evidence](evidence/pr-11-export-download-publishing.md) describe the production studio path.
