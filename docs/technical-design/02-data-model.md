@@ -220,6 +220,12 @@ Do not globally deduplicate uploads in MVP: identical hashes can belong to diffe
 
 Implemented `asset_credits(asset_id, user_id nullable, credit_name, role, position)` snapshots display credit so attribution survives profile renames and can represent non-user performers. `owner_id` is operational ownership, not authorship.
 
+### `private.asset_verification_jobs`
+
+PR 11.5 adds one durable private job per processing source asset. `state` is `pending`, `leased`, `retry_wait`, `succeeded`, `permanent_failed`, or `dead`; `attempts` is bounded to two automatic full-download attempts. A lease has an unguessable token and two-minute expiry. Only service-role RPCs may claim or apply terminal mutations, and every completion/failure command must present the current lease token. User RPCs expose only the owner’s safe status and cooldown-bound retry command.
+
+`complete_source_upload()` changes the asset to `processing` and creates the job atomically. Successful verification calls the existing atomic promotion/quota/credit transition; permanent validation failure calls the existing quota-release transition. Terminal job evidence and Cron history are retained for seven days. The private table is outside the Data API and direct application access is revoked.
+
 ## Workspaces and contributions
 
 ### `workspaces`

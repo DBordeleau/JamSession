@@ -1275,6 +1275,21 @@ export type Database = {
           workspace_id: string
         }[]
       }
+      get_source_verification_status: {
+        Args: { p_asset_id: string }
+        Returns: {
+          asset_status: Database["public"]["Enums"]["asset_status"]
+          attempt_count: number
+          byte_size: number
+          channels: number
+          duration_ms: number
+          failure_code: string
+          media_type: string
+          next_attempt_at: string
+          sample_rate_hz: number
+          verification_state: string
+        }[]
+      }
       get_viewer_profile: {
         Args: never
         Returns: {
@@ -1291,8 +1306,43 @@ export type Database = {
           username_normalized: string
         }[]
       }
+      operator_claim_source_verification: {
+        Args: { p_asset_id?: string; p_owner_id?: string }
+        Returns: {
+          asset_id: string
+          attempt_count: number
+          bucket: string
+          lease_token: string
+          object_path: string
+          original_filename: string
+          owner_id: string
+          reserved_byte_size: number
+        }[]
+      }
+      operator_complete_source_verification: {
+        Args: {
+          p_asset_id: string
+          p_byte_size: number
+          p_channels: number
+          p_duration_ms: number
+          p_lease_token: string
+          p_media_type: string
+          p_sample_rate_hz: number
+          p_sha256: string
+          p_verification_version: string
+        }
+        Returns: undefined
+      }
       operator_fail_source_asset: {
         Args: { p_asset_id: string; p_failure_code: string }
+        Returns: undefined
+      }
+      operator_fail_source_verification: {
+        Args: {
+          p_asset_id: string
+          p_failure_code: string
+          p_lease_token: string
+        }
         Returns: undefined
       }
       operator_promote_source_asset: {
@@ -1307,6 +1357,14 @@ export type Database = {
           p_verification_version: string
         }
         Returns: undefined
+      }
+      operator_retry_source_verification: {
+        Args: {
+          p_asset_id: string
+          p_error_code: string
+          p_lease_token: string
+        }
+        Returns: string
       }
       publish_project_revision: {
         Args: {
@@ -1385,6 +1443,10 @@ export type Database = {
           lock_version: number
           workspace_id: string
         }[]
+      }
+      retry_source_verification: {
+        Args: { p_asset_id: string }
+        Returns: string
       }
       revision_manifest_checksum_valid: {
         Args: { p_project_id: string; p_revision_id: string }

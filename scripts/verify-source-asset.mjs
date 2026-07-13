@@ -1,6 +1,13 @@
-import { createHash } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { parseBuffer } from "music-metadata";
+import { parseBlob } from "music-metadata";
+import {
+  detectSourceAudioSignature,
+  MAX_SOURCE_AUDIO_BYTES,
+  PermanentVerificationError,
+  sha256Hex,
+  SOURCE_AUDIO_VERIFICATION_VERSION,
+  validateSourceAudioMetadata,
+} from "../supabase/functions/_shared/source-verification.ts";
 
 const id = process.argv[2];
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -12,67 +19,76 @@ if (!id || !url || !key)
 const db = createClient(url, key, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
-const { data: asset, error } = await db
-  .from("assets")
-  .select("id,bucket,object_path,reserved_byte_size,status,original_filename")
-  .eq("id", id)
-  .single();
-if (error || asset.status !== "processing")
-  throw new Error("Asset is unavailable or not processing.");
+const { data: claims, error: claimError } = await db.rpc(
+  "operator_claim_source_verification",
+  { p_asset_id: id, p_owner_id: null },
+);
+const claim = claims?.[0];
+if (claimError || !claim)
+  throw new Error("Asset is unavailable, delayed, or already being verified.");
 try {
   const { data, error: downloadError } = await db.storage
-    .from(asset.bucket)
-    .download(asset.object_path);
+    .from(claim.bucket)
+    .download(claim.object_path);
   if (downloadError) throw downloadError;
   if (
-    data.size > 45 * 1024 * 1024 ||
-    data.size !== Number(asset.reserved_byte_size)
+    data.size > MAX_SOURCE_AUDIO_BYTES ||
+    data.size !== Number(claim.reserved_byte_size)
   )
-    throw new Error("size_mismatch");
-  const bytes = Buffer.from(await data.arrayBuffer());
-  const metadata = await parseBuffer(
-    bytes,
-    { mimeType: data.type, path: asset.original_filename },
-    { duration: true, skipCovers: true },
+    throw new PermanentVerificationError("size_mismatch");
+  const signature = detectSourceAudioSignature(
+    new Uint8Array(await data.slice(0, 12).arrayBuffer()),
   );
-  const format = metadata.format;
-  const mime = format.container?.toLowerCase().includes("flac")
-    ? "audio/flac"
-    : format.container?.toLowerCase().includes("mpeg")
-      ? "audio/mpeg"
-      : format.container?.toLowerCase().includes("wave")
-        ? "audio/wav"
-        : null;
-  const duration = Math.round((format.duration ?? 0) * 1000);
-  const rate = format.sampleRate ?? 0;
-  const channels = format.numberOfChannels ?? 0;
-  if (!mime) throw new Error("unsupported_format");
-  if (duration < 1 || duration > 600000) throw new Error("duration_exceeded");
-  if (rate < 8000 || rate > 192000) throw new Error("sample_rate_exceeded");
-  if (channels < 1 || channels > 8) throw new Error("channels_exceeded");
+  let metadata;
+  try {
+    metadata = await parseBlob(data, { duration: true, skipCovers: true });
+  } catch {
+    throw new PermanentVerificationError("unreadable_audio");
+  }
+  const trusted = validateSourceAudioMetadata({
+    signatureMediaType: signature,
+    container: metadata.format.container,
+    durationSeconds: metadata.format.duration,
+    sampleRateHz: metadata.format.sampleRate,
+    channels: metadata.format.numberOfChannels,
+  });
+  const bytes = await data.arrayBuffer();
   const { error: promoteError } = await db.rpc(
-    "operator_promote_source_asset",
+    "operator_complete_source_verification",
     {
       p_asset_id: id,
-      p_media_type: mime,
-      p_byte_size: bytes.length,
-      p_sha256: createHash("sha256").update(bytes).digest("hex"),
-      p_duration_ms: duration,
-      p_sample_rate_hz: rate,
-      p_channels: channels,
-      p_verification_version: "source-audio-v1",
+      p_lease_token: claim.lease_token,
+      p_media_type: trusted.mediaType,
+      p_byte_size: bytes.byteLength,
+      p_sha256: await sha256Hex(bytes),
+      p_duration_ms: trusted.durationMs,
+      p_sample_rate_hz: trusted.sampleRateHz,
+      p_channels: trusted.channels,
+      p_verification_version: SOURCE_AUDIO_VERIFICATION_VERSION,
     },
   );
   if (promoteError) throw promoteError;
-  console.log(`Verified ${id} as ${mime} (${bytes.length} bytes).`);
+  console.log(
+    `Verified ${id} as ${trusted.mediaType} (${bytes.byteLength} bytes).`,
+  );
 } catch (error) {
-  const code =
-    error instanceof Error && /^[a-z_]+$/.test(error.message)
-      ? error.message
-      : "verification_error";
-  await db.rpc("operator_fail_source_asset", {
-    p_asset_id: id,
-    p_failure_code: code,
-  });
+  const permanent = error instanceof PermanentVerificationError;
+  const code = permanent ? error.code : "operator_error";
+  await db.rpc(
+    permanent
+      ? "operator_fail_source_verification"
+      : "operator_retry_source_verification",
+    permanent
+      ? {
+          p_asset_id: id,
+          p_lease_token: claim.lease_token,
+          p_failure_code: code,
+        }
+      : {
+          p_asset_id: id,
+          p_lease_token: claim.lease_token,
+          p_error_code: code,
+        },
+  );
   throw new Error(`Verification failed: ${code}`);
 }

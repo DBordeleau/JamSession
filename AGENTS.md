@@ -25,7 +25,7 @@ If code, task instructions, and these documents disagree, stop and surface the c
 
 ## Current project state
 
-PRs 01–11 and Phase C are implemented. The repository contains the responsive Next.js product shell with global navigation and progressively enhanced Auth-aware account links; invite-only Google OAuth and profile onboarding; private project metadata; immutable, trusted-verified source assets uploaded directly and resumably to Supabase Storage; atomic publishing into immutable revisions; authenticated, lazy-loaded Waveform Playlist playback; owner-only editable workspaces with optimistic, conflict-safe autosave and private recovery snapshots; canonical later-revision publishing from a saved workspace; stale-draft restart without automatic rebase; authorized direct-to-Storage source downloads; and bounded browser-rendered 16-bit WAV mix export. Contributions, forks, discovery, moderation, and release hardening are not implemented. npm is the sole package manager and Node.js 24 LTS is required.
+PRs 01–11.5 and Phase C are implemented. The repository contains the responsive Next.js product shell with global navigation and progressively enhanced Auth-aware account links; invite-only Google OAuth and profile onboarding; private project metadata; immutable source assets uploaded directly and resumably to Supabase Storage and automatically trusted-verified through a durable, lease-bound Edge worker; atomic publishing into immutable revisions; authenticated, lazy-loaded Waveform Playlist playback; owner-only editable workspaces with optimistic, conflict-safe autosave and private recovery snapshots; canonical later-revision publishing from a saved workspace; stale-draft restart without automatic rebase; authorized direct-to-Storage source downloads; and bounded browser-rendered 16-bit WAV mix export. Contributions, forks, discovery, moderation, and release hardening are not implemented. npm is the sole package manager and Node.js 24 LTS is required.
 
 Before implementing a task:
 
@@ -64,7 +64,13 @@ Keep this section exact and runnable from the repository root.
 
 Never invent a command in a handoff. Read `package.json` and tool configuration, run the narrowest relevant checks during iteration, then run `npm run check` before completion. Run `npm run test:e2e` when routes or browser-visible flows change; Chromium must be installed once with `npx playwright install chromium`.
 
-Database commands require a running Docker-compatible container engine. `npm run supabase:start` starts only local Postgres; use the reduced Auth or Storage stack commands for their corresponding browser flows. Reset the database before validating migrations, and stop it when finished. `npm run db:types` atomically replaces the committed generated file; never edit that file manually. Source verification is a trusted operator command, not a browser authority. `npm run check` intentionally remains independent of Docker.
+Database commands require a running Docker-compatible container engine. `npm run supabase:start` starts only local Postgres; use the reduced Auth or Storage stack commands for their corresponding browser flows. Reset the database before validating migrations, and stop it when finished. `npm run db:types` atomically replaces the committed generated file; never edit that file manually. Source verification is normally automatic; `npm run assets:verify` is a trusted lease-aware operator fallback, never browser authority. `npm run check` intentionally remains independent of Docker.
+
+### Supabase environment contract
+
+The normal interactive development app intentionally uses the actual hosted Supabase project configured in the uncommitted `.env.local`. `npm run dev` follows `NEXT_PUBLIC_SUPABASE_URL`; it does not switch to local Supabase merely because local containers are running. The local Supabase stack exists primarily for clean migration resets, pgTAP/RLS tests, generated types, deterministic fixtures, and explicitly requested local Auth/Storage browser flows.
+
+Before diagnosing Auth, RPC, RLS, Storage, or missing-data behavior, identify the host in `NEXT_PUBLIC_SUPABASE_URL` without printing keys or credentials. Inspect logs/schema/data in that active environment. A green local database check does not prove that the hosted schema is current, and an empty local table does not prove that a hosted request failed before persistence. Conversely, do not apply migrations, seed data, repairs, or destructive commands to the hosted project unless the task explicitly authorizes that external mutation. Never replace the hosted `.env.local` with local values as an incidental debugging step.
 
 ## Non-negotiable architecture rules
 

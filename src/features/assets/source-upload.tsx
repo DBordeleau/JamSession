@@ -4,12 +4,17 @@ import { Upload } from "tus-js-client";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { getSupabasePublicEnv } from "@/lib/env/public";
 import { cancelUpload, completeUpload, reserveUpload } from "./actions";
+import { AssetVerificationStatus } from "./asset-verification-status";
 import { preflightSourceFile } from "./schema";
 
 export function SourceUpload() {
   const [message, setMessage] = useState("Select a source file to begin.");
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [verificationAssetId, setVerificationAssetId] = useState<string | null>(
+    null,
+  );
+  const [verificationKickDelayed, setVerificationKickDelayed] = useState(false);
   const active = useRef<Upload | null>(null);
   useEffect(
     () => () => {
@@ -20,6 +25,8 @@ export function SourceUpload() {
   async function start(file: File) {
     try {
       setMessage("Checking file…");
+      setVerificationAssetId(null);
+      setVerificationKickDelayed(false);
       const hint = await preflightSourceFile(file);
       const requestId = crypto.randomUUID();
       const reserved = await reserveUpload({ ...hint, requestId });
@@ -62,11 +69,14 @@ export function SourceUpload() {
           active.current = null;
           setIsUploading(false);
           const result = await completeUpload(reserved.instruction!.assetId);
-          setMessage(
-            result.error
-              ? result.error
-              : "Uploaded; awaiting trusted verification.",
-          );
+          setProgress(0);
+          if (result.error) {
+            setMessage(result.error);
+            return;
+          }
+          setMessage("Upload complete.");
+          setVerificationKickDelayed(Boolean(result.kickDelayed));
+          setVerificationAssetId(reserved.instruction!.assetId);
         },
       });
       active.current = upload;
@@ -108,15 +118,21 @@ export function SourceUpload() {
           }}
         />
       </label>
-      {progress > 0 && (
+      {isUploading && progress > 0 && (
         <progress className="mt-4 w-full" max="100" value={progress}>
           {progress}%
         </progress>
       )}
       <p className="mt-3 text-sm" aria-live="polite">
         {message}
-        {progress > 0 ? ` ${progress}%` : ""}
+        {isUploading && progress > 0 ? ` ${progress}%` : ""}
       </p>
+      {verificationAssetId && (
+        <AssetVerificationStatus
+          assetId={verificationAssetId}
+          initialState={verificationKickDelayed ? "delayed" : "queued"}
+        />
+      )}
       {isUploading && (
         <button
           className="mt-3 rounded-lg border px-3 py-2"
