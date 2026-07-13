@@ -1,6 +1,6 @@
 # System Architecture
 
-Status: Accepted MVP design; implemented through PR 11.5 / Phase C plus post-phase navigation and studio/upload presentation fixes
+Status: Accepted MVP design; implemented through PR 14
 
 Audience: engineers and coding agents
 
@@ -17,8 +17,8 @@ flowchart LR
   N --> S
   U --> O["Waveform Playlist adapter and Web Audio"]
   O --> S
-  N --> J["Background job provider (post-MVP trigger)"]
-  J --> S
+  S --> E["Supabase Edge verification worker"]
+  E --> S
 ```
 
 ### Browser
@@ -54,17 +54,18 @@ flowchart LR
 
 ## Rendering and route map
 
-| Route                                 | State       | Rendering                         | Notes                                                       |
-| ------------------------------------- | ----------- | --------------------------------- | ----------------------------------------------------------- |
-| `/`                                   | Implemented | Server-rendered                   | Public product shell                                        |
-| `/explore`                            | Planned     | Server-rendered, cached briefly   | Discovery query parameters form the future filter contract  |
-| `/@{username}`                        | Implemented | Server-rendered                   | Canonical profile display uses `@`; database stores no `@`  |
-| `/projects`                           | Implemented | Authenticated Server Component    | RLS-scoped member project index and next-action links       |
-| `/projects/{projectId}`               | Implemented | Authenticated Server Component    | Private metadata, revision history, export and studio links |
-| `/projects/{projectId}/studio`        | Implemented | Server shell + lazy client studio | Editor/Tone/browser audio load only after explicit open     |
-| `/contributions`                      | Planned     | Authenticated Server Component    | Author-owned contribution status and version index          |
-| `/projects/{projectId}/contributions` | Planned     | Authenticated server page         | Owner review queue or contributor-owned submissions         |
-| `/auth/callback`                      | Implemented | Route Handler                     | Exchanges OAuth code and redirects to onboarding if needed  |
+| Route                                     | State       | Rendering                         | Notes                                                       |
+| ----------------------------------------- | ----------- | --------------------------------- | ----------------------------------------------------------- |
+| `/`                                       | Implemented | Server-rendered                   | Public product shell                                        |
+| `/explore`                                | Planned     | Server-rendered, cached briefly   | Discovery query parameters form the future filter contract  |
+| `/@{username}`                            | Implemented | Server-rendered                   | Canonical profile display uses `@`; database stores no `@`  |
+| `/projects`                               | Implemented | Authenticated Server Component    | RLS-scoped member project index and next-action links       |
+| `/projects/{projectId}`                   | Implemented | Authenticated Server Component    | Private metadata, revision history, export and studio links |
+| `/projects/{projectId}/studio`            | Implemented | Server shell + lazy client studio | Editor/Tone/browser audio load only after explicit open     |
+| `/contributions`                          | Implemented | Authenticated Server Component    | Author-owned contribution status and version index          |
+| `/projects/{projectId}/contributions`     | Implemented | Authenticated server page         | Owner review queue or contributor-owned submissions         |
+| `/projects/{projectId}/contributions/new` | Implemented | Authenticated server page         | Eligible non-owner contribution creation                    |
+| `/auth/callback`                          | Implemented | Route Handler                     | Exchanges OAuth code and redirects to onboarding if needed  |
 
 Use stable opaque IDs in project URLs for MVP. Human-readable slugs can be added later without changing identity.
 
@@ -105,7 +106,7 @@ Dates crossing a network or Server/Client Component boundary are ISO 8601 string
 2. Create a workspace draft based on no revision or the current revision.
 3. Client validates and uploads source audio to an immutable asset path.
 4. Client saves the versioned Jam Session workspace manifest exported through the studio adapter.
-5. `publish_project_revision()` locks the project and usage projection, canonicalizes and checksums manifest v1, verifies trusted-ready owned assets and active instruments, creates immutable revision, track and reference rows, enforces unique retained project bytes, advances `projects.current_revision_id`, and writes a bounded activity event atomically. First publish changes a private project from draft to active without opening contributions.
+5. `publish_project_revision()` locks the project and usage projection, canonicalizes and checksums manifest v1, verifies trusted-ready owned assets, confirmed source credits, and active instruments, creates immutable revision, track and reference rows, enforces unique retained project bytes, advances `projects.current_revision_id`, and writes a bounded activity event atomically. Revision-track and publisher snapshots are created in the same transaction. First publish changes a private project from draft to active without opening contributions.
 
 PR 10 implements steps 2–4 for project owners. Workspace creation copies the exact current immutable revision into a private draft. Every save submits the expected `lock_version`; the database locks the workspace, rejects stale writers, validates the complete manifest and referenced trusted-ready assets, replaces the normalized workspace-track projection, records an immutable private recovery snapshot, and increments the version atomically. Autosave never advances `projects.current_revision_id` or changes a published revision.
 
@@ -118,7 +119,7 @@ PR 11 completes owner publication with `publish_workspace_revision()`. The wrapp
 3. Submission freezes the draft into proposed revision `C`, records `base_revision_id = R`, and changes contribution state from `draft` to `submitted`.
 4. Subsequent changes require a new contribution revision; submitted bytes are not overwritten.
 
-PR 12 implements steps 1–4 for non-owner members who already have access to an active private project. Creation atomically links a contribution to an author-owned workspace cloned from the exact current revision. Autosave remains private and conflict-safe. Submission locks project, contribution, and workspace in that order, requires the exact acknowledged lock/checksum/snapshot and contributor-attestation-v1, then copies the manifest and normalized tracks into immutable version rows without advancing project history or project storage usage. Withdrawal archives the workspace while retaining versions; PR 13 builds owner review and acceptance on those immutable records.
+PR 12 implements steps 1–4 for non-owner members who already have access to an active private project. Creation atomically links a contribution to an author-owned workspace cloned from the exact current revision. Autosave remains private and conflict-safe. Submission locks project, contribution, and workspace in that order, requires the exact acknowledged lock/checksum/snapshot and contributor-attestation-v1, then copies the manifest and normalized tracks into immutable version rows without advancing project history or project storage usage. Withdrawal archives the workspace while retaining versions. PR 13 builds owner review and acceptance on those immutable records.
 
 ### Accept a contribution
 
@@ -126,13 +127,15 @@ PR 12 implements steps 1–4 for non-owner members who already have access to an
 2. Verify reviewer ownership, status `submitted`, and base revision.
 3. If the project has advanced, mark the contribution `changes_requested` with reason `base_outdated`; do not attempt an automatic audio merge in MVP.
 4. Otherwise copy the proposed snapshot references into a new project revision, record `accepted_contribution_id`, advance the current revision, and mark the contribution accepted in one transaction.
-5. Attribution is computed from immutable asset ownership and contribution authorship, not free-text credits alone.
+5. Copy confirmed ordered source-credit snapshots to the new revision and record the contribution author, not the reviewer, as the accepted-contributor attribution.
 
 PR 13 implements this review boundary for the single project owner. Review attempts are immutable and idempotent. Request changes re-enables the existing exact-base workspace, rejection archives it, and acceptance revalidates the exact submitted manifest/projection before creating a contribution-linked revision, advancing the pointer, updating unique project asset usage, recording bounded activity, and archiving the workspace in one transaction. A stale accept instead records `base_outdated` and moves the contribution to `changes_requested`; no automatic merge or rebase occurs. Exact submitted-version audio remains private and is signed only for its author or owning reviewer through user-scoped RLS.
 
+PR 14 adds the credit boundary used by every publication path. Trusted verification creates a provisional uploader-derived credit suggestion, but an active source owner must explicitly confirm an ordered 1–12-credit set containing at least one creator before the asset can enter a workspace, submission, or revision. Transaction triggers copy those confirmed rows into immutable per-track snapshots and create a separate publisher attribution; accepted revisions also snapshot the contribution author. Public profile links are resolved only through the safe profile projection, while retained snapshot names survive rename, suspension, or deletion.
+
 ### Fork
 
-Forking is metadata-copy-on-write, not file duplication. The new project and first revision reference existing immutable assets, subject to license and visibility checks. `source_project_id` and `source_revision_id` preserve lineage. Deleting the source project must not break an authorized fork; asset retention uses references rather than owner paths.
+Forking remains the next planned slice. It is metadata-copy-on-write, not file duplication. The new project and first revision reference existing immutable assets and copy immutable credit snapshots, subject to license and visibility checks. `source_project_id` and `source_revision_id` preserve lineage. Deleting the source project must not break an authorized fork; asset retention uses references rather than owner paths.
 
 ## Browser studio integration boundary
 

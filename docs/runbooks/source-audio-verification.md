@@ -10,7 +10,7 @@ PR 11.5 automatically verifies every completed source upload. Browser audio byte
 4. Transient failures retry once after ten seconds. Two failed automatic attempts produce `dead`; the owner can restart verification after a 30-second cooldown without uploading again.
 5. A minute cron checks indexed eligible work. It makes no HTTP request while the queue is empty and recovers missed kicks or expired leases when configured.
 
-The accepted limits remain WAV/FLAC/MP3, 45 MiB, ten minutes, 8–192 kHz, and one to eight channels. Client filename, MIME, duration, and extension are not trusted. A file is not publishable until `assets.status = 'ready'`.
+The accepted limits remain WAV/FLAC/MP3, 45 MiB, ten minutes, 8–192 kHz, and one to eight channels. Client filename, MIME, duration, and extension are not trusted. Verification makes an asset `ready`; it becomes eligible for a workspace, contribution, or revision only after its owner explicitly confirms an ordered credit set containing at least one creator.
 
 ## Hosted deployment order
 
@@ -22,7 +22,7 @@ The accepted limits remain WAV/FLAC/MP3, 45 MiB, ten minutes, 8–192 kHz, and o
    - `asset_verification_recovery_url`: `https://<project-ref>.supabase.co/functions/v1/verify-source-audio?forceFunctionRegion=us-west-2`
    - `asset_verification_anon_key`: the hosted project’s legacy anon JWT used only to pass the Edge gateway. This is not the service-role key.
 4. Deploy `supabase/functions/verify-source-audio/index.ts` with JWT verification enabled from `supabase/config.toml`.
-5. Upload one small non-sensitive WAV and confirm `pending → leased → succeeded`, `assets.status = 'ready'`, and one invocation/Storage download.
+5. Upload one small non-sensitive WAV and confirm `pending → leased → succeeded`, `assets.status = 'ready'`, the UI's separate `Credits required` state, and one invocation/Storage download.
 
 Supabase automatically supplies `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` to the deployed function. Do not manually expose them or place the service-role key in Vault/browser configuration. `ASSET_VERIFICATION_RECOVERY_SECRET` is the only custom Edge secret.
 

@@ -55,8 +55,7 @@ Exit: the defined MVP studio subset survives hard refresh and a new browser sess
 - Submit immutable contribution version. **Implemented in PR 12 with versioned attestation and retained withdrawal history.**
 - Owner review with A/B metadata and accept/reject/request-changes. **Implemented in PR 13 with exact-version private audition and immutable review history.**
 - Atomic accept creates a project revision; outdated base is surfaced. **Implemented in PR 13 with idempotent acceptance and `base_outdated` changes-requested fallback.**
-- Immutable ordered musical credits, distinct publisher/accepted-contributor attribution, rename/deletion stability, and profile history. **Implemented in PR 14.**
-- Credit snapshots and asset attribution.
+- Immutable ordered musical credits, confirmed asset attribution, distinct publisher/accepted-contributor snapshots, rename/deletion stability, and profile history. **Implemented in PR 14.**
 
 Exit: a second account can contribute a stem and the owner can accept it without mutating prior history.
 

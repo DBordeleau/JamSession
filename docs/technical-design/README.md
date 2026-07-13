@@ -1,6 +1,6 @@
 # Jam Session Technical Design
 
-Status: Accepted MVP design; implementation in progress
+Status: Accepted MVP design; implemented through PR 14
 
 Last updated: 2026-07-13
 
@@ -32,7 +32,7 @@ The following vertical slices are implemented and are the baseline for future wo
 - owner workspace publication through the canonical immutable-revision transaction, idempotent workspace advancement, explicit stale-draft restart, authorized direct-to-Storage stem downloads, and bounded browser-rendered 16-bit WAV mix export.
 - private already-authorized member contribution drafts rooted at exact revisions, contribution-aware autosave through the existing studio boundary, immutable attested submission versions, withdrawal with retained history, and owner visibility beginning only after submission.
 - exact-version owner review with request changes/rejection and atomic stale-safe acceptance into immutable history;
-- explicit ordered self/external source-credit confirmation, immutable per-revision track snapshots, distinct publisher and accepted-contributor attribution, role-bearing project presentation, and privacy-safe accepted history.
+- explicit ordered self/external source-credit confirmation, immutable per-revision track snapshots, distinct publisher and accepted-contributor attribution, role-bearing project presentation, authenticated accepted history, and a deliberately empty public-history surface until public projects are activated.
 
 The next planned slice adds copy-on-write forks and navigable lineage. Public discovery, broader dashboards, moderation/retention jobs, and final release hardening remain unimplemented. Historical PR 05 spike evidence is retained; the evidence directory records the production path through PR 14.
 

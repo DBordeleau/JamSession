@@ -1,6 +1,6 @@
 # Data Model and Supabase Design
 
-Status: Accepted MVP design; implemented through PR 11
+Status: Accepted MVP design; implemented through PR 14
 
 Database: Supabase Postgres
 
@@ -22,10 +22,14 @@ erDiagram
   PROJECTS ||--o{ PROJECT_REVISIONS : publishes
   PROJECT_REVISIONS ||--o{ REVISION_TRACKS : contains
   ASSETS ||--o{ REVISION_TRACKS : supplies
+  ASSETS ||--o{ ASSET_CREDITS : credits
+  REVISION_TRACKS ||--o{ REVISION_TRACK_CREDITS : snapshots
+  PROJECT_REVISIONS ||--o{ REVISION_ATTRIBUTIONS : attributes
   PROJECTS ||--o{ WORKSPACES : edits
   PROFILES ||--o{ WORKSPACES : owns
   PROJECTS ||--o{ CONTRIBUTIONS : receives
   CONTRIBUTIONS ||--o{ CONTRIBUTION_VERSIONS : revisions
+  CONTRIBUTIONS ||--o{ CONTRIBUTION_REVIEWS : reviews
   PROJECTS o|--o{ PROJECTS : forked_from
   PROJECTS ||--o{ PROJECT_TAGS : categorized
   TAGS ||--o{ PROJECT_TAGS : categorizes
@@ -45,9 +49,13 @@ create type asset_kind as enum
   ('source_audio', 'workspace_snapshot', 'mix_preview', 'waveform_peaks', 'image');
 create type asset_credit_role as enum
   ('creator', 'performer', 'producer', 'engineer', 'other');
+create type contribution_status as enum
+  ('draft', 'submitted', 'changes_requested', 'accepted', 'rejected', 'withdrawn');
+create type revision_attribution_kind as enum
+  ('publisher', 'accepted_contributor');
 ```
 
-Workspace status is constrained text (`active` or `archived`). PR 12 adds the complete `contribution_status` enum: `draft`, `submitted`, `changes_requested`, `accepted`, `rejected`, and `withdrawn`; PR 12 commands produce only draft, submitted, and withdrawn.
+Workspace status is constrained text (`active` or `archived`). PR 12 added the complete `contribution_status` enum: `draft`, `submitted`, `changes_requested`, `accepted`, `rejected`, and `withdrawn`. PR 12 commands produce draft, submitted, and withdrawn; PR 13 owner review produces changes requested, accepted, and rejected.
 
 ## Identity
 
@@ -138,26 +146,28 @@ Do not encode genres/instruments as enums; the vocabulary will evolve.
 
 ### `project_revisions`
 
-| Column                      | Type          | Rules                                                                          |
-| --------------------------- | ------------- | ------------------------------------------------------------------------------ |
-| `id`                        | `uuid`        | PK                                                                             |
-| `project_id`                | `uuid`        | FK projects                                                                    |
-| `revision_number`           | `integer`     | positive; unique per project                                                   |
-| `parent_revision_id`        | `uuid null`   | same-project previous revision                                                 |
-| `created_by`                | `uuid`        | FK profiles                                                                    |
-| `publish_request_id`        | `uuid`        | idempotency key; unique with project                                           |
-| `expected_base_revision_id` | `uuid null`   | same-project optimistic-concurrency base                                       |
-| `message`                   | `text null`   | max 500 chars                                                                  |
-| `snapshot_asset_id`         | `uuid null`   | reserved for a future engine-native artifact; null for published MVP revisions |
-| `manifest`                  | `jsonb`       | validated canonical versioned subset                                           |
-| `manifest_version`          | `smallint`    | currently `1`                                                                  |
-| `engine`                    | `text`        | MVP value `waveform-playlist`                                                  |
-| `engine_version`            | `text`        | exact adapter/package compatibility version                                    |
-| `manifest_sha256`           | `text`        | canonical lowercase SHA-256 integrity checksum                                 |
-| `duration_ms`               | `integer`     | non-negative derived duration                                                  |
-| `created_at`                | `timestamptz` | immutable                                                                      |
+| Column                             | Type          | Rules                                                                          |
+| ---------------------------------- | ------------- | ------------------------------------------------------------------------------ |
+| `id`                               | `uuid`        | PK                                                                             |
+| `project_id`                       | `uuid`        | FK projects                                                                    |
+| `revision_number`                  | `integer`     | positive; unique per project                                                   |
+| `parent_revision_id`               | `uuid null`   | same-project previous revision                                                 |
+| `created_by`                       | `uuid`        | FK profiles                                                                    |
+| `publish_request_id`               | `uuid`        | idempotency key; unique with project                                           |
+| `expected_base_revision_id`        | `uuid null`   | same-project optimistic-concurrency base                                       |
+| `message`                          | `text null`   | max 500 chars                                                                  |
+| `snapshot_asset_id`                | `uuid null`   | reserved for a future engine-native artifact; null for published MVP revisions |
+| `manifest`                         | `jsonb`       | validated canonical versioned subset                                           |
+| `manifest_version`                 | `smallint`    | currently `1`                                                                  |
+| `engine`                           | `text`        | MVP value `waveform-playlist`                                                  |
+| `engine_version`                   | `text`        | exact adapter/package compatibility version                                    |
+| `manifest_sha256`                  | `text`        | canonical lowercase SHA-256 integrity checksum                                 |
+| `duration_ms`                      | `integer`     | non-negative derived duration                                                  |
+| `accepted_contribution_id`         | `uuid null`   | accepted contribution lineage; same project                                    |
+| `accepted_contribution_version_id` | `uuid null`   | exact immutable accepted version; belongs to contribution                      |
+| `created_at`                       | `timestamptz` | immutable                                                                      |
 
-Unique `(project_id, revision_number)` and `(project_id, publish_request_id)`. Composite foreign keys prove that `parent_revision_id`, `expected_base_revision_id`, and `projects.current_revision_id` belong to the same project. The first revision has no parent; later revisions point to the locked current revision. Update/delete is denied to application roles and rejected by immutability triggers. Corrections create a new revision. `mix_preview_asset_id` and `accepted_contribution_id` are planned but do not exist yet.
+Unique `(project_id, revision_number)` and `(project_id, publish_request_id)`. Composite foreign keys prove that `parent_revision_id`, `expected_base_revision_id`, `projects.current_revision_id`, and accepted-contribution lineage belong to the same project; another composite key binds an accepted version to its contribution. The first revision has no parent; later revisions point to the locked current revision. Update/delete is denied to application roles and rejected by immutability triggers. Corrections create a new revision. A future derived-preview slice may add `mix_preview_asset_id`; it does not exist yet.
 
 ### `revision_tracks`
 
@@ -202,7 +212,10 @@ MVP supports one contiguous region per uploaded stem in this projection. Wavefor
 | `declared_media_type`, `reserved_byte_size`     | nullable/text + bigint | untrusted declaration and quota reservation                  |
 | `media_type`, `byte_size`, `sha256`             | nullable               | trusted verification output; required when ready             |
 | `duration_ms`, `sample_rate_hz`, `channels`     | nullable numeric       | verified audio metadata; required when ready                 |
-| `verification_version`, `failure_code`          | `text null`            | operator verifier provenance or bounded failure reason       |
+| `verification_version`, `failure_code`          | `text null`            | trusted verifier provenance or bounded failure reason        |
+| `credits_confirmed_at`                          | `timestamptz null`     | owner-confirmed credit boundary                              |
+| `credits_confirmation_request_id`               | `uuid null`            | idempotency key for the accepted credit set                  |
+| `credits_confirmation_sha256`                   | `text null`            | normalized confirmed-input checksum                          |
 | `created_at`, `upload_completed_at`, `ready_at` | `timestamptz`          | lifecycle timestamps                                         |
 | `failed_at`, `deleted_at`                       | `timestamptz`          | failure/deletion lifecycle                                   |
 
@@ -218,7 +231,7 @@ future avatar bucket: {user_uuid}/{asset_uuid}/avatar.webp
 
 Do not globally deduplicate uploads in MVP: identical hashes can belong to different access domains and deletion expectations. Hashes provide integrity and later dedupe analysis.
 
-Implemented `asset_credits(asset_id, user_id nullable, credit_name, role, position)` stores ordered self/external display snapshots. Trusted verification creates only a provisional uploader suggestion; the active owner must atomically confirm 1–12 credits with at least one creator before the source can enter workspace, contribution-version, or revision tracks. Self names are derived from the verified profile in SQL, external names remain unlinked plain text, duplicate identity/role pairs are denied, and confirmed/referenced credits are immutable. `owner_id` is operational ownership, not authorship.
+Implemented `asset_credits(asset_id, user_id nullable, credit_name, role, position)` stores ordered self/external display snapshots. Trusted verification creates only a provisional uploader suggestion; the active owner must atomically confirm 1–12 credits with at least one creator before the source can enter workspace, contribution-version, or revision tracks. Self names are derived from the verified profile in SQL, external names remain unlinked plain text, duplicate identity/role pairs are denied, and confirmed/referenced credits are immutable. Confirmation request ID plus normalized SHA-256 makes exact retries idempotent and conflicting reuse fail. `owner_id` is operational ownership, not authorship.
 
 ### `revision_track_credits` and `revision_attributions` (implemented — PR 14)
 
@@ -304,7 +317,7 @@ The following discovery projections and search indexes are planned for Phase E; 
 
 ## Important indexes
 
-The following is the target minimum across implemented and planned phases. Indexes that refer to contributions or public discovery are not present through PR 11.
+The following is the target minimum across implemented and planned phases. Contribution review indexes are implemented; public-discovery indexes remain deferred until that slice is built.
 
 ```sql
 create unique index profiles_username_normalized_uq on profiles (username_normalized);
@@ -328,7 +341,7 @@ Every foreign-key column used for delete/reference checks needs a supporting ind
 
 RLS predicates should call small, stable helper functions such as `is_project_member(project_id, minimum_role)` where useful. Mark security-definer helpers carefully, set `search_path`, and revoke public execute unless intended.
 
-This is the MVP target matrix. Through PR 11, projects remain private and the contribution/public-discovery rows are not yet application-reachable; the implemented private-project, workspace, source-asset, profile, and revision policies follow the applicable rows below.
+This is the MVP target matrix. Through PR 14, projects remain private, while participant-private contribution drafting and owner review are application-reachable. Public-project and discovery paths remain deferred; implemented private-project, workspace, source-asset, contribution, profile, revision, and credit policies follow the applicable rows below.
 
 | Resource                          | Anonymous                       | Signed-in user                                                                                                                              | Owner/reviewer                                   |
 | --------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
@@ -350,11 +363,15 @@ Avoid permissive direct updates to lifecycle columns. Expose functions such as:
 - `save_workspace(...)`
 - `publish_workspace_revision(...)`
 - `restart_project_workspace(...)`
+- `confirm_source_asset_credits(...)`
+- `create_contribution_workspace(...)`
 - `submit_contribution(...)`
+- `withdraw_contribution(...)`
 - `review_contribution(...)`
-- `fork_project(...)`
 
 Each function verifies `auth.uid()`, validates current state, uses row locks where needed and returns the created/updated IDs.
+
+`fork_project(...)` is the next planned command and does not exist through PR 14.
 
 ## Deletion and retention
 

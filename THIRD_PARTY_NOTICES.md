@@ -2,9 +2,9 @@
 
 Jam Session's own source remains all rights reserved. Dependencies retain their licenses.
 
-## Waveform Playlist integration spike
+## Waveform Playlist integration
 
-The spike uses these MIT-licensed packages without copying upstream source or demo media:
+The production browser studio uses these MIT-licensed packages without copying upstream source or demo media:
 
 - `@waveform-playlist/browser` 15.3.4
 - `@waveform-playlist/playout` 12.5.4
