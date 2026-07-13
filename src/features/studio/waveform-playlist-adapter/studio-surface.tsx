@@ -52,6 +52,7 @@ import {
 } from "@/features/workspaces/actions";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { gainToDecibels } from "./mapping";
+import { hasAlignedMixerState } from "./mixer-state";
 import { WaveformPlaylistStudioAdapter } from "./adapter.client";
 
 type TrackMeta = StudioLauncherProps["tracks"][number];
@@ -90,6 +91,11 @@ function PlaybackControls({
   );
   const cancelledMix = useRef(false);
   const manifest = adapter.exportManifest();
+  const mixerReady = hasAlignedMixerState({
+    trackIds: data.tracks.map((track) => track.id),
+    trackStateCount: data.trackStates.length,
+    persistedTrackIds: manifest.tracks.map((track) => track.trackId),
+  });
   const duration = Math.max(
     ...manifest.tracks.map(
       (track) => (track.positionMs + track.durationMs) / 1000,
@@ -162,6 +168,10 @@ function PlaybackControls({
   ]);
 
   const renderMix = async () => {
+    if (!mixerReady) {
+      setMixMessage("Preparing mixer controls…");
+      return;
+    }
     cancelledMix.current = false;
     setMixMessage("Rendering the WAV mix locally…");
     try {
@@ -264,183 +274,192 @@ function PlaybackControls({
       <div className="rounded-card border-subtle bg-surface-raised overflow-x-auto border p-3">
         <Waveform />
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        {data.tracks.map((track, index) => {
-          const meta = tracks.find((item) => item.trackId === track.id);
-          const persisted = manifest.tracks.find(
-            (item) => item.trackId === track.id,
-          )!;
-          const current = data.trackStates[index]!;
-          const displayedGainDb = editable
-            ? persisted.gainDb
-            : Number(gainToDecibels(current.volume).toFixed(1));
-          return (
-            <fieldset
-              key={track.id}
-              className="rounded-card border-subtle bg-surface space-y-4 border p-4"
-            >
-              <legend className="px-2 font-semibold">{track.name}</legend>
-              <p className="text-muted text-sm">
-                {editable
-                  ? (editable.instruments.find(
-                      (instrument) => instrument.id === persisted.instrumentId,
-                    )?.name ?? "No instrument")
-                  : (meta?.instrumentName ?? "No instrument")}{" "}
-                {" · "}
-                {meta?.creditName ?? "Unknown creator"}
-              </p>
-              {editable && (
-                <>
-                  <label className="block">
-                    Track label
-                    <input
-                      className="border-subtle mt-1 block min-h-11 w-full border px-3"
-                      maxLength={120}
-                      defaultValue={persisted.name}
-                      onBlur={(event) =>
-                        event.target.value.trim() &&
-                        updateTrack(track.id, {
-                          name: event.target.value.trim(),
-                        })
-                      }
-                    />
-                  </label>
-                  <label className="block">
-                    Instrument
-                    <select
-                      className="border-subtle mt-1 block min-h-11 w-full border px-3"
-                      value={persisted.instrumentId ?? ""}
-                      onChange={(event) =>
-                        updateTrack(track.id, {
-                          instrumentId: event.target.value || null,
-                        })
-                      }
-                    >
-                      <option value="">Not specified</option>
-                      {editable.instruments.map((instrument) => (
-                        <option key={instrument.id} value={instrument.id}>
-                          {instrument.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block">
-                    Start position (seconds)
-                    <input
-                      className="border-subtle mt-1 block min-h-11 w-full border px-3"
-                      type="number"
-                      min="0"
-                      step="0.001"
-                      defaultValue={persisted.positionMs / 1000}
-                      onBlur={(event) =>
-                        updateTrack(track.id, {
-                          positionMs: Math.max(
-                            0,
-                            Math.round(Number(event.target.value) * 1000),
-                          ),
-                        })
-                      }
-                    />
-                  </label>
-                </>
-              )}
-              <label className="block">
-                Gain <span className="text-muted">{displayedGainDb} dB</span>
-                <input
-                  aria-label={`${track.name} gain`}
-                  className="w-full"
-                  type="range"
-                  min="-60"
-                  max="6"
-                  step="0.5"
-                  value={displayedGainDb}
-                  onChange={(event) => {
-                    const gainDb = Number(event.target.value);
-                    controls.setTrackVolume(index, Math.pow(10, gainDb / 20));
-                    if (editable) updateTrack(track.id, { gainDb });
-                  }}
-                />
-              </label>
-              <label className="block">
-                Pan <span className="text-muted">{current.pan.toFixed(1)}</span>
-                <input
-                  aria-label={`${track.name} pan`}
-                  className="w-full"
-                  type="range"
-                  min="-1"
-                  max="1"
-                  step="0.1"
-                  value={current.pan}
-                  onChange={(event) => {
-                    const pan = Number(event.target.value);
-                    controls.setTrackPan(index, pan);
-                    if (editable) updateTrack(track.id, { pan });
-                  }}
-                />
-              </label>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  aria-pressed={current.muted}
-                  className="rounded-control border-strong min-h-11 border px-4"
-                  onClick={() => {
-                    controls.setTrackMute(index, !current.muted);
-                    if (editable)
-                      updateTrack(track.id, { muted: !current.muted });
-                  }}
-                >
-                  {current.muted ? "Muted" : "Mute"}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={current.soloed}
-                  className="rounded-control border-strong min-h-11 border px-4"
-                  onClick={() => {
-                    controls.setTrackSolo(index, !current.soloed);
-                    if (editable)
-                      updateTrack(track.id, { soloed: !current.soloed });
-                  }}
-                >
-                  {current.soloed ? "Soloed" : "Solo"}
-                </button>
+      <div className="grid gap-4 lg:grid-cols-2" aria-busy={!mixerReady}>
+        {!mixerReady && (
+          <p className="text-muted" aria-live="polite">
+            Preparing mixer controls…
+          </p>
+        )}
+        {mixerReady &&
+          data.tracks.map((track, index) => {
+            const meta = tracks.find((item) => item.trackId === track.id);
+            const persisted = manifest.tracks.find(
+              (item) => item.trackId === track.id,
+            );
+            const current = data.trackStates[index];
+            if (!persisted || !current) return null;
+            const displayedGainDb = editable
+              ? persisted.gainDb
+              : Number(gainToDecibels(current.volume).toFixed(1));
+            return (
+              <fieldset
+                key={track.id}
+                className="rounded-card border-subtle bg-surface space-y-4 border p-4"
+              >
+                <legend className="px-2 font-semibold">{track.name}</legend>
+                <p className="text-muted text-sm">
+                  {editable
+                    ? (editable.instruments.find(
+                        (instrument) =>
+                          instrument.id === persisted.instrumentId,
+                      )?.name ?? "No instrument")
+                    : (meta?.instrumentName ?? "No instrument")}{" "}
+                  {" · "}
+                  {meta?.creditName ?? "Unknown creator"}
+                </p>
                 {editable && (
                   <>
-                    <button
-                      type="button"
-                      className="rounded-control border-strong min-h-11 border px-4"
-                      aria-label={`Move ${track.name} up`}
-                      disabled={index === 0}
-                      onClick={() => moveTrack(track.id, -1)}
-                    >
-                      Move up
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-control border-strong min-h-11 border px-4"
-                      aria-label={`Move ${track.name} down`}
-                      disabled={index === data.tracks.length - 1}
-                      onClick={() => moveTrack(track.id, 1)}
-                    >
-                      Move down
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-control min-h-11 border border-red-700 px-4 text-red-700"
-                      aria-label={`Remove ${track.name} from draft`}
-                      disabled={data.tracks.length === 1}
-                      onClick={() => {
-                        adapter.removeTrack(track.id);
-                        onEdited();
-                      }}
-                    >
-                      Remove from draft
-                    </button>
+                    <label className="block">
+                      Track label
+                      <input
+                        className="border-subtle mt-1 block min-h-11 w-full border px-3"
+                        maxLength={120}
+                        defaultValue={persisted.name}
+                        onBlur={(event) =>
+                          event.target.value.trim() &&
+                          updateTrack(track.id, {
+                            name: event.target.value.trim(),
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="block">
+                      Instrument
+                      <select
+                        className="border-subtle mt-1 block min-h-11 w-full border px-3"
+                        value={persisted.instrumentId ?? ""}
+                        onChange={(event) =>
+                          updateTrack(track.id, {
+                            instrumentId: event.target.value || null,
+                          })
+                        }
+                      >
+                        <option value="">Not specified</option>
+                        {editable.instruments.map((instrument) => (
+                          <option key={instrument.id} value={instrument.id}>
+                            {instrument.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block">
+                      Start position (seconds)
+                      <input
+                        className="border-subtle mt-1 block min-h-11 w-full border px-3"
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        defaultValue={persisted.positionMs / 1000}
+                        onBlur={(event) =>
+                          updateTrack(track.id, {
+                            positionMs: Math.max(
+                              0,
+                              Math.round(Number(event.target.value) * 1000),
+                            ),
+                          })
+                        }
+                      />
+                    </label>
                   </>
                 )}
-              </div>
-            </fieldset>
-          );
-        })}
+                <label className="block">
+                  Gain <span className="text-muted">{displayedGainDb} dB</span>
+                  <input
+                    aria-label={`${track.name} gain`}
+                    className="w-full"
+                    type="range"
+                    min="-60"
+                    max="6"
+                    step="0.5"
+                    value={displayedGainDb}
+                    onChange={(event) => {
+                      const gainDb = Number(event.target.value);
+                      controls.setTrackVolume(index, Math.pow(10, gainDb / 20));
+                      if (editable) updateTrack(track.id, { gainDb });
+                    }}
+                  />
+                </label>
+                <label className="block">
+                  Pan{" "}
+                  <span className="text-muted">{current.pan.toFixed(1)}</span>
+                  <input
+                    aria-label={`${track.name} pan`}
+                    className="w-full"
+                    type="range"
+                    min="-1"
+                    max="1"
+                    step="0.1"
+                    value={current.pan}
+                    onChange={(event) => {
+                      const pan = Number(event.target.value);
+                      controls.setTrackPan(index, pan);
+                      if (editable) updateTrack(track.id, { pan });
+                    }}
+                  />
+                </label>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    aria-pressed={current.muted}
+                    className="rounded-control border-strong min-h-11 border px-4"
+                    onClick={() => {
+                      controls.setTrackMute(index, !current.muted);
+                      if (editable)
+                        updateTrack(track.id, { muted: !current.muted });
+                    }}
+                  >
+                    {current.muted ? "Muted" : "Mute"}
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={current.soloed}
+                    className="rounded-control border-strong min-h-11 border px-4"
+                    onClick={() => {
+                      controls.setTrackSolo(index, !current.soloed);
+                      if (editable)
+                        updateTrack(track.id, { soloed: !current.soloed });
+                    }}
+                  >
+                    {current.soloed ? "Soloed" : "Solo"}
+                  </button>
+                  {editable && (
+                    <>
+                      <button
+                        type="button"
+                        className="rounded-control border-strong min-h-11 border px-4"
+                        aria-label={`Move ${track.name} up`}
+                        disabled={index === 0}
+                        onClick={() => moveTrack(track.id, -1)}
+                      >
+                        Move up
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-control border-strong min-h-11 border px-4"
+                        aria-label={`Move ${track.name} down`}
+                        disabled={index === data.tracks.length - 1}
+                        onClick={() => moveTrack(track.id, 1)}
+                      >
+                        Move down
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-control min-h-11 border border-red-700 px-4 text-red-700"
+                        aria-label={`Remove ${track.name} from draft`}
+                        disabled={data.tracks.length === 1}
+                        onClick={() => {
+                          adapter.removeTrack(track.id);
+                          onEdited();
+                        }}
+                      >
+                        Remove from draft
+                      </button>
+                    </>
+                  )}
+                </div>
+              </fieldset>
+            );
+          })}
       </div>
       <div className="rounded-card border-subtle bg-surface border p-5">
         <h2 className="font-bold">Export WAV mix</h2>
@@ -454,7 +473,7 @@ function PlaybackControls({
           <button
             type="button"
             className="rounded-control border-strong min-h-11 border px-4 disabled:opacity-50"
-            disabled={isExporting || duration > 600}
+            disabled={!mixerReady || isExporting || duration > 600}
             onClick={() => void renderMix()}
           >
             Export WAV mix
