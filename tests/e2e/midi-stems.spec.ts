@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { execFileSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
 
 async function prepareMidiActor() {
@@ -19,33 +20,44 @@ async function prepareMidiActor() {
   if (error) throw error;
   const actor = data.users.find((user) => user.email === email);
   if (!actor) throw new Error("Local E2E actor is missing.");
-  const { error: profileError } = await admin
-    .from("profiles")
-    .update({
-      username: "MidiStemE2E",
-      username_normalized: "midisteme2e",
-      display_name: "MIDI Stem E2E",
-      credit_name: "MIDI Stem E2E",
-      profile_completed_at: new Date().toISOString(),
-      status: "active",
-    })
-    .eq("id", actor.id);
-  if (profileError) throw profileError;
+  if (!/^[0-9a-f-]{36}$/.test(actor.id))
+    throw new Error("Local E2E actor has an invalid identifier.");
+  execFileSync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      "supabase_db_jam-session",
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      `update public.profiles set username='MidiStemE2E', username_normalized='midisteme2e', display_name='MIDI Stem E2E', credit_name='MIDI Stem E2E', profile_completed_at=coalesce(profile_completed_at, statement_timestamp()), status='active' where id='${actor.id}'`,
+    ],
+    { encoding: "utf8" },
+  );
 }
 
-test.describe("standalone MIDI stem foundation", () => {
+test.describe("standalone MIDI stem editor", () => {
   test.skip(
     process.env.ENABLE_TEST_AUTH !== "true",
     "requires the local gated Auth actor",
   );
 
-  test("creates, plays, saves, and reloads an owner-only draft", async ({
+  test("creates, edits, autosaves, and reloads a canonical draft", async ({
     page,
   }) => {
     test.setTimeout(60_000);
     await prepareMidiActor();
     await page.goto("/test-auth");
     await page.getByRole("button", { name: "Sign in test actor" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Edit profile" }),
+    ).toBeVisible();
     await page.goto("/stems");
     await expect(page.getByRole("heading", { name: "My stems" })).toBeVisible();
     await expect(page.getByText("A quiet canvas.")).not.toBeVisible();
@@ -58,24 +70,60 @@ test.describe("standalone MIDI stem foundation", () => {
     ).toBeVisible();
 
     await page.getByRole("button", { name: "Add starter pattern" }).click();
-    await expect(page.getByText("4 of 2,048 notes")).toBeVisible();
+    await expect(page.getByText(/4 of 2,048 notes/)).toBeVisible();
     await page.getByRole("button", { name: "Play stem" }).click();
     await expect(page.getByRole("button", { name: "Stop" })).toBeEnabled();
     await page.getByRole("button", { name: "Stop" }).click();
-    await page.getByRole("button", { name: "Save draft" }).click();
-    await expect(page.getByText("Status: Saved to My stems.")).toBeVisible();
+    const noteList = page.getByLabel("Notes in stem");
+    await noteList.selectOption({ index: 0 });
+    const pitch = page.getByLabel("MIDI pitch");
+    await pitch.fill("50");
+    await pitch.press("Enter");
+    await expect(noteList.locator("option").first()).toContainText("D3");
+
+    const roll = page.getByTestId("midi-piano-roll");
+    await roll.evaluate((element) => element.scrollTo(120, 110));
+    await expect(
+      page.getByRole("heading", { name: "Piano roll" }),
+    ).toBeVisible();
+    await roll.focus();
+    await roll.press("ArrowRight");
+    await expect(noteList.locator("option").first()).toContainText("tick 120");
+    await page.getByRole("button", { name: "Quantize" }).click();
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(noteList.locator("option").first()).toContainText("tick 120");
+
+    await roll.dblclick({ position: { x: 520, y: 220 } });
+    await expect(page.getByText(/5 of 2,048 notes/)).toBeVisible();
+    await expect(page.getByLabel("Duration ticks")).toHaveValue("480");
+
+    await roll.hover({ position: { x: 612, y: 230 } });
+    await expect
+      .poll(() => roll.evaluate((element) => element.style.cursor))
+      .toBe("ew-resize");
+
+    await roll.click({ button: "right", position: { x: 550, y: 230 } });
+    await expect(page.getByText(/4 of 2,048 notes/)).toBeVisible();
+    await expect(page.getByText(/removed\./)).toBeVisible();
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(page.getByText(/5 of 2,048 notes/)).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText("Saved to My stems.", {
+      timeout: 10_000,
+    });
 
     await page.reload();
     await expect(page.getByRole("textbox", { name: "Stem name" })).toHaveValue(
       "E2E night chords",
     );
-    await expect(page.getByText("4 of 2,048 notes")).toBeVisible();
-    await expect(page.getByText(/Note 1: pitch 48, tick 0/)).toBeVisible();
+    await expect(page.getByText(/5 of 2,048 notes/)).toBeVisible();
+    await expect(
+      page.getByLabel("Notes in stem").locator("option").first(),
+    ).toContainText("D3 · tick 120");
 
     await page.getByRole("link", { name: "Back to My stems" }).click();
     await expect(
-      page.getByRole("link", { name: "E2E night chords" }),
+      page.getByRole("link", { name: "E2E night chords" }).first(),
     ).toBeVisible();
-    await expect(page.getByText("Warm Poly · 4 notes")).toBeVisible();
+    await expect(page.getByText("Warm Poly · 5 notes").first()).toBeVisible();
   });
 });
