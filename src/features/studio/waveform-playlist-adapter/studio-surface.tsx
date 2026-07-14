@@ -67,6 +67,10 @@ import {
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { gainToDecibels } from "./mapping";
 import { hasAlignedMixerState } from "./mixer-state";
+import {
+  markStudioPerformance,
+  studioPerformanceMarks,
+} from "./performance-marks.client";
 import { WaveformPlaylistStudioAdapter } from "./adapter.client";
 
 type TrackMeta = StudioLauncherProps["tracks"][number];
@@ -659,6 +663,13 @@ export function StudioSurface(props: StudioLauncherProps) {
     | { status: "error"; message: string }
   >({ status: "idle" });
   const publishRequestId = useRef<string | null>(null);
+  const adapterMountMarked = useRef(false);
+  useEffect(() => {
+    if (!adapterMountMarked.current) {
+      markStudioPerformance(studioPerformanceMarks.adapterMounted);
+      adapterMountMarked.current = true;
+    }
+  }, []);
   useEffect(() => {
     autosaveStatus.current = autosave.status;
   }, [autosave.status]);
@@ -1087,6 +1098,15 @@ export function StudioSurface(props: StudioLauncherProps) {
   };
 
   const ready = ["ready", "playing", "paused"].includes(snapshot.status);
+  useEffect(() => {
+    if (!ready) return;
+    // In the baseline loader, waveform construction and playback readiness are
+    // both gated on the final source decode. Later slices intentionally split
+    // these marks as the UI becomes manifest-first and peaks-aware.
+    markStudioPerformance(studioPerformanceMarks.shellReady);
+    markStudioPerformance(studioPerformanceMarks.peaksReady);
+    markStudioPerformance(studioPerformanceMarks.playbackReady);
+  }, [ready]);
   const addedAssetIds = new Set(
     snapshot.manifest?.tracks.map((track) => track.assetId) ?? [],
   );

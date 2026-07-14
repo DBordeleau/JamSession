@@ -180,6 +180,10 @@ npx playwright install chromium
 
 That browser download is only needed for E2E tests, not normal development.
 
+### Audio-delivery benchmark fixtures
+
+OPT-01 adds deterministic large WAV generation and local browser benchmarks without committing media. Generated fixtures, disposable codec packages, and raw results remain under ignored `local/`. The checked-in method and bounded results are in [the OPT-01 evidence](docs/technical-design/evidence/opt-01-audio-delivery-baseline.md). Start with `node scripts/generate-studio-audio-fixtures.mjs --profile controlled`; the evidence document lists the throttled delivery and disposable codec commands. None of them reads or mutates hosted Supabase.
+
 ## Repository map
 
 ```text

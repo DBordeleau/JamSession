@@ -70,11 +70,13 @@ Exit: **Met in PR 17** — fork lineage/discovery respect visibility/RLS, and pr
 
 ### M5.5 — $0 audio-delivery optimization
 
-- Instrument controlled cold/warm studio timing and bytes.
+- Instrument controlled cold/warm studio timing and bytes. **Implemented in OPT-01; baseline evidence records 29.352 s cold and 29.336 s same-session median readiness for the controlled uncompressed path.**
 - Render the arrangement shell and safe controls before complete source decoding.
 - Progressively attach tracks with honest per-track/playback readiness and bounded in-session reuse.
 - Add capable-browser lossless WAV-to-FLAC preprocessing and versioned private waveform peaks.
 - Preserve private source authority, exact export/download behavior, and a no-paid-worker architecture.
+
+OPT-01 selected pinned `mediabunny@1.50.8` + `@mediabunny/flac-encoder@1.50.8` for the later dedicated upload worker after Chromium/Firefox round-trip, cancellation, peak-generation, and near-limit capability checks. The dependency is not installed in the application until OPT-03, and Safari/macOS plus measured peak memory remain that slice's fallback-gated checks. See [`evidence/opt-01-audio-delivery-baseline.md`](evidence/opt-01-audio-delivery-baseline.md).
 
 Exit: the controlled cold studio shell is usable within two seconds; optimized three-stem playback targets 8–12 seconds cold and 2–4 seconds warm without quality loss; legacy audio compatibility evidence is retained for the MIDI transition.
 
