@@ -1,6 +1,6 @@
 # Delivery Plan and Engineering Contract
 
-Status: Accepted; implemented through PR 17 with optimization and MIDI-first milestones inserted before M6
+Status: Accepted; implemented through PR 17 and OPT-05 with MIDI-first and studio-forward milestones inserted before M6
 
 ## Delivery strategy
 
@@ -8,7 +8,7 @@ Build thin vertical slices that end in observable user behavior. A focused Wavef
 
 ## Milestones
 
-M0–M5 are implemented. Source credits require explicit confirmation, immutable history preserves attribution and fork lineage without duplicating source audio, and owner-controlled public projects flow through a safe catalog with bounded search, public history, and metadata-only presentation. Source audio remains private and participant-scoped. Before M6, complete M5.5 ($0 audio optimization) and M5.6 (MIDI-first expansion and new-audio-admission transition). Conditional manual browser/audio/MIDI/Preview checks remain recorded as such. M6 hardening remains planned.
+M0–M5 and M5.5 are implemented. Source credits require explicit confirmation, immutable history preserves attribution and fork lineage without duplicating source audio, and owner-controlled public projects flow through a safe catalog with bounded search, public history, and metadata-only presentation. Source audio remains private and participant-scoped. Before M6, complete M5.6 (MIDI-first expansion and new-audio-admission transition), M5.7 (studio-forward shell and arrangement refactor), and PR 18 moderation/retention operations. Conditional manual browser/audio/MIDI/preview checks remain recorded as such. M6 hardening remains planned.
 
 ### M0 — Decisions and feasibility
 
@@ -89,14 +89,26 @@ Exit: **Met with a documented cold-playback exception** — the controlled cold 
 
 ### M5.6 — MIDI-first MVP expansion
 
-- Add manifest v2 with discriminated audio/MIDI tracks and bounded tick-based clips/notes.
+- In MIDI-01, freeze the route-neutral Studio session/capability contract plus manifest v2 with stable audio/MIDI clips; preserve deterministic v1-to-v2 mapping.
+- Add a standalone, accessible MIDI-stem editor and immutable reusable stem versions before project integration.
 - Add deterministic versioned Tone.js synth/drum presets without hosted samples.
 - Add accessible piano-roll/clip editing, on-screen/QWERTY recording, and optional permission-gated hardware Web MIDI.
-- Extend immutable workspace, publish, preview, contribution, acceptance, credit, fork and export paths to MIDI.
+- In MIDI-05, add the composite runtime, normalized clip foundations, atomic MIDI project-plus-empty-workspace creation, and extend immutable workspace/publish/preview/export paths.
+- Extend contribution, acceptance, credit, and fork paths to MIDI.
 - Default new projects to MIDI after parity and disable new source reservation at database authority without implementing billing.
 - Preserve every existing audio project, reference, private access path, download/export and immutable snapshot.
 
-Exit: a new user completes MIDI creation through collaboration/fork/export without uploaded audio; old clients cannot bypass the audio lock; legacy audio regressions pass; PR 18 can include MIDI relational retention and dormant audio Storage.
+Exit: a new user completes MIDI creation through collaboration/fork/export without uploaded audio; old clients cannot bypass the audio lock; legacy audio regressions pass; the accepted Studio contracts and data foundations are ready for M5.7.
+
+### M5.7 — Studio-forward workspace
+
+- `STUDIO-01`: add `/studio` start center and canonical `/studio/{projectId}` route using the route-neutral authorized session resolver; retain the nested route as a compatibility redirect.
+- `STUDIO-02`: add the bounded project browser, safe serial switching, and Studio-owned project creation using the atomic command introduced with MIDI.
+- `STUDIO-03`: deliver the coherent DAW-oriented layout, accessible reorder/move/trim/undo/redo controls, and enable multi-clip split only after exact v2 projection round trips pass.
+- `STUDIO-04`: harden route compatibility, deep links, session disposal, signed-source refresh, performance, accessibility, browser behavior, and MIDI/legacy collaboration regressions.
+- Keep pitch shift, varispeed, pitch-preserving time stretch, OpenDAW, multiple simultaneous live projects, and professional-DAW parity outside the MVP critical path.
+
+Exit: Studio is a useful project-independent workspace; authorized users can create, open, close, and safely switch one live project without losing acknowledged work; supported arrangement state survives immutable collaboration flows; PR 18 can cover the final MIDI/audio reference graph before launch hardening.
 
 ### M6 — Launch hardening
 

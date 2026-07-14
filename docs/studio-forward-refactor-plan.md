@@ -1,8 +1,8 @@
 # Studio-forward workspace refactor plan
 
-Status: Exploratory proposal; no implementation authority  
+Status: Accepted roadmap program; implementation authority is limited to the staged slices below
 Prepared: 2026-07-14  
-Recommended timing: decide the contracts before MIDI-01; implement the main route and experience refactor after MIDI-07
+Sequence: contract decisions are fixed before MIDI-01; MIDI-01 and MIDI-05 deliver prerequisites; STUDIO-01–STUDIO-04 follow MIDI-07 and precede PR 18
 
 ## Executive recommendation
 
@@ -22,7 +22,19 @@ The recommended canonical routes are:
 
 The proposal is realistic with the current stack. Project loading, creation, switching, vertical track reordering, timeline movement, trimming, and splitting are achievable. Splitting is blocked by Jam Session's current one-region-per-track persistence contract rather than by Waveform Playlist. Independent playback-speed and pitch controls are a separate DSP problem and should not be promised as part of the structural refactor.
 
-I would not wait until every MIDI PR is finished to make all design decisions. The main implementation can wait, but the route-neutral session contract, studio-first project creation flow, manifest-v2 clip shape, and future engine-portability rules should be decided before MIDI-01/MIDI-02. Otherwise the MIDI work may encode the current project-first assumptions and the data model may need a second immediate migration.
+The route-neutral session contract, studio-first project creation flow, manifest-v2 clip shape, and future engine-portability rules are now accepted before MIDI-01. The main route and experience refactor still waits until MIDI-07, but MIDI-01 must freeze those contracts and MIDI-05 must implement the composite/runtime and persistence prerequisites so the later Studio program does not require a second immediate migration.
+
+## Roadmap integration
+
+This document no longer describes one large post-MIDI rewrite. Work is divided deliberately:
+
+- **Accepted now:** canonical routes, one-live-project model, start-center behavior, route-neutral session descriptor, manifest-v2 identity/clip shape, and engine-portability boundaries.
+- **MIDI-01:** executable contracts and fixtures for the session descriptor, composite capabilities, manifest identity, and stable audio/MIDI clips.
+- **MIDI-05:** composite MIDI/audio runtime, normalized clip foundations, and atomic project-plus-empty-workspace creation. The current nested route may remain canonical during MIDI delivery.
+- **STUDIO-01–STUDIO-04 after MIDI-07:** route migration, project browser/switching/creation UX, arrangement layout/interactions, and hardening.
+- **Outside the MVP critical path:** pitch/varispeed/time-stretch spikes and OpenDAW integration.
+
+This sequencing keeps MIDI-02–MIDI-04 focused on the standalone stem editor, prevents schema churn at MIDI-05, and avoids mixing a large application-shell migration into the audio-admission transition.
 
 ## Product and architecture alignment
 
@@ -318,19 +330,37 @@ OpenDAW currently advertises an SDK and is licensed under AGPL-3.0. Jam Session'
 
 ## Recommended delivery sequence
 
-### Decision checkpoint — before MIDI-01
+### Decision checkpoint — complete before MIDI-01
 
-Documentation/architecture only:
+The tracked PRD, roadmap, technical design, ADR-008, and this plan now accept:
 
-- Accept or reject the top-level `/studio` and `/studio/{projectId}` route model.
-- Amend the roadmap/architecture route map and add an ADR for the studio-first shell.
-- Decide whether manifest v2 includes stable audio clips as well as MIDI clips.
-- Define `StudioSessionDescriptor` independently of a route and editor engine.
-- Define atomic MIDI project-plus-empty-workspace creation.
-- Correct the manifest identity naming in v2 while retaining the v1 parser.
-- Record OpenDAW as a future adapter/import target only, with no entitlement schema.
+- top-level `/studio` and `/studio/{projectId}` routes;
+- a route-neutral `StudioSessionDescriptor`;
+- atomic MIDI project-plus-empty-workspace creation;
+- corrected manifest-v2 project identity naming;
+- stable audio and MIDI clip identities in manifest v2 while preserving the v1 parser; and
+- OpenDAW as a future adapter/import target only, with no entitlement schema.
 
-This checkpoint should occur after OPT-05 and before MIDI format/schema work is frozen.
+### MIDI-01 prerequisite — contracts and fixtures
+
+MIDI-01 freezes and proves, but does not migrate production routes:
+
+- the authorized session descriptor and capability matrix;
+- composite adapter/controller responsibilities and disposal contract;
+- manifest-v2 project identity, audio/MIDI track union, and stable clip shape;
+- deterministic v1 audio-track to v2 single-audio-clip mapping;
+- the one-source-asset-per-audio-track attribution boundary; and
+- server/client dependency-graph fixtures.
+
+### MIDI-05 prerequisite — runtime and persistence foundation
+
+MIDI-05 implements the pieces required by both MIDI publication and the later Studio shell:
+
+- the composite MIDI/audio adapter and route-neutral session resolver;
+- normalized workspace/revision clip projections, with contribution projections completed in MIDI-06;
+- exact save/publish v2 manifest/projection validation;
+- atomic project, owner membership, and empty MIDI workspace creation; and
+- MIDI import/preview/export while preserving the current nested Studio route until STUDIO-01.
 
 ### STUDIO-01 — Canonical shell and route migration
 
@@ -349,7 +379,7 @@ Do not change manifests or database behavior in this slice.
 
 ### STUDIO-02 — Project browser and safe switching
 
-Outcome: users can load and switch among authorized recent projects without losing an acknowledged draft.
+Outcome: users can create, load, close, and switch among authorized recent projects without losing an acknowledged draft.
 
 Scope:
 
@@ -358,27 +388,17 @@ Scope:
 - save-before-switch coordinator;
 - conflict/offline/recovery decision UI;
 - abort/dispose lifecycle and playback stop;
-- decoded-source reuse only after new-session authorization; and
-- E2E coverage for clean, dirty, saving, conflict, unauthorized, and source-loading switches.
-
-### STUDIO-03 — Studio-owned creation
-
-Outcome: a user creates a MIDI-first project from Studio and lands in its immediately editable empty workspace.
-
-Scope:
-
+- decoded-source reuse only after new-session authorization;
 - shared project form contract in a studio panel/dialog;
-- atomic database command for project, membership, and empty workspace;
+- reuse the MIDI-05 atomic project, membership, and empty-workspace command;
 - idempotency and RLS actor matrix;
 - direct transition to `/studio/{projectId}`;
 - make `/projects/new` reuse the same behavior; and
-- prove retry does not create duplicate projects/workspaces.
+- E2E coverage for creation retry plus clean, dirty, saving, conflict, unauthorized, and source-loading switches.
 
-This slice depends on the MIDI zero-revision workspace foundation.
+### STUDIO-03 — Arrangement layout and core interactions
 
-### STUDIO-04 — DAW layout and core interactions
-
-Outcome: the existing simple studio feels like one coherent arrangement workspace without expanding the persisted feature set.
+Outcome: MIDI and compatible legacy audio share one coherent arrangement workspace, and v2 audio clips can be split only after their full immutable round trip is proven.
 
 Scope:
 
@@ -386,40 +406,18 @@ Scope:
 - selected track/clip model;
 - vertical drag reorder with accessible up/down controls;
 - timeline drag with snap/no-snap decision and precise numeric fallback;
-- boundary trim for the existing audio region;
+- boundary trim for MIDI and compatible audio clips;
 - session undo/redo integrated with autosave generation;
 - reorganized publish/submit/export actions; and
-- responsive desktop sizes, keyboard operation, reduced motion, and screen-reader status.
-
-### STUDIO-05 — Persisted multi-clip audio editing
-
-Outcome: legacy audio tracks can be split and independently moved/trimmed without duplicating source bytes or breaking credits/history.
-
-Scope:
-
-- manifest-v2 audio clip schema and v1-to-v2 deterministic mapping;
-- normalized workspace/revision/contribution-version clip projections;
+- responsive desktop sizes, keyboard operation, reduced motion, and screen-reader status;
+- enable split only after manifest-v2 audio clips and normalized workspace/revision/contribution-version projections are already present;
 - RLS, constraints, checksums, command validation, acceptance, and fork copying;
 - Waveform split/move/trim UI and collision policy;
 - immutable source/credit/reference semantics;
 - manifest/adapter fixtures for every supported version; and
 - local database and browser collaboration round trips.
 
-If audio clips are incorporated into MIDI's manifest-v2 migration earlier, this slice becomes mostly UI/command enablement rather than another schema migration.
-
-### STUDIO-06 — DSP feasibility, not assumed delivery
-
-Outcome: an evidence document decides whether simple-studio pitch and/or speed controls are acceptable.
-
-Run separate spikes:
-
-1. bounded Tone.js per-track pitch shift with live/offline equivalence;
-2. coupled varispeed using the multitrack playout boundary; and
-3. pitch-preserving time stretch only if the first two do not meet the intended product need.
-
-Each spike should end in adopt/defer/reject. Only an adopted behavior receives a versioned manifest field, normalized projection if queryable, adapter fixtures, publish/submission/accept/fork coverage, and user-facing controls.
-
-### STUDIO-07 — Hardening and compatibility removal
+### STUDIO-04 — Hardening and compatibility handoff
 
 Outcome: the new studio flow replaces the old mental model without regressions.
 
@@ -432,7 +430,11 @@ Scope:
 - contribution/review/fork deep-link regression;
 - project creation and old-link analytics/evidence if observability exists;
 - update PRD, roadmap, architecture, brand implementation map, README, and E2E documentation; and
-- remove the compatibility redirect only after external/hosted links no longer depend on it. Keeping the redirect indefinitely is also acceptable if it remains cheap and tested.
+- retain the compatibility redirect unless evidence justifies removal; keeping it indefinitely is acceptable if it remains cheap and tested.
+
+### Post-MVP DSP research — not sequenced delivery
+
+Pitch shift, coupled varispeed, and pitch-preserving time stretch remain separate evidence spikes. Each must end in adopt/defer/reject. Only an adopted behavior receives a versioned manifest field, normalized projection if queryable, adapter fixtures, publish/submission/accept/fork coverage, and user-facing controls. None blocks STUDIO-04, PR 18, or the invited MVP.
 
 ## Testing and evidence plan
 
@@ -499,15 +501,15 @@ Measure separately:
 | Future OpenDAW preference rewrites project history                 | Treat preference as adapter selection; retain Jam Session manifest authority and immutable revisions |
 | OpenDAW licensing conflicts with a premium SaaS model              | Separate ADR plus qualified AGPL/commercial-license review before integration                        |
 
-## Product decisions required before implementation
+## Resolved product decisions
 
-1. Is `/studio/{projectId}` accepted as the canonical deep link, with `/studio` as the empty start center?
-2. Should Studio open the last project automatically, or always show the start center? Recommendation: start center initially; the URL already preserves intentional deep links.
-3. Is one live project at a time sufficient? Recommendation: yes for the first version.
-4. Should creating a project require all current metadata or use a minimal musical setup followed by an inspector? Recommendation: preserve required license/context, progressively disclose genre/tags/description.
-5. Should manifest v2 include multiple audio clips now? Recommendation: yes, define it before MIDI schema work even if the UI ships later.
-6. Does “speed” mean coupled varispeed, pitch-preserving time stretch, or global audition speed? This must be answered by product language and spike evidence.
-7. Is pitch a saved collaboration property or a session-only audition effect? Recommendation: saved only if live/offline deterministic quality passes.
+1. `/studio/{projectId}` is the canonical selected-project deep link and `/studio` is the empty start center.
+2. Studio initially opens the start center unless the user follows an intentional project deep link; no cross-device “last opened” state is added.
+3. One live project/editor graph at a time is sufficient for the MVP.
+4. Studio-owned creation preserves required license/context while progressively disclosing secondary genre/tag/description fields, and it uses one atomic project-plus-empty-workspace command.
+5. Manifest v2 defines stable clip identities for both audio and MIDI before the schema is frozen. Audio split UI ships only after normalized round-trip validation.
+6. Pitch, coupled varispeed, and pitch-preserving time stretch are not promised by the MVP and do not block the Studio program.
+7. Any future saved DSP property requires a separate adopt/defer/reject spike and a versioned persistence/export decision.
 
 ## Explicit non-goals for this refactor
 

@@ -4,9 +4,9 @@ This file is the operating contract for coding agents working in this repository
 
 ## Project mission
 
-Jam Session is an asynchronous music-collaboration platform inspired by Git and GitHub. Users create projects from audio stems, edit them in a browser workspace, submit contributions for review, and fork projects while preserving history and attribution.
+Jam Session is an asynchronous music-collaboration platform inspired by Git and GitHub. Users create versioned MIDI arrangements and compatible legacy-audio projects, edit them in browser workspaces, submit contributions for review, and fork projects while preserving history and attribution.
 
-The MVP is a Next.js application backed by Supabase Auth, Postgres, and Storage, with Waveform Playlist isolated behind a browser-only integration boundary. It will eventually deploy to Vercel.
+The MVP is a Next.js application backed by Supabase Auth, Postgres, and Storage, with its composite MIDI/audio runtime isolated behind a browser-only integration boundary. It will eventually deploy to Vercel.
 
 ## Read before changing code
 
@@ -22,12 +22,13 @@ Load only the documents relevant to the task, but always use them as the source 
 8. Brand, product voice, and visual design for user-facing work: [`docs/design/brand.md`](docs/design/brand.md)
 9. Contributor setup and repository map: [`README.md`](README.md)
 10. Contribution workflow: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+11. Studio-forward sequencing and accepted workspace contracts: [`docs/studio-forward-refactor-plan.md`](docs/studio-forward-refactor-plan.md)
 
 If code, task instructions, and these documents disagree, stop and surface the conflict. A user instruction in the active task takes precedence, but update the relevant documentation when it intentionally changes an established decision.
 
 ## Current project state
 
-PRs 01–17 and Phase C are implemented. The repository contains the responsive Next.js product shell; invite-only identity/onboarding; private immutable audio, revisions, credits, workspaces, exports, contribution review, and acceptance; copy-on-write forks with lineage; owner-controlled public discovery; independently paginated public profiles; bounded private dashboards/project/contribution indexes; throttled operational activity; and trusted private-original/public-derived profile avatars. Source audio remains private and participant-scoped even for public projects. User upload history intentionally excludes internal workspace snapshots. Moderation/retention operations and release hardening are not implemented. npm is the sole package manager and Node.js 24 LTS is required.
+PRs 01–17 and OPT-01–OPT-05 are implemented. In addition to the complete collaboration/discovery foundation, the studio now hydrates progressively, reuses actor-scoped decoded sources, converts eligible WAV uploads to canonical lossless FLAC in-browser, and displays persisted private waveform peaks. MIDI-01 is next, followed by MIDI-02–MIDI-07, the four-slice studio-forward program, and then PR 18. Source audio remains private and participant-scoped even for public projects; new source admission remains enabled until the MIDI parity gate. User upload history intentionally excludes internal workspace snapshots. Moderation/retention operations and release hardening are not implemented. npm is the sole package manager and Node.js 24 LTS is required.
 
 Before implementing a task:
 

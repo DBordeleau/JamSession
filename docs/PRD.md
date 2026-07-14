@@ -129,7 +129,9 @@ The browser workspace should support the Jam Session collaboration workflow, rat
 
 ### Integrated Browser Workspace
 
-Users can open a project in a browser-based music workspace where they can:
+Studio is a first-class authenticated workspace: users open Studio, then create, choose, or safely switch the project they want to work on. Projects remain the durable authorization, collaboration, and history boundary; Studio is not a new persisted domain entity. A selected project remains deep-linkable and only one live editor/audio graph is active at a time.
+
+Inside that browser-based music workspace, users can:
 
 - Play MIDI and compatible legacy audio tracks in sync
 - View and arrange MIDI clips and compatible audio regions on a timeline
@@ -144,7 +146,7 @@ Users can open a project in a browser-based music workspace where they can:
 
 Additional audio editing/recording, effects, automation, advanced MIDI expression, and notation capabilities may be exposed where they are stable and appropriate, but they are not all required for the initial release.
 
-For the MVP, this workspace uses a Jam Session-owned composite client-only adapter: the pinned MIT-licensed Tone.js runtime schedules MIDI synthesis, while Waveform Playlist retains compatibility with existing audio projects. Jam Session's versioned manifest remains the persisted authority; the application must not depend on editor objects or an opaque project format. A fuller OpenDAW integration is a post-MVP option and is not an MVP dependency.
+For the MVP, this workspace uses a Jam Session-owned composite client-only adapter: the pinned MIT-licensed Tone.js runtime schedules MIDI synthesis, while Waveform Playlist retains compatibility with existing audio projects. Manifest v2 gives MIDI and compatible audio regions stable clip identities; existing manifest-v1 history remains readable and immutable. Jam Session's versioned manifest remains the persisted authority; the application must not depend on editor objects or an opaque project format. A fuller OpenDAW integration is a post-MVP option and is not an MVP dependency.
 
 ---
 

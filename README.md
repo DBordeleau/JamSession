@@ -1,19 +1,20 @@
 # Jam Session
 
-Jam Session is an asynchronous music-collaboration platform inspired by Git and open-source development. Musicians create projects from stems, preserve immutable revision history, propose contributions with durable attribution, and create copy-on-write forks with navigable lineage.
+Jam Session is an asynchronous music-collaboration platform inspired by Git and open-source development. Musicians create projects from reusable MIDI stems and compatible legacy audio, preserve immutable revision history, propose contributions with durable attribution, and create copy-on-write forks with navigable lineage.
 
-> **Current status:** PRs 01–17 and the five-slice $0 audio-delivery optimization are complete. The studio now renders saved arrangements before private stems finish, supports progressive readiness and actor-scoped reuse, can convert new WAVs to canonical lossless FLAC in a browser worker, and persists private waveform peaks. The MIDI-first expansion is next; PR 18 resumes after MIDI.
+> **Current status:** PRs 01–17 and the five-slice $0 audio-delivery optimization are complete. The studio now renders saved arrangements before private stems finish, supports progressive readiness and actor-scoped reuse, can convert new WAVs to canonical lossless FLAC in a browser worker, and persists private waveform peaks. MIDI-01 is next. After MIDI-07, four studio-forward slices establish the canonical Studio shell and core arrangement experience before PR 18 resumes.
 
-## MVP scope
+## Target MVP scope
 
-- Create music projects and upload stems.
-- Arrange and mix compatible audio in a browser workspace.
+- Create reusable MIDI stems in an accessible standalone editor and import exact immutable versions into projects.
+- Arrange and mix MIDI plus compatible legacy audio in a browser workspace.
+- Preserve authorized existing audio while disabling new source admission only after the MIDI parity gate.
 - Submit a contribution for the project owner to review.
 - Accept or reject contributions without rewriting project history.
 - Fork a project while preserving its source and contributor credits.
 - Discover public projects by musical metadata.
 
-The [product requirements](docs/PRD.md) describe the intended experience, the tracked [MVP roadmap](docs/ROADMAP.md) shows what is complete and what comes next, the [technical-design index](docs/technical-design/README.md) explains how it is built, and the [brand and visual-design guide](docs/design/brand.md) defines the product voice and presentation for user-facing surfaces.
+The [product requirements](docs/PRD.md) describe the intended experience, the tracked [MVP roadmap](docs/ROADMAP.md) shows what is complete and what comes next, the [technical-design index](docs/technical-design/README.md) explains how it is built, the [studio-forward plan](docs/studio-forward-refactor-plan.md) fixes the future Studio contracts and slice boundaries, and the [brand and visual-design guide](docs/design/brand.md) defines the product voice and presentation for user-facing surfaces.
 
 ## Technology
 
@@ -213,7 +214,7 @@ These commands use loopback only and do not read or mutate hosted Supabase.
 ```text
 src/app/           Next.js routes, layouts, styles, and route-owned UI
 src/components/    Reusable layout and UI primitives used by current routes
-src/features/      Feature-owned auth, profile, project, asset, revision, workspace, export, and studio code
+src/features/      Feature-owned auth, profile, project, asset, revision, workspace, export, studio, and planned MIDI code
 src/lib/env/       Runtime configuration validation
 src/lib/supabase/  Generated database types and user-scoped client factories
 src/test/          Shared unit-test setup
@@ -299,6 +300,8 @@ Product sign-in is Google-only. Google Cloud, hosted Supabase, exact callback UR
 If OAuth reports a callback mismatch, compare the canonical `SITE_URL`, Supabase redirect allowlist, and Google/Supabase callback URI exactly. Do not alternate between `localhost` and `127.0.0.1`. If an invited account is rejected, confirm the normalized invitation is active in the same hosted/local database the app uses and that the Before User Created hook was enabled after migration. If OAuth succeeds but onboarding reports `viewer_profile_PT500`, verify the `on_auth_user_created` trigger and backfill a profile for any Auth user created before that trigger. Clear stale cookies after changing origins or resetting Auth.
 
 The production studio is available at `/projects/{projectId}/studio` for an authenticated member of a project with a published current revision. It lazy-loads Waveform Playlist only after **Open studio**, renders saved lanes and safe controls immediately, then signs and decodes exact private source assets progressively. Track gutters report queued/loading/decoding/ready/failed state; synchronized play remains disabled until every audible track is ready, and one failed track can retry without discarding ready buffers. A bounded actor-scoped in-memory registry reuses immutable decoded sources within the current browser session and clears on actor change/sign-out; it never persists audio or uses a signed URL as a cache identity. Members retain session-only mixer changes. Owners can create or reopen a private workspace, autosave the promoted editing subset while audio loads, publish a later immutable revision, download original stems directly from Storage, and render a bounded 16-bit WAV mix after all tracks are ready. The former `/__spikes__/studio` route and `ENABLE_STUDIO_SPIKE` flag no longer exist.
+
+The accepted future route model is `/studio` for the authenticated start center and `/studio/{projectId}` for one selected authorized session. Those routes do not exist yet: MIDI-01/MIDI-05 first establish the reusable contracts, and STUDIO-01 performs the route migration while retaining the current nested URL as a compatibility redirect. See the [roadmap](docs/ROADMAP.md) and [studio-forward plan](docs/studio-forward-refactor-plan.md).
 
 While the repository is pinned to Next.js 16.2.10, the studio route intentionally has no route-level `loading.tsx`. That boundary triggered upstream Firefox development issue `vercel/next.js#94128`, where a streaming navigation was mistaken for a cache restore and the document hard-refreshed repeatedly. Do not restore a `loading.tsx` at `projects/[projectId]` or its studio segment until a deliberate Next.js upgrade includes the fix and a focused Firefox studio-navigation check passes.
 

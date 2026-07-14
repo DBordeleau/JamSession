@@ -3,7 +3,7 @@
 Status: Active  
 Last updated: 2026-07-14
 
-Repository checkpoint: PRs 01–17 and OPT-01–OPT-05 complete; the MIDI-first interruption precedes PR 18
+Repository checkpoint: PRs 01–17 and OPT-01–OPT-05 complete; MIDI-01 is next, followed by MIDI-02–MIDI-07 and STUDIO-01–STUDIO-04 before PR 18
 
 ## Purpose
 
@@ -33,11 +33,12 @@ The current MVP supports:
 - responsive shared navigation following the landing-page brand system; and
 - branded latest-revision previews on Explore and project pages, one-action studio entry, and owner soft deletion with a 30-day recovery window.
 
-The remaining roadmap interruption before PR 18 is:
+The remaining roadmap programs before PR 18 are:
 
-1. **`MIDI-01`–`MIDI-07` — MIDI-first MVP expansion:** add a versioned MIDI workspace, deterministic bundled synth presets, piano-roll editing and recording, immutable MIDI collaboration/history, then disable admission of new source audio without breaking existing audio history.
+1. **`MIDI-01`–`MIDI-07` — MIDI-first MVP expansion:** add a standalone versioned MIDI-stem editor/library, deterministic bundled synth presets, project import and arrangement, immutable MIDI collaboration/history, then disable admission of new source audio without breaking existing audio history.
+2. **`STUDIO-01`–`STUDIO-04` — Studio-forward workspace:** make Studio the project-independent authenticated shell, add safe project switching/creation, deliver the core arrangement layout/interactions, and harden both MIDI and legacy-audio sessions.
 
-After MIDI completes, **PR 18 — Moderation, retention, quotas, and storage operations** resumes with legacy audio, derived peaks, and MIDI relational history included in its reference and capacity model. Any separately approved audio preview must be included only if it lands before PR 18 re-anchors. PRs 19–20 remain final hardening and release gates, not buckets for known feature debt.
+After both programs complete, **PR 18 — Moderation, retention, quotas, and storage operations** resumes with legacy audio, derived peaks, and MIDI relational history included in its reference and capacity model. Any separately approved audio preview must be included only if it lands before PR 18 re-anchors. PRs 19–20 remain final hardening and release gates, not buckets for known feature debt.
 
 ### Progress at a glance
 
@@ -48,7 +49,8 @@ After MIDI completes, **PR 18 — Moderation, retention, quotas, and storage ope
 | C     | Browser workspace              | 09–11.5         | Complete        | Users can play, edit, autosave, reopen, export, publish, and recover source verification  |
 | D     | Collaboration graph            | 12–15           | Complete        | Contributions, review/acceptance, attribution, and copy-on-write forks work end to end    |
 | O     | $0 audio optimization          | OPT-01–OPT-05   | Complete        | Studio is usable before stems finish and legacy audio has measured efficient delivery     |
-| M     | MIDI-first MVP expansion       | MIDI-01–MIDI-07 | Pending after O | MIDI is the active creation path; new audio admission is disabled without history loss    |
+| M     | MIDI-first MVP expansion       | MIDI-01–MIDI-07 | Pending (next)  | MIDI is the active creation path; new audio admission is disabled without history loss    |
+| S     | Studio-forward workspace       | STUDIO-01–04    | Pending after M | Studio becomes the safe project-independent creation and arrangement shell                |
 | E     | Discovery and community safety | 16–18           | Paused (2/3)    | Public discovery/profiles are complete; PR 18 resumes after the interruption slices       |
 | F     | MVP hardening and release      | 19–20           | Pending         | Measured hardening and a rehearsed invited-user deployment                                |
 
@@ -184,7 +186,7 @@ Status: Complete
 
 ## Phase E — Discovery and community safety
 
-Status: Paused — PRs 16–17 complete; optimization and MIDI expansion precede PR 18
+Status: Paused — PRs 16–17 complete; optimization is complete and MIDI/studio-forward programs precede PR 18
 
 ### PR 16 — Public project pages, browse, and efficient search
 
@@ -224,19 +226,47 @@ Status: Paused — PRs 16–17 complete; optimization and MIDI expansion precede
 
 ## Roadmap interruption M — MIDI-first MVP expansion
 
-**Status:** Pending after interruption O
+**Status:** Pending — MIDI-01 is the next implementation slice
 
 **Outcome:** MIDI becomes the prototype's active creation and collaboration path, with multiple deterministic synth tracks, accessible piano-roll editing, recording, immutable publication/contributions/forks, previews, and `.mid` export. New source-audio admission is disabled only after that complete path works.
 
-**Slices:** `MIDI-01` format/engine gate; `MIDI-02` MIDI project/playback foundation; `MIDI-03` piano roll/clips; `MIDI-04` audition/recording; `MIDI-05` publish/preview/export; `MIDI-06` contributions/credits/forks; `MIDI-07` audio-admission lock and compatibility hardening.
+**Slices:** `MIDI-01` format/session/engine feasibility gate; `MIDI-02` standalone stem foundation; `MIDI-03` Signal-derived piano roll/editing; `MIDI-04` recording, immutable stem versions, and MIDI interchange; `MIDI-05` Studio import, project publish, preview, and export; `MIDI-06` contributions/credits/forks; `MIDI-07` audio-admission lock and compatibility hardening.
 
 **Compatibility contract:** This is not a billing implementation. New projects become MIDI-first and the source reservation authority rejects new audio after transition. Existing audio projects, workspaces, revisions, contributions, forks, credits, playback, downloads, and exports remain private, supported, and immutable; no history is converted or deleted.
 
 **Acceptance gate:** A new user can create, record/edit, save/reload, publish, preview, contribute to, accept, fork, and export a MIDI project without uploaded audio; old clients cannot bypass the audio-admission lock; existing audio regression journeys still pass.
 
+## Roadmap program S — Studio-forward workspace
+
+**Status:** Pending after MIDI-07; contracts accepted before MIDI-01
+
+**Outcome:** Jam Session Studio becomes a first-class authenticated workspace where users create, open, close, and safely switch one authorized project at a time. Projects/workspaces remain the database authority and the editor/audio runtime stays lazy, client-only, and disposable.
+
+**Pre-MIDI decisions now fixed:** `/studio` is the start center; `/studio/{projectId}` is the canonical selected-project route; the current nested route redirects compatibly; the initial shell opens the start center rather than an implicit last project; one live project is sufficient; manifest v2 uses stable audio and MIDI clip identities; and DSP speed/pitch work is not on the MVP critical path. MIDI-01 freezes route-neutral session/adapter contracts, while MIDI-05 supplies the composite runtime, normalized clip foundations, and atomic project-plus-empty-workspace command.
+
+### STUDIO-01 — Canonical shell and route migration
+
+**Outcome:** The authenticated `/studio` start center loads without editor/audio code, and every existing Studio link reaches a canonical, independently authorized `/studio/{projectId}` session.
+
+### STUDIO-02 — Project browser, safe switching, and Studio-owned creation
+
+**Outcome:** Users can create, open, close, and serially switch authorized projects from Studio without losing an acknowledged draft or leaking runtime state between sessions.
+
+### STUDIO-03 — Arrangement layout and core interactions
+
+**Outcome:** MIDI and compatible legacy audio share one coherent, accessible arrangement workspace with selected-track/clip state, reorder, move, trim, and session undo/redo. Audio split is enabled only after manifest-v2 clip projections survive save/publish/submit/accept/fork exactly.
+
+### STUDIO-04 — Hardening and compatibility handoff
+
+**Outcome:** Route compatibility, contribution/review/fork deep links, session disposal, signed-source refresh, performance, accessibility, supported-browser behavior, and MIDI/legacy regression journeys are ready for PR 18 and final launch hardening.
+
+**Deferred outside this program:** pitch shift, coupled varispeed, pitch-preserving time stretch, multiple simultaneous live projects, OpenDAW integration, plugins/effects/automation, and professional-DAW parity. These require separate evidence and product/format decisions and do not block the invited MVP.
+
+**Acceptance gate:** `/studio` is useful without a selected project; selected routes reauthorize; acknowledged edits are preserved or explicitly recovered during switching; only one editor graph remains live; supported clip state is deterministic across immutable collaboration flows; v1 audio and complete MIDI journeys remain compatible.
+
 ### PR 18 — Moderation, retention, quotas, and storage operations
 
-**Status:** Pending after interruptions O and M
+**Status:** Pending after programs M and S
 
 **Outcome:** The invited demo can be operated safely within Supabase Free limits using manual reports and deterministic cleanup that cannot break surviving history.
 
@@ -298,7 +328,8 @@ Status: Pending
 ## Dependency and sequencing rules
 
 - PRs within a phase or named interruption are ordered unless a tracked decision explicitly says otherwise.
-- `OPT-01`–`OPT-05` complete before `MIDI-01`; `MIDI-01`–`MIDI-07` complete before PR 18.
+- `OPT-01`–`OPT-05` complete before `MIDI-01`; `MIDI-01`–`MIDI-07` complete before `STUDIO-01`; `STUDIO-01`–`STUDIO-04` complete before PR 18.
+- MIDI-01 owns the route-neutral session/adapter and manifest-v2 clip contracts; MIDI-05 owns the composite runtime, normalized clip foundations, and atomic empty-workspace creation required by the later Studio slices.
 - The audio-admission lock is enabled only after the complete MIDI parity gate; it is enforced by source reservation authority, not hidden controls.
 - PR 18 follows all audio, derived-asset, and MIDI reference types so retention can prove that surviving history is safe.
 - PR 19 begins only after functional PR 18 correctness is complete; it is not a place to defer known authorization or retention debt.

@@ -1,6 +1,6 @@
 # System Architecture
 
-Status: Accepted MVP design; implemented through PR 17 with optimization and MIDI-first expansion planned before PR 18
+Status: Accepted MVP design; implemented through PR 17 and OPT-05 with MIDI-first and studio-forward programs planned before PR 18
 
 Audience: engineers and coding agents
 
@@ -40,7 +40,7 @@ flowchart LR
 ### Product shell and navigation
 
 - The root layout owns one skip link, persistent header, and footer so public, Auth, profile, project, upload, revision, and studio routes share navigable product chrome.
-- The header exposes implemented top-level destinations: dashboard, Explore, projects, contributions, uploads, new project, and account. Desktop uses active pill navigation; narrow layouts use a semantic disclosure rather than horizontal overflow. Project-specific edit, publish, and studio links remain contextual.
+- The header exposes implemented top-level destinations: dashboard, Explore, projects, contributions, uploads, new project, and account. Desktop uses active pill navigation; narrow layouts use a semantic disclosure rather than horizontal overflow. STUDIO-01 adds Studio as a first-class destination while project-specific history/settings links remain contextual.
 - Public HTML renders a complete signed-out shell without a server-side Auth dependency. A small Client Component listens for Supabase Auth changes and route transitions, calls `getClaims()` to verify identity, and progressively replaces sign-in links with account or create-project destinations.
 - This Auth-aware display is convenience only. Server Components, server actions, Route Handlers, database commands, and RLS independently authorize every protected destination.
 - Navigation and landing-page actions must remain keyboard accessible at the 320 px minimum layout. User-facing surfaces follow the warm studio-night system in [`docs/design/brand.md`](../design/brand.md): primary coral-to-gold actions use the dark accent foreground with WCAG 2.2 AA contrast, and shared buttons use the landing page's pill shape. Do not place white or light text on coral or gold fills.
@@ -63,6 +63,8 @@ flowchart LR
 | `/projects`                               | Implemented | Authenticated Server Component    | RLS-scoped member project index and next-action links      |
 | `/projects/{projectId}`                   | Implemented | Public/member + client preview    | Safe anonymous metadata branch or full member presentation |
 | `/projects/{projectId}/studio`            | Implemented | Server shell + lazy client studio | One Open studio action prepares an owner draft and editor  |
+| `/studio`                                 | Planned     | Authenticated persistent shell    | Start center; must not load editor/audio runtime           |
+| `/studio/{projectId}`                     | Planned     | Server resolver + lazy client     | Canonical selected-project session after STUDIO-01         |
 | `/contributions`                          | Implemented | Authenticated Server Component    | Author-owned contribution status and version index         |
 | `/projects/{projectId}/contributions`     | Implemented | Authenticated server page         | Owner review queue or contributor-owned submissions        |
 | `/projects/{projectId}/contributions/new` | Implemented | Authenticated server page         | Eligible non-owner contribution creation                   |
@@ -200,7 +202,11 @@ Authorized studio source batches include trusted source metadata and an optional
 
 After the $0 audio optimization pass, evolve—but do not bypass—the `StudioAdapter` boundary into a composite implementation. Waveform Playlist remains responsible for existing audio tracks. A MIDI controller inside the same client-only feature boundary uses the pinned Tone.js runtime for transport-clock scheduling and versioned synthesis presets. Piano-roll UI and recording emit Jam Session MIDI commands; Tone.js objects, Web MIDI ports/messages, audio nodes, and device identifiers never cross into server code or persisted state.
 
-Manifest v1 remains the immutable compatibility contract for existing audio history. Add manifest v2 as a discriminated union of audio and MIDI tracks. MIDI tracks contain bounded tick-based clips/notes and an immutable preset ID/version; they never fabricate source-asset IDs. Existing workspaces upgrade only when an owner intentionally saves MIDI content, copying audio track references exactly. Published v1 revisions are not rewritten.
+MIDI-01 freezes route-neutral adapter capabilities and a `StudioSessionDescriptor` that carries authorized data, capabilities, and canonical links without deriving permissions from route shape or owner IDs. MIDI-05 implements that descriptor for the composite runtime. Studio route migration later reuses the same resolver; it does not change project/workspace authorization.
+
+Manifest v1 remains the immutable compatibility contract for existing audio history. Add manifest v2 as a discriminated union of audio and MIDI tracks with stable clips for both kinds. A v1 audio track maps deterministically to one v2 audio track with one clip referencing the same source asset; the initial audio model keeps one source asset per track so credits and retention remain coherent. MIDI tracks contain bounded tick-based immutable stem-version references and an immutable preset ID/version; they never fabricate source-asset IDs. Existing workspaces upgrade only when an owner intentionally saves v2 content, copying audio references exactly. Published v1 revisions are not rewritten. Splitting remains unavailable until normalized clip projections round-trip through save, publish, submit, accept, and fork.
+
+After MIDI-07, `/studio` becomes the authenticated start center and `/studio/{projectId}` the canonical selected-session route. The current nested route redirects compatibly. The persistent shell owns lightweight navigation/project-list state only; every selected route reauthorizes and remounts one session subtree so audio graphs, abort controllers, autosave generations, and recovery keys cannot cross projects. No `studios` table is introduced.
 
 The MIDI editor must work with pointer, keyboard and an on-screen piano. Hardware Web MIDI is optional progressive enhancement requested only from an explicit gesture in a secure context, without System Exclusive access. Initial sounds are code-owned synthesis presets without remote samples. A preset change creates a new version so historical playback does not drift.
 

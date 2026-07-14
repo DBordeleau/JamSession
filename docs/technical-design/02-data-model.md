@@ -1,6 +1,6 @@
 # Data Model and Supabase Design
 
-Status: Accepted MVP design; implemented through PR 17 with additive MIDI model planned before PR 18
+Status: Accepted MVP design; implemented through PR 17 and OPT-05 with additive MIDI/studio-forward model planned before PR 18
 
 Database: Supabase Postgres
 
@@ -215,14 +215,16 @@ Add one trusted global prototype capability for new source admission. `reserve_s
 
 Manifest v2 is a discriminated union:
 
-- `kind = 'audio'` preserves the exact v1 asset, timing, mixer, taxonomy and ordering contract;
-- `kind = 'midi'` has no asset ID and instead references an immutable allowed synth `preset_id`/`preset_version` plus bounded tick-based clips and notes.
+- `kind = 'audio'` preserves the exact v1 asset, mixer, taxonomy and ordering contract and owns stable bounded source-range clips;
+- `kind = 'midi'` has no asset ID and instead owns an immutable allowed synth `preset_id`/`preset_version` plus bounded tick-based clips that reference exact immutable MIDI stem versions.
 
-Generalize `revision_tracks`, `workspace_tracks`, and `contribution_version_tracks` with a required kind discriminator and kind-aware nullability/check constraints. Existing rows backfill to audio. Audio rows require one valid source asset and prohibit MIDI preset/clip state. MIDI rows prohibit `asset_id`, require one supported preset version, and own bounded clip projections.
+Add owner-scoped `midi_stems`, mutable `midi_stem_drafts`, and append-only `midi_stem_versions` (final names may vary only through the implementation plan's migration review). A draft stores bounded canonical notes under optimistic concurrency and may derive from one exact version. Publishing a stem appends a version with its exact canonical note payload, duration, checksum, creator/credit snapshot, version number, and optional parent-version lineage. A project never references a mutable draft or “latest version” pointer. MIDI stem rows are relational domain data, not assets or Storage objects.
 
-Normalize workspace/revision/contribution-version/track/clip parent relationships. A recommended compact representation stores one row per clip with canonical validated note-event JSONB, note count, duration, and checksum. Notes are bounded value events, not hidden authorization or cross-domain relationships. If implementation instead chooses row-per-note storage, record measured database/query evidence before migration.
+Generalize `revision_tracks`, `workspace_tracks`, and `contribution_version_tracks` with a required kind discriminator and kind-aware nullability/check constraints. Existing rows backfill to audio. Audio rows require one valid source asset and prohibit MIDI preset state; MIDI rows prohibit `asset_id` and require one supported preset version. Both kinds own normalized bounded clip projections with stable clip IDs. A v1 audio track maps to exactly one v2 audio clip with position, source trim, and duration preserved. The initial audio shape keeps every clip on a track tied to that track's single immutable source asset, so splitting does not duplicate bytes or blur credit/retention authority.
 
-Workspace clip rows change only through optimistic complete-manifest save commands. Revision and submitted-version clip rows are immutable. Save, publish, submit, accept and fork must prove manifest/projection equivalence. Forks copy MIDI relational state and create no Storage object or source-byte quota usage.
+Normalize workspace/revision/contribution-version/track/clip parent relationships. Audio clip rows store stable clip ID, position, source trim, and duration under a track whose single source asset remains the credit/retention boundary. MIDI project clip rows reference one exact immutable stem-version ID and store only project placement/source-offset/duration/loop fields; they do not duplicate notes. Stem drafts/versions store canonical bounded note-event data with note count, duration, and checksum. Notes are value events, not hidden authorization or cross-domain relationships. If implementation chooses row-per-note rather than bounded canonical JSONB for stem content, record measured database/query evidence before migration.
+
+Workspace clip rows change only through optimistic complete-manifest save commands. Revision and submitted-version clip rows plus published stem versions are immutable. Save, publish, submit, accept and fork must prove manifest/projection equivalence and exact stem-version references. Forks copy MIDI relational references and create no Storage object or source-byte quota usage.
 
 ### Timing, presets, and credits
 
@@ -232,7 +234,7 @@ MIDI track credits snapshot the confirmed track creator/composer directly and do
 
 ### Retention and capacity
 
-MIDI clips/notes are relational history retained with their workspace, revision or contribution version. They are not user uploads and do not enter `source_bytes`. PR 18 must report MIDI database growth separately from actual Storage bytes and must continue reference-safe retention for dormant legacy audio, waveform peaks/previews, snapshots, avatars and jobs. Disabling source admission is never a deletion signal.
+MIDI stem drafts, immutable stem versions, derivation lineage, and project clip references are relational history. They are not user uploads and do not enter `source_bytes`. An abandoned mutable draft may become cleanup-eligible under PR 18 policy, but an immutable version cannot be removed while referenced by a workspace, revision, contribution version, fork, or required attribution/history. PR 18 must report MIDI database growth separately from actual Storage bytes and must continue reference-safe retention for dormant legacy audio, waveform peaks/previews, snapshots, avatars and jobs. Disabling source admission is never a deletion signal.
 
 ## Assets and storage
 

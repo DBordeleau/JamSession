@@ -1,10 +1,10 @@
 # Jam Session Technical Design
 
-Status: Accepted MVP design; implemented through PR 17 and OPT-05 with MIDI-first expansion planned before PR 18
+Status: Accepted MVP design; implemented through PR 17 and OPT-05 with MIDI-first and studio-forward programs planned before PR 18
 
 Last updated: 2026-07-14
 
-Companions: [`PRD.md`](../PRD.md) for product intent, [`ROADMAP.md`](../ROADMAP.md) for delivery status/sequence, and [`design/brand.md`](../design/brand.md) for user-facing voice and visual design
+Companions: [`PRD.md`](../PRD.md) for product intent, [`ROADMAP.md`](../ROADMAP.md) for delivery status/sequence, [`studio-forward-refactor-plan.md`](../studio-forward-refactor-plan.md) for accepted Studio contracts/slices, and [`design/brand.md`](../design/brand.md) for user-facing voice and visual design
 
 ## Purpose
 
@@ -12,12 +12,13 @@ This document set turns the product requirements into an implementation contract
 
 For any user-facing surface, treat the brand guide as the presentation contract alongside this technical design. Technical authorization, data, runtime, and persistence rules remain authoritative here; product voice, semantic visual tokens, shared button treatment, typography, motion, and established presentation patterns are authoritative in the brand guide.
 
-| Document                                               | Use it for                                                                             |
-| ------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| [01-system-architecture.md](01-system-architecture.md) | Runtime boundaries, request flows, browser studio integration, security and deployment |
-| [02-data-model.md](02-data-model.md)                   | PostgreSQL/Supabase schema, invariants, storage layout and RLS                         |
-| [03-delivery-plan.md](03-delivery-plan.md)             | Milestones, vertical slices, testing, observability and agent execution rules          |
-| [decisions/README.md](decisions/README.md)             | Architectural decisions that must remain stable across implementation tasks            |
+| Document                                                              | Use it for                                                                                          |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| [01-system-architecture.md](01-system-architecture.md)                | Runtime boundaries, request flows, browser studio integration, security and deployment              |
+| [02-data-model.md](02-data-model.md)                                  | PostgreSQL/Supabase schema, invariants, storage layout and RLS                                      |
+| [03-delivery-plan.md](03-delivery-plan.md)                            | Milestones, vertical slices, testing, observability and agent execution rules                       |
+| [decisions/README.md](decisions/README.md)                            | Architectural decisions that must remain stable across implementation tasks                         |
+| [studio-forward-refactor-plan.md](../studio-forward-refactor-plan.md) | Canonical Studio routes, session contract, manifest-v2 clip implications, and staged refactor scope |
 
 ## Current implementation pulse
 
@@ -40,7 +41,7 @@ The following vertical slices are implemented and are the baseline for future wo
 - independently paginated public profile history, a bounded authenticated dashboard and private indexes, throttled recent activity, responsive disclosure navigation, and trusted private-original/public-derived profile avatars.
 - manifest-first progressive audio delivery, bounded actor-scoped reuse, lossless browser WAV-to-FLAC optimization, and compact private persisted waveform peaks that render before canonical source decode without changing manifest or source authority.
 
-Profiles and private-work navigation are implemented through PR 17, and the five-slice $0 audio-delivery optimization is complete. The controlled studio shell is ready in milliseconds; browser-generated FLAC reduces the synthetic three-stem fixture by 40.24%, while its 17.709-second cold playback remains bounded by 42.7 MB at 20 Mbit/s. The roadmap now proceeds to MIDI-first expansion before moderation/retention and final release hardening. MIDI becomes the active prototype creation path; new source-audio admission is disabled only after MIDI reaches end-to-end parity, while existing audio history remains supported. A stored legacy-audio mix preview remains a separate future delivery decision, not part of MIDI-native preview playback. Historical evidence remains indexed under [`evidence/`](evidence/).
+Profiles and private-work navigation are implemented through PR 17, and the five-slice $0 audio-delivery optimization is complete. The controlled studio shell is ready in milliseconds; browser-generated FLAC reduces the synthetic three-stem fixture by 40.24%, while its 17.709-second cold playback remains bounded by 42.7 MB at 20 Mbit/s. The roadmap now proceeds to MIDI-first expansion, then four studio-forward slices, before moderation/retention and final release hardening. MIDI becomes the active prototype creation path; new source-audio admission is disabled only after MIDI reaches end-to-end parity, while existing audio history remains supported. Studio-forward work then makes `/studio` the canonical project-independent shell without adding a database `studio` entity. A stored legacy-audio mix preview remains a separate future delivery decision, not part of MIDI-native preview playback. Historical evidence remains indexed under [`evidence/`](evidence/).
 
 ## Executive recommendation
 
@@ -62,9 +63,11 @@ The PRD is directionally strong. The following interpretations are normative for
 8. “Trending” begins as a deterministic recent-activity score. It is not an ML or recommendation system.
 9. The MVP has one project owner. A membership table is retained for future collaborators, but owner-only review and project mutation is the initial policy.
 10. Licensing/usage terms must be selected before public uploads. At minimum a project declares a collaboration license or explicit “all rights reserved”; the UI must not imply that public visibility grants remix rights.
-11. New projects become MIDI-first after the planned expansion. MIDI notes/clips are versioned manifest content and bounded relational projections, not Storage assets.
+11. New projects become MIDI-first after the planned expansion. Canonical notes live in bounded mutable drafts and immutable MIDI stem versions; project clips reference exact versions. All are relational/manifest domain data, not Storage assets.
 12. New source-audio admission is globally disabled only after the MIDI creator/collaboration parity gate. This is not a payment or entitlement model.
 13. Existing audio projects and immutable history remain private, playable, downloadable, exportable, publishable, contributable, and forkable; no audio history is converted or deleted by the capability change.
+14. Studio is a route/session shell over existing project and workspace authority. `/studio` is the start center, `/studio/{projectId}` is the canonical deep link, and only one selected editor runtime is live at a time.
+15. Manifest v2 uses stable clip identities for MIDI and audio. A legacy v1 audio track maps to one v2 clip without rewriting published v1 history.
 
 ## Resolved MVP operating decisions
 
