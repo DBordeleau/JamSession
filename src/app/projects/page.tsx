@@ -34,7 +34,7 @@ export default async function ProjectsPage({
       <Container className="py-12 sm:py-16">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-accent font-mono text-xs font-semibold tracking-[0.18em] uppercase">
+            <p className="text-accent-2 font-mono text-xs font-semibold tracking-[0.18em] uppercase">
               Your music workspace
             </p>
             <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
@@ -108,21 +108,21 @@ export default async function ProjectsPage({
                     </p>
                     <div className="flex flex-wrap gap-2">
                       <Link
-                        className="rounded-control border-strong hover:border-accent hover:text-accent inline-flex min-h-11 items-center border px-4 py-2 text-sm font-semibold transition-colors"
+                        className="border-strong hover:border-accent hover:text-accent inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-semibold transition-colors"
                         href={`/projects/${project.id}`}
                       >
                         Open project
                       </Link>
                       {project.currentRevisionId ? (
                         <Link
-                          className="rounded-control bg-accent hover:bg-accent-strong inline-flex min-h-11 items-center px-4 py-2 text-sm font-semibold text-slate-950 transition-colors"
+                          className="cta-gradient inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold transition-transform duration-200 hover:-translate-y-px"
                           href={`/projects/${project.id}/studio`}
                         >
                           Open studio
                         </Link>
                       ) : project.role === "owner" ? (
                         <Link
-                          className="rounded-control bg-accent hover:bg-accent-strong inline-flex min-h-11 items-center px-4 py-2 text-sm font-semibold text-slate-950 transition-colors"
+                          className="cta-gradient inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold transition-transform duration-200 hover:-translate-y-px"
                           href={`/projects/${project.id}/publish`}
                         >
                           Publish stems

@@ -34,10 +34,10 @@ export default async function DashboardPage() {
       <Container className="py-12 sm:py-16">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <p className="text-accent font-mono text-xs font-semibold tracking-[0.18em] uppercase">
+            <p className="text-accent-2 font-mono text-xs font-semibold tracking-[0.18em] uppercase">
               Your session
             </p>
-            <h1 className="mt-3 text-4xl font-semibold sm:text-5xl">
+            <h1 className="mt-3 text-4xl font-bold tracking-[-0.02em] sm:text-5xl">
               Dashboard
             </h1>
             <p className="text-muted mt-3 text-lg">
@@ -47,7 +47,11 @@ export default async function DashboardPage() {
           <ButtonLink href="/projects/new">New project</ButtonLink>
         </div>
         <section
-          className="rounded-card border-accent bg-surface mt-10 border p-6"
+          className="rounded-card border-strong mt-10 border p-6"
+          style={{
+            background:
+              "radial-gradient(130% 140% at 0% 0%,rgba(255,141,99,0.14),transparent 55%),var(--color-surface-raised)",
+          }}
           aria-labelledby="review-heading"
         >
           <p className="text-accent font-mono text-xs uppercase">
@@ -73,7 +77,7 @@ export default async function DashboardPage() {
               </Link>
             </div>
             {dashboard.ownedProjects.length ? (
-              <ul className="mt-4 divide-y divide-[var(--color-border-subtle)]">
+              <ul className="divide-subtle mt-4 divide-y">
                 {dashboard.ownedProjects.map((item) => (
                   <li className="py-4" key={item.projectId}>
                     <Link
@@ -105,7 +109,7 @@ export default async function DashboardPage() {
               </Link>
             </div>
             {dashboard.activeWorkspaces.length ? (
-              <ul className="mt-4 divide-y divide-[var(--color-border-subtle)]">
+              <ul className="divide-subtle mt-4 divide-y">
                 {dashboard.activeWorkspaces.map((item) => (
                   <li className="py-4" key={item.workspaceId}>
                     <Link

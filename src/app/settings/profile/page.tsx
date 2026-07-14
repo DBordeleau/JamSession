@@ -26,10 +26,14 @@ export default async function ProfileSettingsPage({
     <main id="main-content">
       <Container className="py-16">
         <section className="mx-auto max-w-2xl">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-accent font-semibold">Account settings</p>
-              <h1 className="mt-2 text-4xl font-bold">Edit profile</h1>
+              <p className="text-accent-2 font-mono text-[11px] font-semibold tracking-[0.2em] uppercase">
+                Account settings
+              </p>
+              <h1 className="mt-3 text-4xl font-bold tracking-[-0.02em]">
+                Edit profile
+              </h1>
               {authData.user?.email && (
                 <p className="text-muted mt-2">
                   Signed in as {authData.user.email}
@@ -38,26 +42,24 @@ export default async function ProfileSettingsPage({
             </div>
             <form action={signOut}>
               <button
-                className="rounded-control border-strong min-h-11 border px-4"
+                className="border-strong text-ink hover:border-accent hover:text-accent inline-flex min-h-11 items-center rounded-full border px-5 text-sm font-semibold transition-colors"
                 type="submit"
               >
                 Sign out
               </button>
             </form>
-            <Link
-              className="rounded-control bg-accent px-4 py-2 font-semibold text-slate-950"
-              href="/projects/new"
-            >
-              New project
-            </Link>
           </div>
           {saved && (
             <p
               role="status"
-              className="rounded-control border-accent mt-6 border p-3"
+              className="rounded-control border-accent/50 mt-6 border p-3 text-sm"
+              style={{ background: "rgba(255,141,99,0.08)" }}
             >
               Profile saved.{" "}
-              <Link className="underline" href={`/@${profile.username}`}>
+              <Link
+                className="text-accent font-semibold underline"
+                href={`/@${profile.username}`}
+              >
                 View public profile
               </Link>
             </p>

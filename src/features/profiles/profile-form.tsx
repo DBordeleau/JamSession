@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { saveProfileAction, type ProfileFormState } from "./actions";
 
 const fieldClass =
-  "rounded-control border-strong bg-surface mt-2 min-h-11 w-full border px-3 py-2 text-ink";
+  "rounded-control border-strong bg-surface focus:border-accent mt-2 min-h-11 w-full border px-3 py-2 text-ink transition-colors";
 
 export function ProfileForm({
   profile,
@@ -93,7 +93,7 @@ export function ProfileForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-control bg-accent min-h-11 px-5 font-semibold text-slate-950 disabled:opacity-60"
+        className="cta-gradient inline-flex min-h-11 items-center justify-center rounded-full px-6 text-sm font-semibold transition-transform duration-200 hover:-translate-y-px disabled:opacity-60 disabled:hover:translate-y-0"
       >
         {pending
           ? "Saving…"

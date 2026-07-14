@@ -90,9 +90,6 @@ body {
     sans-serif;
   text-rendering: optimizeLegibility;
 }
-a {
-  color: inherit;
-}
 button,
 a {
   -webkit-tap-highlight-color: transparent;

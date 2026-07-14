@@ -53,7 +53,7 @@ export function PrimaryNavigation() {
         key={link.href}
         href={link.href}
         aria-current={current ? "page" : undefined}
-        className={`rounded-full px-3 py-2 font-medium whitespace-nowrap transition-colors ${current ? "bg-surface-raised text-ink shadow-sm" : "text-muted hover:text-ink"}`}
+        className={`rounded-full px-3 py-2 font-medium whitespace-nowrap transition-colors ${current ? "bg-surface-raised text-ink shadow-sm" : "text-muted hover:text-accent"}`}
       >
         {link.label}
       </Link>

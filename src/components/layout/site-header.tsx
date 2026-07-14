@@ -8,8 +8,17 @@ export function SiteHeader() {
       <Container className="flex min-h-18 flex-wrap items-center gap-x-6 gap-y-3 py-3">
         <Link
           href="/"
-          className="text-accent mr-auto font-mono text-sm font-bold tracking-[0.2em] uppercase"
+          className="text-ink hover:text-accent mr-auto inline-flex items-center gap-2.5 text-[17px] font-bold tracking-[-0.02em] transition-colors"
         >
+          <span
+            aria-hidden="true"
+            className="h-[11px] w-[11px] rounded-full"
+            style={{
+              background:
+                "linear-gradient(140deg,var(--color-accent),var(--color-accent-2))",
+              boxShadow: "0 0 16px rgb(255 175 120 / 0.6)",
+            }}
+          />
           Jam Session
         </Link>
         <HeaderNav />

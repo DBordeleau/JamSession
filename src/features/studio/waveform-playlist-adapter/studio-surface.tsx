@@ -16,9 +16,23 @@ import {
   usePlaybackAnimation,
   usePlaylistControls,
   usePlaylistData,
+  usePlaylistState,
 } from "@waveform-playlist/browser";
 import { useExportWav } from "@waveform-playlist/browser/tone";
 import { resumeGlobalAudioContext } from "@waveform-playlist/playout";
+import type { WaveformPlaylistTheme } from "@waveform-playlist/ui-components";
+import {
+  FiChevronDown,
+  FiChevronUp,
+  FiCrosshair,
+  FiFastForward,
+  FiPause,
+  FiPlay,
+  FiRewind,
+  FiTrash2,
+  FiZoomIn,
+  FiZoomOut,
+} from "react-icons/fi";
 import type { StudioLauncherProps } from "../components/studio-launcher.client";
 import {
   serializePostgresJsonb,
@@ -69,6 +83,42 @@ const formatTime = (seconds: number) => {
     .padStart(2, "0")}`;
 };
 
+const studioBtnPrimary =
+  "cta-gradient inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition-transform hover:-translate-y-px disabled:opacity-50 disabled:hover:translate-y-0";
+const studioBtnGhost =
+  "border-strong hover:border-accent hover:text-accent inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors disabled:opacity-50";
+const studioIconBtn =
+  "border-strong text-muted hover:border-accent hover:text-accent grid h-11 w-11 place-items-center rounded-full border text-lg transition-colors disabled:opacity-40";
+const trackIconBtn =
+  "border-strong text-muted hover:border-accent hover:text-accent grid h-7 w-7 place-items-center rounded-md border text-sm transition-colors disabled:opacity-40";
+
+function trackChip(active: boolean, kind: "mute" | "solo") {
+  const base =
+    "grid h-7 w-8 place-items-center rounded-md border text-xs font-bold transition-colors";
+  if (!active) return `border-strong text-muted ${base}`;
+  const tone = kind === "mute" ? "bg-accent" : "bg-accent-2";
+  return `${tone} text-accent-contrast border-transparent ${base}`;
+}
+
+// Canvas colors are drawn by the engine (not CSS) — theme them to the warm
+// brand palette so the waveform reads on the dark studio surface.
+const studioTheme: Partial<WaveformPlaylistTheme> = {
+  waveformDrawMode: "normal",
+  waveOutlineColor: "#171019",
+  waveFillColor: "#ff8d63",
+  waveProgressColor: "#ffc879",
+  backgroundColor: "#1e1524",
+  playlistBackgroundColor: "#1e1524",
+  surfaceColor: "#1e1524",
+  borderColor: "rgba(255, 255, 255, 0.1)",
+  timeColor: "#c6adb4",
+  timescaleBackgroundColor: "#1e1524",
+  playheadColor: "#fff0e1",
+  selectionColor: "rgba(255, 141, 99, 0.22)",
+  textColor: "#f7efe9",
+  textColorMuted: "#c6adb4",
+};
+
 function PlaybackControls({
   adapter,
   tracks,
@@ -87,6 +137,8 @@ function PlaybackControls({
   const controls = usePlaylistControls();
   const data = usePlaylistData();
   const { isPlaying } = usePlaybackAnimation();
+  const playlistState = usePlaylistState();
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { exportWav, isExporting, progress: exportProgress } = useExportWav();
   const [time, setTime] = useState(0);
   const [audioIssue, setAudioIssue] = useState(false);
@@ -221,249 +273,309 @@ function PlaybackControls({
     window.addEventListener("keydown", keyboard);
     return () => window.removeEventListener("keydown", keyboard);
   }, [attemptPlay, controls, duration, time]);
+
+  useEffect(() => {
+    controls.setScrollContainer(scrollRef.current);
+    return () => controls.setScrollContainer(null);
+  }, [controls]);
+
+  const renderTrackControls = (trackIndex: number) => {
+    const track = data.tracks[trackIndex];
+    if (!track) return null;
+    const meta = tracks.find((item) => item.trackId === track.id);
+    const persisted = manifest.tracks.find((item) => item.trackId === track.id);
+    const current = data.trackStates[trackIndex];
+    if (!persisted || !current)
+      return <div className="text-muted p-3 text-xs">Preparing…</div>;
+    const displayedGainDb = editable
+      ? persisted.gainDb
+      : Number(gainToDecibels(current.volume).toFixed(1));
+    const instrumentName = editable
+      ? (editable.instruments.find(
+          (instrument) => instrument.id === persisted.instrumentId,
+        )?.name ?? "No instrument")
+      : (meta?.instrumentName ?? "No instrument");
+    const sliderLabel =
+      "text-muted flex items-center justify-between text-[10px] font-medium tracking-wide uppercase";
+    const detailField =
+      "border-strong bg-canvas rounded-control text-ink mt-1 min-h-8 w-full border px-2 text-xs";
+    return (
+      <div className="bg-surface border-subtle flex h-full flex-col gap-2 overflow-y-auto border-r p-2.5">
+        <div className="flex items-start gap-1">
+          <div className="min-w-0 flex-1">
+            {editable ? (
+              <input
+                aria-label={`${track.name} label`}
+                className="hover:bg-surface-raised focus:bg-surface-raised -mx-1 block w-full truncate rounded px-1 text-sm font-semibold outline-none"
+                maxLength={120}
+                defaultValue={persisted.name}
+                onBlur={(event) =>
+                  event.target.value.trim() &&
+                  updateTrack(track.id, { name: event.target.value.trim() })
+                }
+              />
+            ) : (
+              <p className="truncate text-sm font-semibold">{track.name}</p>
+            )}
+            <p className="text-muted truncate text-[11px]">
+              {instrumentName} · {meta?.creditName ?? "Unknown creator"}
+            </p>
+          </div>
+          {editable && (
+            <div className="flex shrink-0 items-center gap-0.5">
+              <button
+                type="button"
+                className={trackIconBtn}
+                aria-label={`Move ${track.name} up`}
+                disabled={trackIndex === 0}
+                onClick={() => moveTrack(track.id, -1)}
+              >
+                <FiChevronUp />
+              </button>
+              <button
+                type="button"
+                className={trackIconBtn}
+                aria-label={`Move ${track.name} down`}
+                disabled={trackIndex === data.tracks.length - 1}
+                onClick={() => moveTrack(track.id, 1)}
+              >
+                <FiChevronDown />
+              </button>
+              <button
+                type="button"
+                className="border-strong text-muted hover:border-danger hover:text-danger grid h-7 w-7 place-items-center rounded-md border text-sm transition-colors disabled:opacity-40"
+                aria-label={`Remove ${track.name} from draft`}
+                disabled={data.tracks.length === 1}
+                onClick={() => {
+                  adapter.removeTrack(track.id);
+                  onEdited();
+                }}
+              >
+                <FiTrash2 />
+              </button>
+            </div>
+          )}
+        </div>
+        <div>
+          <div className={sliderLabel}>
+            <span>Gain</span>
+            <span className="text-ink font-mono normal-case">
+              {displayedGainDb} dB
+            </span>
+          </div>
+          <input
+            aria-label={`${track.name} gain`}
+            className="accent-accent mt-0.5 w-full"
+            type="range"
+            min="-60"
+            max="6"
+            step="0.5"
+            value={displayedGainDb}
+            onChange={(event) => {
+              const gainDb = Number(event.target.value);
+              controls.setTrackVolume(trackIndex, Math.pow(10, gainDb / 20));
+              if (editable) updateTrack(track.id, { gainDb });
+            }}
+          />
+        </div>
+        <div>
+          <div className={sliderLabel}>
+            <span>Pan</span>
+            <span className="text-ink font-mono normal-case">
+              {current.pan.toFixed(1)}
+            </span>
+          </div>
+          <input
+            aria-label={`${track.name} pan`}
+            className="accent-accent mt-0.5 w-full"
+            type="range"
+            min="-1"
+            max="1"
+            step="0.1"
+            value={current.pan}
+            onChange={(event) => {
+              const pan = Number(event.target.value);
+              controls.setTrackPan(trackIndex, pan);
+              if (editable) updateTrack(track.id, { pan });
+            }}
+          />
+        </div>
+        <div className="mt-auto flex items-center gap-1.5">
+          <button
+            type="button"
+            title={current.muted ? "Muted" : "Mute"}
+            aria-pressed={current.muted}
+            className={trackChip(current.muted, "mute")}
+            onClick={() => {
+              controls.setTrackMute(trackIndex, !current.muted);
+              if (editable) updateTrack(track.id, { muted: !current.muted });
+            }}
+          >
+            M
+          </button>
+          <button
+            type="button"
+            title={current.soloed ? "Soloed" : "Solo"}
+            aria-pressed={current.soloed}
+            className={trackChip(current.soloed, "solo")}
+            onClick={() => {
+              controls.setTrackSolo(trackIndex, !current.soloed);
+              if (editable) updateTrack(track.id, { soloed: !current.soloed });
+            }}
+          >
+            S
+          </button>
+        </div>
+        {editable && (
+          <details className="text-[11px]">
+            <summary className="text-muted hover:text-accent cursor-pointer text-[10px] font-medium tracking-wide uppercase select-none">
+              Details
+            </summary>
+            <div className="mt-2 flex flex-col gap-2">
+              <label className="text-muted">
+                Instrument
+                <select
+                  aria-label={`${track.name} instrument`}
+                  className={detailField}
+                  value={persisted.instrumentId ?? ""}
+                  onChange={(event) =>
+                    updateTrack(track.id, {
+                      instrumentId: event.target.value || null,
+                    })
+                  }
+                >
+                  <option value="">Not specified</option>
+                  {editable.instruments.map((instrument) => (
+                    <option key={instrument.id} value={instrument.id}>
+                      {instrument.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-muted">
+                Start (seconds)
+                <input
+                  aria-label={`${track.name} start position`}
+                  className={detailField}
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  defaultValue={persisted.positionMs / 1000}
+                  onBlur={(event) =>
+                    updateTrack(track.id, {
+                      positionMs: Math.max(
+                        0,
+                        Math.round(Number(event.target.value) * 1000),
+                      ),
+                    })
+                  }
+                />
+              </label>
+            </div>
+          </details>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <div
-        className="rounded-card border-subtle bg-surface flex flex-wrap items-center gap-3 border p-4"
+        className="rounded-card border-subtle bg-surface flex flex-wrap items-center gap-2 border p-3"
         aria-label="Playback transport"
       >
         <button
-          className="bg-accent rounded-control min-h-11 px-5 font-semibold text-slate-950"
+          className={studioBtnPrimary}
           type="button"
           aria-label={isPlaying ? "Pause playback" : "Play playback"}
           onClick={() => (isPlaying ? adapter.pause() : void attemptPlay())}
         >
+          {isPlaying ? <FiPause /> : <FiPlay />}
           {isPlaying ? "Pause" : "Play"}
+        </button>
+        <button
+          className={studioIconBtn}
+          type="button"
+          title="Back 5 seconds"
+          aria-label="Back 5 seconds"
+          onClick={() => controls.seekTo(Math.max(0, time - 5))}
+        >
+          <FiRewind />
+        </button>
+        <button
+          className={studioIconBtn}
+          type="button"
+          title="Forward 5 seconds"
+          aria-label="Forward 5 seconds"
+          onClick={() => controls.seekTo(Math.min(duration, time + 5))}
+        >
+          <FiFastForward />
         </button>
         {audioIssue && (
           <button
-            className="rounded-control border-accent min-h-11 border px-4"
+            className={studioBtnGhost}
             type="button"
             onClick={() => void attemptPlay()}
           >
             Enable audio
           </button>
         )}
-        <button
-          className="rounded-control border-strong min-h-11 border px-4"
-          type="button"
-          onClick={() => controls.seekTo(Math.max(0, time - 5))}
-        >
-          Back 5 seconds
-        </button>
-        <button
-          className="rounded-control border-strong min-h-11 border px-4"
-          type="button"
-          onClick={() => controls.seekTo(Math.min(duration, time + 5))}
-        >
-          Forward 5 seconds
-        </button>
-        <span className="font-mono text-sm">
+        <span className="ml-1 font-mono text-sm">
           {formatTime(time)} / {formatTime(duration)}
         </span>
-        <label className="min-w-52 flex-1">
-          <span className="sr-only">Seek playback position</span>
-          <input
-            className="w-full"
-            aria-label="Seek playback position"
-            type="range"
-            min="0"
-            max={duration}
-            step="0.1"
-            value={Math.min(time, duration)}
-            onChange={(event) => controls.seekTo(Number(event.target.value))}
-          />
-        </label>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            className={studioIconBtn}
+            type="button"
+            aria-label="Zoom out"
+            title="Zoom out"
+            disabled={!data.canZoomOut}
+            onClick={() => controls.zoomOut()}
+          >
+            <FiZoomOut />
+          </button>
+          <button
+            className={studioIconBtn}
+            type="button"
+            aria-label="Zoom in"
+            title="Zoom in"
+            disabled={!data.canZoomIn}
+            onClick={() => controls.zoomIn()}
+          >
+            <FiZoomIn />
+          </button>
+          <button
+            className={`${studioBtnGhost} ${playlistState.isAutomaticScroll ? "border-accent text-accent" : ""}`}
+            type="button"
+            title="Keep the view on the playhead"
+            aria-pressed={playlistState.isAutomaticScroll}
+            onClick={() =>
+              controls.setAutomaticScroll(!playlistState.isAutomaticScroll)
+            }
+          >
+            <FiCrosshair />
+            Follow
+          </button>
+        </div>
       </div>
-      <div className="rounded-card border-subtle bg-surface-raised overflow-x-auto border p-3">
-        <Waveform />
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2" aria-busy={!mixerReady}>
-        {!mixerReady && (
-          <p className="text-muted" aria-live="polite">
-            Preparing mixer controls…
-          </p>
-        )}
-        {mixerReady &&
-          data.tracks.map((track, index) => {
-            const meta = tracks.find((item) => item.trackId === track.id);
-            const persisted = manifest.tracks.find(
-              (item) => item.trackId === track.id,
-            );
-            const current = data.trackStates[index];
-            if (!persisted || !current) return null;
-            const displayedGainDb = editable
-              ? persisted.gainDb
-              : Number(gainToDecibels(current.volume).toFixed(1));
-            return (
-              <fieldset
-                key={track.id}
-                className="rounded-card border-subtle bg-surface space-y-4 border p-4"
-              >
-                <legend className="px-2 font-semibold">{track.name}</legend>
-                <p className="text-muted text-sm">
-                  {editable
-                    ? (editable.instruments.find(
-                        (instrument) =>
-                          instrument.id === persisted.instrumentId,
-                      )?.name ?? "No instrument")
-                    : (meta?.instrumentName ?? "No instrument")}{" "}
-                  {" · "}
-                  {meta?.creditName ?? "Unknown creator"}
-                </p>
-                {editable && (
-                  <>
-                    <label className="block">
-                      Track label
-                      <input
-                        className="border-subtle mt-1 block min-h-11 w-full border px-3"
-                        maxLength={120}
-                        defaultValue={persisted.name}
-                        onBlur={(event) =>
-                          event.target.value.trim() &&
-                          updateTrack(track.id, {
-                            name: event.target.value.trim(),
-                          })
-                        }
-                      />
-                    </label>
-                    <label className="block">
-                      Instrument
-                      <select
-                        className="border-subtle mt-1 block min-h-11 w-full border px-3"
-                        value={persisted.instrumentId ?? ""}
-                        onChange={(event) =>
-                          updateTrack(track.id, {
-                            instrumentId: event.target.value || null,
-                          })
-                        }
-                      >
-                        <option value="">Not specified</option>
-                        {editable.instruments.map((instrument) => (
-                          <option key={instrument.id} value={instrument.id}>
-                            {instrument.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="block">
-                      Start position (seconds)
-                      <input
-                        className="border-subtle mt-1 block min-h-11 w-full border px-3"
-                        type="number"
-                        min="0"
-                        step="0.001"
-                        defaultValue={persisted.positionMs / 1000}
-                        onBlur={(event) =>
-                          updateTrack(track.id, {
-                            positionMs: Math.max(
-                              0,
-                              Math.round(Number(event.target.value) * 1000),
-                            ),
-                          })
-                        }
-                      />
-                    </label>
-                  </>
-                )}
-                <label className="block">
-                  Gain <span className="text-muted">{displayedGainDb} dB</span>
-                  <input
-                    aria-label={`${track.name} gain`}
-                    className="w-full"
-                    type="range"
-                    min="-60"
-                    max="6"
-                    step="0.5"
-                    value={displayedGainDb}
-                    onChange={(event) => {
-                      const gainDb = Number(event.target.value);
-                      controls.setTrackVolume(index, Math.pow(10, gainDb / 20));
-                      if (editable) updateTrack(track.id, { gainDb });
-                    }}
-                  />
-                </label>
-                <label className="block">
-                  Pan{" "}
-                  <span className="text-muted">{current.pan.toFixed(1)}</span>
-                  <input
-                    aria-label={`${track.name} pan`}
-                    className="w-full"
-                    type="range"
-                    min="-1"
-                    max="1"
-                    step="0.1"
-                    value={current.pan}
-                    onChange={(event) => {
-                      const pan = Number(event.target.value);
-                      controls.setTrackPan(index, pan);
-                      if (editable) updateTrack(track.id, { pan });
-                    }}
-                  />
-                </label>
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    aria-pressed={current.muted}
-                    className="rounded-control border-strong min-h-11 border px-4"
-                    onClick={() => {
-                      controls.setTrackMute(index, !current.muted);
-                      if (editable)
-                        updateTrack(track.id, { muted: !current.muted });
-                    }}
-                  >
-                    {current.muted ? "Muted" : "Mute"}
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={current.soloed}
-                    className="rounded-control border-strong min-h-11 border px-4"
-                    onClick={() => {
-                      controls.setTrackSolo(index, !current.soloed);
-                      if (editable)
-                        updateTrack(track.id, { soloed: !current.soloed });
-                    }}
-                  >
-                    {current.soloed ? "Soloed" : "Solo"}
-                  </button>
-                  {editable && (
-                    <>
-                      <button
-                        type="button"
-                        className="rounded-control border-strong min-h-11 border px-4"
-                        aria-label={`Move ${track.name} up`}
-                        disabled={index === 0}
-                        onClick={() => moveTrack(track.id, -1)}
-                      >
-                        Move up
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-control border-strong min-h-11 border px-4"
-                        aria-label={`Move ${track.name} down`}
-                        disabled={index === data.tracks.length - 1}
-                        onClick={() => moveTrack(track.id, 1)}
-                      >
-                        Move down
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-control min-h-11 border border-red-700 px-4 text-red-700"
-                        aria-label={`Remove ${track.name} from draft`}
-                        disabled={data.tracks.length === 1}
-                        onClick={() => {
-                          adapter.removeTrack(track.id);
-                          onEdited();
-                        }}
-                      >
-                        Remove from draft
-                      </button>
-                    </>
-                  )}
-                </div>
-              </fieldset>
-            );
-          })}
+      <label className="block">
+        <span className="sr-only">Seek playback position</span>
+        <input
+          className="accent-accent w-full"
+          aria-label="Seek playback position"
+          type="range"
+          min="0"
+          max={duration}
+          step="0.1"
+          value={Math.min(time, duration)}
+          onChange={(event) => controls.seekTo(Number(event.target.value))}
+        />
+      </label>
+      <div
+        ref={scrollRef}
+        className="rounded-card border-subtle bg-surface-raised overflow-x-auto border p-2"
+      >
+        <Waveform renderTrackControls={renderTrackControls} />
       </div>
       <div className="rounded-card border-subtle bg-surface border p-5">
         <h2 className="font-bold">Export WAV mix</h2>
@@ -1107,7 +1219,7 @@ export function StudioSurface(props: StudioLauncherProps) {
                 </label>
                 <button
                   type="button"
-                  className="bg-accent rounded-control min-h-11 px-5 font-semibold text-slate-950 disabled:opacity-50"
+                  className={studioBtnPrimary}
                   disabled={!selectedAssetId || snapshot.tracks.length >= 12}
                   onClick={() => void addSelectedAsset()}
                 >
@@ -1121,9 +1233,12 @@ export function StudioSurface(props: StudioLauncherProps) {
             <WaveformPlaylistProvider
               tracks={snapshot.tracks}
               timescale
-              controls={{ show: false, width: 0 }}
-              waveHeight={96}
+              theme={studioTheme}
+              controls={{ show: true, width: 232 }}
+              waveHeight={editable ? 140 : 104}
               samplesPerPixel={512}
+              zoomLevels={[128, 256, 512, 1024, 2048]}
+              automaticScroll
             >
               <PlaybackControls
                 adapter={adapter}
@@ -1144,7 +1259,7 @@ export function StudioSurface(props: StudioLauncherProps) {
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              className="rounded-control border-strong min-h-11 border px-4 disabled:opacity-50"
+              className={studioBtnGhost}
               disabled={
                 !pendingManifest ||
                 autosave.status === "saving" ||
@@ -1177,7 +1292,7 @@ export function StudioSurface(props: StudioLauncherProps) {
               </label>
               <button
                 type="button"
-                className="bg-accent rounded-control mt-4 min-h-11 px-5 font-semibold text-slate-950 disabled:opacity-50"
+                className={`${studioBtnPrimary} mt-4`}
                 disabled={
                   autosave.status !== "saved" ||
                   Boolean(pendingManifest) ||
