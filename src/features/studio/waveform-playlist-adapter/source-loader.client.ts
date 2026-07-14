@@ -2,6 +2,10 @@
 
 import type { SignedAudioSource } from "../source-contract";
 import { StudioAdapterError } from "../studio-adapter.types";
+import {
+  markStudioPerformance,
+  studioPerformanceMarks,
+} from "./performance-marks.client";
 
 export async function loadSources(input: {
   assetIds: readonly string[];
@@ -33,7 +37,7 @@ export async function loadSources(input: {
     });
     await refreshPromise;
   };
-  const fetchOne = async (assetId: string) => {
+  const fetchOne = async (assetId: string, sourceIndex: number) => {
     let source = sources.get(assetId);
     if (!source)
       throw new StudioAdapterError(
@@ -51,6 +55,9 @@ export async function loadSources(input: {
       );
     let response: Response;
     try {
+      markStudioPerformance(studioPerformanceMarks.sourceFetchStart, {
+        sourceIndex,
+      });
       response = await fetch(source.signedUrl, {
         signal: input.signal,
         cache: "no-store",
@@ -97,10 +104,17 @@ export async function loadSources(input: {
         "A source could not be downloaded. Retry the studio.",
       );
     try {
-      output.set(
-        assetId,
-        await input.decode(await response.arrayBuffer(), assetId),
-      );
+      const bytes = await response.arrayBuffer();
+      markStudioPerformance(studioPerformanceMarks.sourceFetchEnd, {
+        sourceIndex,
+      });
+      markStudioPerformance(studioPerformanceMarks.sourceDecodeStart, {
+        sourceIndex,
+      });
+      output.set(assetId, await input.decode(bytes, assetId));
+      markStudioPerformance(studioPerformanceMarks.sourceDecodeEnd, {
+        sourceIndex,
+      });
     } catch (error) {
       throw new StudioAdapterError(
         "decode_failed",
@@ -116,7 +130,7 @@ export async function loadSources(input: {
       const index = cursor++;
       const assetId = input.assetIds[index];
       if (!assetId) return;
-      await fetchOne(assetId);
+      await fetchOne(assetId, index);
     }
   };
   await Promise.all(

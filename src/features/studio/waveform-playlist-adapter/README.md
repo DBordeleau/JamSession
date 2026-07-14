@@ -4,6 +4,8 @@ This directory is the only allowed dependency boundary for Waveform Playlist, To
 
 The adapter is client-only and lazy-loaded. It translates between pinned editor packages and Jam Session's validated, versioned workspace manifest. Editor library types, live `AudioBuffer` instances, signed URLs, and UI state must not escape this boundary.
 
+Development builds expose bounded User Timing marks for OPT-01 measurement through `performance-marks.client.ts`. Marks contain lifecycle names and source indexes only—never signed URLs, Storage paths, asset IDs, filenames, track labels, or audio. Production builds emit no studio timing marks. The baseline intentionally records shell, peaks, and playback readiness together; later progressive-loading/peaks slices split those milestones without changing manifest authority.
+
 Before adding code here, read the [system architecture](../../../../docs/technical-design/01-system-architecture.md) and [architectural decisions](../../../../docs/technical-design/decisions/README.md).
 
 The production surface accepts a validated revision or workspace manifest, obtains one exact-authority signed batch after explicit activation, and downloads/decodes at concurrency three. Authorization failures refresh that batch once; disposal aborts outstanding work, pauses playback, and closes the owned decode context. Revision mode remains read-only. Workspace mode supports add/remove/reorder, position, trim, label, instrument, gain, pan, mute, and solo, then exports only the validated Jam Session manifest for persistence. Authorized users can render a bounded 16-bit WAV mix locally through this same browser-only boundary; source-stem downloads remain direct-to-Storage outside the adapter.

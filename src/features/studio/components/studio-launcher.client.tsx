@@ -1,8 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { WorkspaceManifestV1 } from "../manifest/schema";
+import {
+  markStudioPerformance,
+  studioPerformanceMarks,
+} from "../waveform-playlist-adapter/performance-marks.client";
 import type {
   WorkspaceAssetOption,
   WorkspaceInstrumentOption,
@@ -76,10 +80,15 @@ export type StudioLauncherProps = CommonProps &
   );
 
 export function StudioLauncher(props: StudioLauncherProps) {
+  const routeMarked = useRef(false);
   const [support, setSupport] = useState<"checking" | "ready" | string>(
     "checking",
   );
   useEffect(() => {
+    if (!routeMarked.current) {
+      markStudioPerformance(studioPerformanceMarks.routeStart);
+      routeMarked.current = true;
+    }
     const timer = window.setTimeout(() => setSupport(getStudioSupport()), 0);
     return () => window.clearTimeout(timer);
   }, []);

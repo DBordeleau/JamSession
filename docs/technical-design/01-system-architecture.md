@@ -182,6 +182,8 @@ The selected React package surface passed the automated gate. If later editable-
 
 Waveform Playlist and Tone.js are MIT-licensed. Preserve their notices, retain the exact direct version pins and validated lockfile, and rerun manifest/adapter fixtures for deliberate upgrades. Do not copy demo audio, styles, or other repository assets unless their redistribution terms are known. Any later OpenDAW integration must resolve its AGPL/commercial licensing path before network deployment.
 
+OPT-01 selected `mediabunny@1.50.8` and `@mediabunny/flac-encoder@1.50.8` as the focused browser FLAC candidate for OPT-03. Both are MPL-2.0 and the extension embeds libFLAC WASM; adoption requires exact pins, preserved MPL/libFLAC notices, and a lazy dedicated upload worker. The feasibility choice does not authorize a server import, a main-thread encoder, or conversion without the documented original-WAV fallback. Measurements and remaining Safari/memory checks are recorded in [`evidence/opt-01-audio-delivery-baseline.md`](evidence/opt-01-audio-delivery-baseline.md).
+
 ### Planned MIDI-first composite successor
 
 After the $0 audio optimization pass, evolve—but do not bypass—the `StudioAdapter` boundary into a composite implementation. Waveform Playlist remains responsible for existing audio tracks. A MIDI controller inside the same client-only feature boundary uses the pinned Tone.js runtime for transport-clock scheduling and versioned synthesis presets. Piano-roll UI and recording emit Jam Session MIDI commands; Tone.js objects, Web MIDI ports/messages, audio nodes, and device identifiers never cross into server code or persisted state.
