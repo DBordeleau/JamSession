@@ -95,6 +95,18 @@ test.describe("standalone MIDI stem editor", () => {
 
     await roll.dblclick({ position: { x: 520, y: 220 } });
     await expect(page.getByText(/5 of 2,048 notes/)).toBeVisible();
+    await expect(page.getByLabel("Duration ticks")).toHaveValue("480");
+
+    await roll.hover({ position: { x: 612, y: 230 } });
+    await expect
+      .poll(() => roll.evaluate((element) => element.style.cursor))
+      .toBe("ew-resize");
+
+    await roll.click({ button: "right", position: { x: 550, y: 230 } });
+    await expect(page.getByText(/4 of 2,048 notes/)).toBeVisible();
+    await expect(page.getByText(/removed\./)).toBeVisible();
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(page.getByText(/5 of 2,048 notes/)).toBeVisible();
     await expect(page.getByRole("status")).toHaveText("Saved to My stems.", {
       timeout: 10_000,
     });

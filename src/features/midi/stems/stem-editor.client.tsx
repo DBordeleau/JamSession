@@ -60,11 +60,13 @@ import type { MidiStemDraft } from "./types";
 
 const PLAYBACK_BPM = 120;
 const PITCH_ROW_HEIGHT = 22;
-const PITCH_LABEL_WIDTH = 58;
+const PIANO_KEY_WIDTH = 88;
 const MIN_PIXELS_PER_BEAT = 48;
 const MAX_PIXELS_PER_BEAT = 160;
 const DEFAULT_PIXELS_PER_BEAT = 88;
 const MIN_NOTE_WIDTH = 7;
+const RESIZE_HANDLE_WIDTH = 10;
+const AUDITION_SECONDS = 0.18;
 
 const inputClass =
   "focus:border-accent border-strong bg-surface mt-2 min-h-11 w-full rounded-control border px-3 py-2 transition-colors";
@@ -85,7 +87,21 @@ type DragGesture = {
   clientY: number;
   noteIds: readonly string[];
   notes: readonly MidiNoteV1[];
+  lastAuditionPitch: number;
 };
+
+type AuditionVoice = {
+  presetId: string;
+  voice: PresetVoice;
+};
+
+function isBlackKey(pitch: number) {
+  return [1, 3, 6, 8, 10].includes(pitch % 12);
+}
+
+function resizeHandleWidth(noteWidth: number) {
+  return Math.min(RESIZE_HANDLE_WIDTH, Math.max(4, noteWidth / 3));
+}
 
 function pitchName(pitch: number) {
   const names = [
@@ -158,6 +174,8 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
   const saveStatusRef = useRef<MidiDraftSaveStatus>(saveState.status);
   const gestureRef = useRef<DragGesture | null>(null);
   const voiceRef = useRef<PresetVoice | null>(null);
+  const auditionVoiceRef = useRef<AuditionVoice | null>(null);
+  const auditionRequestRef = useRef(0);
   const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playheadTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -171,10 +189,10 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
   const pitchCount = preset.maxNote - preset.minNote + 1;
   const rollHeight = pitchCount * PITCH_ROW_HEIGHT;
   const timelineWidth = Math.max(
-    viewport.width - PITCH_LABEL_WIDTH,
+    viewport.width - PIANO_KEY_WIDTH,
     (draft.durationTicks / MIDI_PPQ) * pixelsPerBeat,
   );
-  const rollWidth = PITCH_LABEL_WIDTH + timelineWidth;
+  const rollWidth = PIANO_KEY_WIDTH + timelineWidth;
   const payloadBytes = useMemo(
     () =>
       new TextEncoder().encode(
@@ -227,7 +245,47 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
     setPlaying(false);
   }, []);
 
+  const stopAudition = useCallback(() => {
+    auditionRequestRef.current += 1;
+    auditionVoiceRef.current?.voice.allNotesOff();
+    auditionVoiceRef.current?.voice.dispose();
+    auditionVoiceRef.current = null;
+  }, []);
+
+  const auditionNote = useCallback(
+    async (pitch: number, velocity = 96) => {
+      const request = ++auditionRequestRef.current;
+      try {
+        const { createPresetVoice, resumeMidiAudioContext } =
+          await import("../browser-engine/preset-voice.client");
+        const when = await resumeMidiAudioContext();
+        let entry = auditionVoiceRef.current;
+        if (!entry || entry.presetId !== presetId) {
+          entry?.voice.dispose();
+          const voice = await createPresetVoice(presetId, 1);
+          if (request !== auditionRequestRef.current) {
+            voice.dispose();
+            return;
+          }
+          entry = { presetId, voice };
+          auditionVoiceRef.current = entry;
+        }
+        entry.voice.triggerAttackRelease(
+          pitch,
+          AUDITION_SECONDS,
+          when,
+          velocity / 127,
+        );
+      } catch {
+        // Audition is a progressive enhancement; editing remains available when
+        // the browser has not granted audio playback yet.
+      }
+    },
+    [presetId],
+  );
+
   useEffect(() => stopPlayback, [stopPlayback]);
+  useEffect(() => stopAudition, [stopAudition]);
 
   const commitCommand = useCallback(
     (
@@ -430,23 +488,52 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
     for (let row = firstRow; row < lastRow; row += 1) {
       const pitch = preset.maxNote - row;
       const y = row * PITCH_ROW_HEIGHT - viewport.scrollTop;
-      const isBlack = [1, 3, 6, 8, 10].includes(pitch % 12);
+      const isBlack = isBlackKey(pitch);
       context.fillStyle = isBlack ? canvasColor : surfaceColor;
-      context.fillRect(0, y, viewport.width, PITCH_ROW_HEIGHT);
+      context.fillRect(
+        PIANO_KEY_WIDTH,
+        y,
+        viewport.width - PIANO_KEY_WIDTH,
+        PITCH_ROW_HEIGHT,
+      );
       context.strokeStyle = borderColor;
       context.beginPath();
-      context.moveTo(0, y + PITCH_ROW_HEIGHT);
+      context.moveTo(PIANO_KEY_WIDTH, y + PITCH_ROW_HEIGHT);
       context.lineTo(viewport.width, y + PITCH_ROW_HEIGHT);
       context.stroke();
-      context.fillStyle = pitch % 12 === 0 ? textColor : mutedColor;
-      context.fillText(pitchName(pitch), 8, y + PITCH_ROW_HEIGHT / 2);
+
+      context.fillStyle = textColor;
+      context.fillRect(0, y, PIANO_KEY_WIDTH, PITCH_ROW_HEIGHT);
+      context.strokeStyle = strongBorder;
+      context.strokeRect(0, y, PIANO_KEY_WIDTH, PITCH_ROW_HEIGHT);
+      if (isBlack) {
+        context.fillStyle = canvasColor;
+        context.fillRect(
+          PIANO_KEY_WIDTH * 0.38,
+          y + 1,
+          PIANO_KEY_WIDTH * 0.62,
+          PITCH_ROW_HEIGHT - 2,
+        );
+      }
+      context.fillStyle = isBlack
+        ? mutedColor
+        : pitch % 12 === 0
+          ? canvasColor
+          : surfaceColor;
+      context.textAlign = "right";
+      context.fillText(
+        pitchName(pitch),
+        PIANO_KEY_WIDTH - 7,
+        y + PITCH_ROW_HEIGHT / 2,
+      );
+      context.textAlign = "left";
     }
-    context.fillStyle = surfaceColor;
-    context.fillRect(PITCH_LABEL_WIDTH - 1, 0, 2, viewport.height);
+    context.fillStyle = strongBorder;
+    context.fillRect(PIANO_KEY_WIDTH - 1, 0, 2, viewport.height);
 
     const visibleStartTick = Math.max(
       0,
-      ((viewport.scrollLeft - PITCH_LABEL_WIDTH) / pixelsPerBeat) * MIDI_PPQ,
+      ((viewport.scrollLeft - PIANO_KEY_WIDTH) / pixelsPerBeat) * MIDI_PPQ,
     );
     const visibleEndTick = Math.min(
       draft.durationTicks,
@@ -456,7 +543,7 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
     const firstGrid = Math.floor(visibleStartTick / grid) * grid;
     for (let tick = firstGrid; tick <= visibleEndTick; tick += grid) {
       const x =
-        PITCH_LABEL_WIDTH +
+        PIANO_KEY_WIDTH +
         (tick / MIDI_PPQ) * pixelsPerBeat -
         viewport.scrollLeft;
       const isBar = tick % (MIDI_PPQ * 4) === 0;
@@ -488,7 +575,7 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
       const y = row * PITCH_ROW_HEIGHT - viewport.scrollTop + 3;
       if (y > viewport.height || y + PITCH_ROW_HEIGHT < 0) continue;
       const x =
-        PITCH_LABEL_WIDTH +
+        PIANO_KEY_WIDTH +
         (note.startTick / MIDI_PPQ) * pixelsPerBeat -
         viewport.scrollLeft;
       const width = Math.max(
@@ -500,11 +587,22 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
       context.fillRect(x, y, width, PITCH_ROW_HEIGHT - 6);
       context.globalAlpha = 1;
       context.fillStyle = canvasColor;
-      context.fillRect(x + width - 3, y, 3, PITCH_ROW_HEIGHT - 6);
+      const handleWidth = resizeHandleWidth(width);
+      context.fillRect(
+        x + width - handleWidth,
+        y,
+        handleWidth,
+        PITCH_ROW_HEIGHT - 6,
+      );
+      context.strokeStyle = selectedIds.has(note.noteId) ? accent2 : accent;
+      context.beginPath();
+      context.moveTo(x + width - 4, y + 4);
+      context.lineTo(x + width - 4, y + PITCH_ROW_HEIGHT - 10);
+      context.stroke();
     }
 
     const playheadX =
-      PITCH_LABEL_WIDTH +
+      PIANO_KEY_WIDTH +
       (playheadTick / MIDI_PPQ) * pixelsPerBeat -
       viewport.scrollLeft;
     context.strokeStyle = accent2;
@@ -529,8 +627,7 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
-    const worldX =
-      clientX - rect.left + viewport.scrollLeft - PITCH_LABEL_WIDTH;
+    const worldX = clientX - rect.left + viewport.scrollLeft - PIANO_KEY_WIDTH;
     const worldY = clientY - rect.top + viewport.scrollTop;
     for (const note of [...history.notes].reverse()) {
       const x = (note.startTick / MIDI_PPQ) * pixelsPerBeat;
@@ -545,14 +642,34 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
         worldY >= y &&
         worldY <= y + PITCH_ROW_HEIGHT
       ) {
-        return { note, resize: worldX >= x + width - 8 };
+        return {
+          note,
+          resize: worldX >= x + width - resizeHandleWidth(width),
+        };
       }
     }
     return null;
   }
 
+  function pitchAtPointer(clientY: number) {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return preset.minNote;
+    const row = Math.floor(
+      (clientY - rect.top + viewport.scrollTop) / PITCH_ROW_HEIGHT,
+    );
+    return Math.max(
+      preset.minNote,
+      Math.min(preset.maxNote, preset.maxNote - row),
+    );
+  }
+
   function handlePointerDown(event: React.PointerEvent<HTMLCanvasElement>) {
     if (event.button !== 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (event.clientX - rect.left < PIANO_KEY_WIDTH) {
+      void auditionNote(pitchAtPointer(event.clientY));
+      return;
+    }
     const hit = noteAtPointer(event.clientX, event.clientY);
     if (!hit) {
       if (!event.shiftKey) setSelectedIds(new Set());
@@ -577,12 +694,29 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
       clientY: event.clientY,
       noteIds: [...nextSelection],
       notes: history.notes,
+      lastAuditionPitch: hit.note.pitch,
     };
+    event.currentTarget.style.cursor = hit.resize ? "ew-resize" : "grabbing";
   }
 
   function handlePointerMove(event: React.PointerEvent<HTMLCanvasElement>) {
     const gesture = gestureRef.current;
-    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    if (!gesture || gesture.pointerId !== event.pointerId) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      if (event.clientX - rect.left < PIANO_KEY_WIDTH) {
+        event.currentTarget.style.cursor = "pointer";
+        return;
+      }
+      const hit = noteAtPointer(event.clientX, event.clientY);
+      event.currentTarget.style.cursor = hit
+        ? hit.resize
+          ? "ew-resize"
+          : "grab"
+        : "crosshair";
+      return;
+    }
+    event.currentTarget.style.cursor =
+      gesture.mode === "resize" ? "ew-resize" : "grabbing";
     const grid = QUANTIZATION_TICKS[quantization];
     const deltaTicks =
       Math.round(
@@ -612,6 +746,15 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
       )
         return;
       setPreviewNotes(next.notes);
+      if (gesture.mode === "move") {
+        const primaryNote = next.notes.find(
+          ({ noteId }) => noteId === gesture.noteIds[0],
+        );
+        if (primaryNote && primaryNote.pitch !== gesture.lastAuditionPitch) {
+          gesture.lastAuditionPitch = primaryNote.pitch;
+          void auditionNote(primaryNote.pitch, primaryNote.velocity);
+        }
+      }
     } catch {
       // Keep the last valid preview while the pointer is outside canonical bounds.
     }
@@ -631,8 +774,26 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
     }
     setPreviewNotes(null);
     gestureRef.current = null;
+    event.currentTarget.style.cursor = "crosshair";
     if (event.currentTarget.hasPointerCapture(event.pointerId))
       event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+
+  function handleContextMenu(event: React.MouseEvent<HTMLCanvasElement>) {
+    const hit = noteAtPointer(event.clientX, event.clientY);
+    if (!hit) return;
+    event.preventDefault();
+    commitCommand(
+      { type: "deleteNotes", noteIds: [hit.note.noteId] },
+      `${pitchName(hit.note.pitch)} removed.`,
+      [],
+    );
+  }
+
+  function handleDoubleClick(event: React.MouseEvent<HTMLCanvasElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (event.clientX - rect.left < PIANO_KEY_WIDTH) return;
+    addNoteAt(event.clientX, event.clientY);
   }
 
   function addNoteAt(clientX?: number, clientY?: number) {
@@ -644,7 +805,7 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
     const grid = QUANTIZATION_TICKS[quantization];
     const rawTick =
       rect && clientX !== undefined
-        ? ((clientX - rect.left + viewport.scrollLeft - PITCH_LABEL_WIDTH) /
+        ? ((clientX - rect.left + viewport.scrollLeft - PIANO_KEY_WIDTH) /
             pixelsPerBeat) *
           MIDI_PPQ
         : playheadTick;
@@ -660,7 +821,7 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
       Math.min(preset.maxNote, preset.maxNote - rawRow),
     );
     const durationTicks = Math.min(
-      grid,
+      MIDI_PPQ,
       Math.max(1, draft.durationTicks - startTick),
     );
     if (startTick >= draft.durationTicks) {
@@ -675,6 +836,7 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
       durationTicks,
     };
     commitCommand({ type: "addNote", note }, "Note added.", [note.noteId]);
+    void auditionNote(note.pitch, note.velocity);
   }
 
   function addStarterPattern() {
@@ -864,6 +1026,7 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
       setNotice("Add a note before pressing play.");
       return;
     }
+    stopAudition();
     stopPlayback();
     setPlaying(true);
     setPlayheadTick(0);
@@ -937,6 +1100,13 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
         },
         "Note updated from the inspector.",
       );
+      if (
+        field === "pitch" &&
+        value >= preset.minNote &&
+        value <= preset.maxNote
+      ) {
+        void auditionNote(value, selectedNote.velocity);
+      }
     }
   }
 
@@ -1014,6 +1184,7 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
                   return;
                 }
                 stopPlayback();
+                stopAudition();
                 setPresetId(nextPreset.presetId);
                 setHistory(createMidiEditorHistory(history.notes));
                 markEdited();
@@ -1203,7 +1374,8 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
               Arrows move selected notes; Shift + Left/Right resizes; Delete
               removes; Ctrl/Cmd + D duplicates; Ctrl/Cmd + Z undoes; Ctrl/Cmd +
               Shift + Z or Ctrl/Cmd + Y redoes; Ctrl/Cmd + A selects all. Text
-              fields keep their normal shortcuts.
+              fields keep their normal shortcuts. Right-click a note to remove
+              it, or click a piano key to preview its sound.
             </p>
           </div>
         )}
@@ -1219,7 +1391,7 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
           </div>
           <p className="text-muted inline-flex items-center gap-2 text-sm">
             <FiMousePointer aria-hidden /> Double-click empty space to add. Drag
-            notes or their dark right edge.
+            notes, resize from the gripped right edge, or right-click to remove.
           </p>
         </div>
 
@@ -1247,11 +1419,16 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
               tabIndex={0}
               aria-label={`Piano roll with ${history.notes.length} notes. Use the note inspector after the roll for complete keyboard editing.`}
               data-testid="midi-piano-roll"
-              onDoubleClick={(event) => addNoteAt(event.clientX, event.clientY)}
+              onDoubleClick={handleDoubleClick}
+              onContextMenu={handleContextMenu}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={finishPointerGesture}
               onPointerCancel={finishPointerGesture}
+              onPointerLeave={(event) => {
+                if (!gestureRef.current)
+                  event.currentTarget.style.cursor = "crosshair";
+              }}
             />
           </div>
         </div>
