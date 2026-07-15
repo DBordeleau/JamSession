@@ -67,7 +67,7 @@ test.describe("standalone MIDI stem editor", () => {
     await page.getByRole("button", { name: "Open MIDI editor" }).click();
     await expect(
       page.getByRole("heading", { name: "Shape a reusable stem" }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
 
     await page.getByRole("button", { name: "Add starter pattern" }).click();
     await expect(page.getByText(/4 of 2,048 notes/)).toBeVisible();

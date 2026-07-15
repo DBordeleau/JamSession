@@ -5,11 +5,17 @@ import { AssetVerificationStatus } from "@/features/assets/asset-verification-st
 import { SourceUpload } from "@/features/assets/source-upload";
 import { sourceVerificationFailureMessage } from "@/features/assets/types";
 import { CreditConfirmationForm } from "@/features/assets/credit-confirmation-form";
-import { listOwnedSourceAssets } from "@/server/repositories/assets";
+import {
+  getSourceAdmissionCapability,
+  listOwnedSourceAssets,
+} from "@/server/repositories/assets";
 
 export default async function UploadsPage() {
   await requireViewer("/uploads");
-  const assets = await listOwnedSourceAssets();
+  const [assets, sourceAdmissionEnabled] = await Promise.all([
+    listOwnedSourceAssets(),
+    getSourceAdmissionCapability(),
+  ]);
   return (
     <main id="main-content">
       <Container className="py-12 sm:py-16">
@@ -25,7 +31,7 @@ export default async function UploadsPage() {
           </p>
         </Reveal>
         <Reveal delay={0.08} className="mt-8">
-          <SourceUpload />
+          <SourceUpload admissionEnabled={sourceAdmissionEnabled} />
         </Reveal>
         <Reveal delay={0.14} className="mt-10">
           <h2 className="text-xl font-semibold">Recent uploads</h2>

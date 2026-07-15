@@ -12,6 +12,14 @@ import {
   WAVEFORM_PEAKS_ALGORITHM_VERSION,
 } from "@/features/assets/waveform-peaks/contract";
 
+export async function getSourceAdmissionCapability(): Promise<boolean> {
+  const db = await createSupabaseServerClient();
+  const { data, error } = await db.rpc("get_source_admission_capability");
+  if (error) return false;
+  const row = (data as unknown as Record<string, unknown>[] | null)?.[0];
+  return row?.source_audio_admission_enabled === true;
+}
+
 export async function listOwnedSourceAssets(): Promise<OwnedSourceAsset[]> {
   const db = await createSupabaseServerClient();
   const { data, error } = await db
