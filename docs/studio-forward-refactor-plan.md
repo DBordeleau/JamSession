@@ -22,7 +22,7 @@ The recommended canonical routes are:
 
 The proposal is realistic with the current stack. Project loading, creation, switching, vertical track reordering, timeline movement, trimming, copying, looping, splitting, integrated piano-roll editing, and MIDI recording are achievable. Manifest v2 and its normalized projections now provide the multi-clip foundation; UI support still must prove exact workspace/revision/contribution/fork round trips before exposing every operation. Independent playback-speed and pitch controls are a separate DSP problem and should not be promised as part of the structural refactor.
 
-The route-neutral session contract, studio-first project creation flow, manifest-v2 clip shape, and future engine-portability rules were accepted before MIDI-01 and implemented through MIDI-06. The remaining refactor must now turn those foundations into the primary creation workflow. MIDI-07 prepares and tests the reversible source-admission control but does not enable the lock. Studio-native composition, recording, arranging, collaboration, and export parity are required before STUDIO-06 may enable it.
+The route-neutral session contract, studio-first project creation flow, manifest-v2 clip shape, future engine-portability rules, and reversible source-admission control were implemented through MIDI-07. Admission remains enabled. The remaining refactor must now turn those foundations into the primary creation workflow. Studio-native composition, recording, arranging, collaboration, and export parity are required before STUDIO-06 may enable the lock.
 
 ## Roadmap integration
 

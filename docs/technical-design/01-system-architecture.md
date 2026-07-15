@@ -1,6 +1,6 @@
 # System Architecture
 
-Status: Accepted MVP design; implemented through PR 17, OPT-05, and MIDI-05 with the remaining MIDI/studio-forward program planned before PR 18
+Status: Accepted MVP design; implemented through PR 17, OPT-05, and MIDI-07 with STUDIO-01 next before PR 18
 
 Audience: engineers and coding agents
 
@@ -208,11 +208,11 @@ The standalone MIDI editor delivered in MIDI-02–MIDI-04 is a reusable editor f
 
 Manifest v1 remains the immutable compatibility contract for existing audio history. Add manifest v2 as a discriminated union of audio and MIDI tracks with stable clips for both kinds. A v1 audio track maps deterministically to one v2 audio track with one clip referencing the same source asset; the initial audio model keeps one source asset per track so credits and retention remain coherent. MIDI tracks contain bounded tick-based immutable stem-version references and an immutable preset ID/version; they never fabricate source-asset IDs. Existing workspaces upgrade only when an owner intentionally saves v2 content, copying audio references exactly. Published v1 revisions are not rewritten. Splitting remains unavailable until normalized clip projections round-trip through save, publish, submit, accept, and fork.
 
-After MIDI-07 prepares the transition controls, `/studio` becomes the authenticated start center and `/studio/{projectId}` the canonical selected-session route. The current nested route redirects compatibly. The persistent shell owns lightweight navigation/project-list state only; every selected route reauthorizes and remounts one session subtree so audio graphs, abort controllers, autosave generations, and recovery keys cannot cross projects. No `studios` table is introduced.
+MIDI-07 has prepared the transition controls. STUDIO-01 next makes `/studio` the authenticated start center and `/studio/{projectId}` the canonical selected-session route. The current nested route redirects compatibly. The persistent shell owns lightweight navigation/project-list state only; every selected route reauthorizes and remounts one session subtree so audio graphs, abort controllers, autosave generations, and recovery keys cannot cross projects. No `studios` table is introduced.
 
 The MIDI editor must work with pointer, keyboard and an on-screen piano. Hardware Web MIDI is optional progressive enhancement requested only from an explicit gesture in a secure context, without System Exclusive access. Initial sounds are code-owned synthesis presets without remote samples. A preset change creates a new version so historical playback does not drift.
 
-MIDI-07 adds and tests the trusted source-admission capability, including disabled-mode bypass protection, but leaves it enabled while Studio is rebuilt. Only after Studio-native track creation, piano-roll editing, contextual recording, timeline arranging/mixing, save/reload, publication, preview, contribution acceptance, fork and `.mid` export pass the STUDIO-06 parity gate may the prototype disable new source admission. The lock is enforced in `reserve_source_asset` before reservation/quota mutation and represented as a global prototype capability—not a subscription or user entitlement. Existing ready audio, valid in-flight reservations during the documented deployment grace period, private signing, downloads, export, publication and forks remain supported.
+MIDI-07 implements and tests the trusted source-admission capability, including disabled-mode bypass protection, and ships it enabled while Studio is rebuilt. Only after Studio-native track creation, piano-roll editing, contextual recording, timeline arranging/mixing, save/reload, publication, preview, contribution acceptance, fork and `.mid` export pass the STUDIO-06 parity gate may the prototype disable new source admission. The lock is enforced in `reserve_source_asset` before reservation/quota mutation and represented as a global prototype capability—not a subscription or user entitlement. Existing ready audio, valid in-flight reservations during the documented deployment grace period, private signing, downloads, export, publication and forks remain supported. The repository runbook records enablement, rollback, and hosted-authorization requirements.
 
 ## Upload and asset processing
 

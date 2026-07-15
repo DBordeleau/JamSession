@@ -1,6 +1,6 @@
 # Delivery Plan and Engineering Contract
 
-Status: Accepted; implemented through PR 17, OPT-05, and MIDI-06 with remaining MIDI-first and studio-forward milestones inserted before M6
+Status: Accepted; implemented through PR 17, OPT-05, and MIDI-07 with STUDIO-01 next before M6
 
 ## Delivery strategy
 
@@ -88,6 +88,8 @@ OPT-05 completes M5.5. The controlled browser-generated FLAC set retains 59.76% 
 Exit: **Met with a documented cold-playback exception** — the controlled cold studio shell is usable within two seconds, warm playback is immediate after the session prime, lossless/private behavior is unchanged, and the remaining cold delay is quantified as network-bound for the MIDI compatibility handoff.
 
 ### M5.6 — MIDI-first MVP expansion
+
+Status: Complete through MIDI-07; source admission remains enabled.
 
 - In MIDI-01, freeze the route-neutral Studio session/capability contract plus manifest v2 with stable audio/MIDI clips; preserve deterministic v1-to-v2 mapping.
 - Add a standalone, accessible MIDI-stem editor and immutable reusable stem versions before project integration.

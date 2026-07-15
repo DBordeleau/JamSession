@@ -1,6 +1,6 @@
 # Data Model and Supabase Design
 
-Status: Accepted MVP design; implemented through PR 17, OPT-05, and MIDI-06 with audio-admission hardening and studio-forward work still planned before PR 18
+Status: Accepted MVP design; implemented through PR 17, OPT-05, and MIDI-07 with STUDIO-01 next before PR 18
 
 Database: Supabase Postgres
 
@@ -209,7 +209,7 @@ The MIDI expansion is expand-only. Do not rewrite manifest v1, published revisio
 
 Add a constrained project compatibility field equivalent to `midi` and `legacy_hybrid`. Backfill every existing project to `legacy_hybrid`; new projects default to `midi` only after the MIDI creation flow is deployed. Compatibility is a workflow invariant, not a subscription tier.
 
-MIDI-07 adds one trusted global prototype capability for new source admission. `reserve_source_asset` checks it before asset/quota mutation and raises a bounded `audio_uploads_unavailable` error when disabled. MIDI-07 must ship it in the enabled state and prove disabled-mode bypass behavior; STUDIO-06 changes the authoritative state only after Studio-native parity. Do not model plans, payments, or per-user entitlements. Existing ready assets and documented in-flight reservations retain their lifecycle and authorization.
+MIDI-07 adds one trusted global prototype capability for new source admission. It ships enabled. `reserve_source_asset` checks it before new asset/quota mutation and raises a bounded `audio_uploads_unavailable` error when disabled; exact idempotent replay of a pre-lock reservation remains valid through its existing grace lifetime. Disabled-mode database/browser tests cover old-client bypass, quota non-mutation, completion/verification/cancellation, rollback, and mixed legacy-audio compatibility. STUDIO-06 changes the authoritative state only after Studio-native parity and separate hosted authorization. Do not model plans, payments, or per-user entitlements. Existing ready assets and documented in-flight reservations retain their lifecycle and authorization.
 
 ### Manifest v2 and track projection
 
