@@ -2,6 +2,12 @@ import type { SynthPresetV1 } from "../presets";
 import { resolveSynthPreset } from "../presets";
 
 export type PresetVoice = {
+  triggerAttack: (
+    midiNote: number,
+    whenSeconds?: number,
+    velocity?: number,
+  ) => void;
+  triggerRelease: (midiNote: number, whenSeconds?: number) => void;
   triggerAttackRelease: (
     midiNote: number,
     durationSeconds: number,
@@ -86,6 +92,24 @@ export async function createPresetVoice(
 
   let disposed = false;
   return {
+    triggerAttack(midiNote, whenSeconds, velocity = 0.8) {
+      if (disposed) throw new Error("Preset voice is disposed");
+      if (midiNote < preset.minNote || midiNote > preset.maxNote) {
+        throw new RangeError("Note is outside this preset's supported range");
+      }
+      synth.triggerAttack(
+        Tone.Frequency(midiNote, "midi").toFrequency(),
+        whenSeconds,
+        Math.min(1, Math.max(0, velocity)),
+      );
+    },
+    triggerRelease(midiNote, whenSeconds) {
+      if (disposed) return;
+      synth.triggerRelease(
+        Tone.Frequency(midiNote, "midi").toFrequency(),
+        whenSeconds,
+      );
+    },
     triggerAttackRelease(
       midiNote,
       durationSeconds,

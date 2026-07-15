@@ -62,6 +62,15 @@ import {
   undoMidiEditor,
 } from "./editor-history";
 import type { MidiStemDraft } from "./types";
+import {
+  initialPianoScrollTop,
+  isBlackPianoKey,
+  midiPitchName,
+  pianoKeyFace,
+  pianoKeyLabel,
+  PIANO_KEY_WIDTH,
+  PITCH_ROW_HEIGHT,
+} from "./piano-roll";
 import { useMidiPerformance } from "./use-midi-performance.client";
 
 export type MidiStemEditorHost = {
@@ -77,14 +86,11 @@ export type MidiStemEditorHost = {
   }) => Promise<{ ok: boolean; message: string }>;
   finalizeLabel: string;
 };
-const PITCH_ROW_HEIGHT = 22;
-const PIANO_KEY_WIDTH = 88;
 const MIN_PIXELS_PER_BEAT = 48;
 const MAX_PIXELS_PER_BEAT = 160;
 const DEFAULT_PIXELS_PER_BEAT = 88;
 const MIN_NOTE_WIDTH = 7;
 const RESIZE_HANDLE_WIDTH = 10;
-const AUDITION_SECONDS = 0.18;
 
 const inputClass =
   "focus:border-accent border-strong bg-surface mt-2 min-h-11 w-full rounded-control border px-3 py-2 transition-colors";
@@ -108,35 +114,19 @@ type DragGesture = {
   lastAuditionPitch: number;
 };
 
+type PianoGesture = {
+  pointerId: number;
+  pitch: number;
+  source: string;
+};
+
 type AuditionVoice = {
   presetId: string;
   voice: PresetVoice;
 };
 
-function isBlackKey(pitch: number) {
-  return [1, 3, 6, 8, 10].includes(pitch % 12);
-}
-
 function resizeHandleWidth(noteWidth: number) {
   return Math.min(RESIZE_HANDLE_WIDTH, Math.max(4, noteWidth / 3));
-}
-
-function pitchName(pitch: number) {
-  const names = [
-    "C",
-    "C♯",
-    "D",
-    "D♯",
-    "E",
-    "F",
-    "F♯",
-    "G",
-    "G♯",
-    "A",
-    "A♯",
-    "B",
-  ];
-  return `${names[pitch % 12]}${Math.floor(pitch / 12) - 1}`;
 }
 
 function selectedValues(event: React.ChangeEvent<HTMLSelectElement>) {
@@ -204,8 +194,11 @@ export function MidiStemEditor({
   const [editGeneration, setEditGeneration] = useState(0);
   const saveStatusRef = useRef<MidiDraftSaveStatus>(saveState.status);
   const gestureRef = useRef<DragGesture | null>(null);
+  const pianoGestureRef = useRef<PianoGesture | null>(null);
+  const initialViewportRef = useRef(false);
   const voiceRef = useRef<PresetVoice | null>(null);
   const auditionVoiceRef = useRef<AuditionVoice | null>(null);
+  const auditionHeldPitchesRef = useRef(new Set<number>());
   const auditionRequestRef = useRef(0);
   const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playheadTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -281,6 +274,7 @@ export function MidiStemEditor({
 
   const stopAudition = useCallback(() => {
     auditionRequestRef.current += 1;
+    auditionHeldPitchesRef.current.clear();
     auditionVoiceRef.current?.voice.allNotesOff();
     auditionVoiceRef.current?.voice.dispose();
     auditionVoiceRef.current = null;
@@ -288,6 +282,7 @@ export function MidiStemEditor({
 
   const auditionNote = useCallback(
     async (pitch: number, velocity = 96) => {
+      auditionHeldPitchesRef.current.add(pitch);
       const request = ++auditionRequestRef.current;
       try {
         const { createPresetVoice, resumeMidiAudioContext } =
@@ -304,12 +299,8 @@ export function MidiStemEditor({
           entry = { presetId, voice };
           auditionVoiceRef.current = entry;
         }
-        entry.voice.triggerAttackRelease(
-          pitch,
-          AUDITION_SECONDS,
-          when,
-          velocity / 127,
-        );
+        if (!auditionHeldPitchesRef.current.has(pitch)) return;
+        entry.voice.triggerAttack(pitch, when, velocity / 127);
       } catch {
         // Audition is a progressive enhancement; editing remains available when
         // the browser has not granted audio playback yet.
@@ -317,6 +308,11 @@ export function MidiStemEditor({
     },
     [presetId],
   );
+
+  const releaseAuditionNote = useCallback((pitch: number) => {
+    auditionHeldPitchesRef.current.delete(pitch);
+    auditionVoiceRef.current?.voice.triggerRelease(pitch);
+  }, []);
 
   const commitRecordedTake = useCallback(
     (recordedNotes: readonly MidiNoteV1[]) => {
@@ -349,6 +345,7 @@ export function MidiStemEditor({
     maxPitch: preset.maxNote,
     existingNoteCount: history.notes.length,
     audition: (pitch, velocity) => void auditionNote(pitch, velocity),
+    releaseAudition: releaseAuditionNote,
     commitTake: commitRecordedTake,
     announce: setNotice,
     bpm: host?.tempoBpm,
@@ -519,17 +516,33 @@ export function MidiStemEditor({
   useEffect(() => {
     const roll = rollRef.current;
     if (!roll) return;
-    const update = () =>
+    const update = () => {
+      const width = roll.clientWidth;
+      const height = roll.clientHeight;
+      let scrollTop = roll.scrollTop;
+      if (!initialViewportRef.current && height > 0) {
+        scrollTop =
+          scrollTop ||
+          initialPianoScrollTop({
+            minPitch: preset.minNote,
+            maxPitch: preset.maxNote,
+            viewportHeight: height,
+          });
+        roll.scrollTop = scrollTop;
+        initialViewportRef.current = true;
+      }
       setViewport((current) => ({
         ...current,
-        width: roll.clientWidth,
-        height: roll.clientHeight,
+        width,
+        height,
+        scrollTop,
       }));
+    };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(roll);
     return () => observer.disconnect();
-  }, []);
+  }, [preset.maxNote, preset.minNote]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -570,7 +583,7 @@ export function MidiStemEditor({
     for (let row = firstRow; row < lastRow; row += 1) {
       const pitch = preset.maxNote - row;
       const y = row * PITCH_ROW_HEIGHT - viewport.scrollTop;
-      const isBlack = isBlackKey(pitch);
+      const isBlack = isBlackPianoKey(pitch);
       context.fillStyle = isBlack ? canvasColor : surfaceColor;
       context.fillRect(
         PIANO_KEY_WIDTH,
@@ -584,27 +597,50 @@ export function MidiStemEditor({
       context.lineTo(viewport.width, y + PITCH_ROW_HEIGHT);
       context.stroke();
 
-      context.fillStyle = textColor;
+      const face = pianoKeyFace(pitch);
+      const active = performance.activePitches.has(pitch);
+      const keyGradient = context.createLinearGradient(
+        face.x,
+        0,
+        face.x + face.width,
+        0,
+      );
+      if (active) {
+        keyGradient.addColorStop(0, accent2);
+        keyGradient.addColorStop(1, accent);
+        context.shadowColor = accent2;
+        context.shadowBlur = 8;
+      } else if (isBlack) {
+        keyGradient.addColorStop(0, canvasColor);
+        keyGradient.addColorStop(0.7, surfaceColor);
+        keyGradient.addColorStop(1, canvasColor);
+      } else {
+        keyGradient.addColorStop(0, textColor);
+        keyGradient.addColorStop(0.82, textColor);
+        keyGradient.addColorStop(1, mutedColor);
+      }
+      context.fillStyle = isBlack ? textColor : keyGradient;
       context.fillRect(0, y, PIANO_KEY_WIDTH, PITCH_ROW_HEIGHT);
       context.strokeStyle = strongBorder;
       context.strokeRect(0, y, PIANO_KEY_WIDTH, PITCH_ROW_HEIGHT);
       if (isBlack) {
-        context.fillStyle = canvasColor;
+        context.fillStyle = keyGradient;
         context.fillRect(
-          PIANO_KEY_WIDTH * 0.38,
-          y + 1,
-          PIANO_KEY_WIDTH * 0.62,
-          PITCH_ROW_HEIGHT - 2,
+          face.x,
+          y + face.insetY,
+          face.width,
+          PITCH_ROW_HEIGHT - face.insetY * 2,
         );
       }
-      context.fillStyle = isBlack
-        ? mutedColor
-        : pitch % 12 === 0
-          ? canvasColor
-          : surfaceColor;
+      context.shadowBlur = 0;
+      context.fillStyle = active
+        ? canvasColor
+        : isBlack
+          ? textColor
+          : canvasColor;
       context.textAlign = "right";
       context.fillText(
-        pitchName(pitch),
+        pianoKeyLabel(pitch, preset.drumMap) ?? "",
         PIANO_KEY_WIDTH - 7,
         y + PITCH_ROW_HEIGHT / 2,
       );
@@ -696,9 +732,11 @@ export function MidiStemEditor({
   }, [
     draft.durationTicks,
     notes,
+    performance.activePitches,
     pixelsPerBeat,
     pitchCount,
     visiblePlayheadTick,
+    preset.drumMap,
     preset.maxNote,
     quantization,
     selectedIds,
@@ -749,7 +787,11 @@ export function MidiStemEditor({
     if (event.button !== 0) return;
     const rect = event.currentTarget.getBoundingClientRect();
     if (event.clientX - rect.left < PIANO_KEY_WIDTH) {
-      void auditionNote(pitchAtPointer(event.clientY));
+      const pitch = pitchAtPointer(event.clientY);
+      const source = `piano-gutter:${event.pointerId}`;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      pianoGestureRef.current = { pointerId: event.pointerId, pitch, source };
+      performance.previewOn(pitch, performance.defaultVelocity, source);
       return;
     }
     const hit = noteAtPointer(event.clientX, event.clientY);
@@ -782,6 +824,24 @@ export function MidiStemEditor({
   }
 
   function handlePointerMove(event: React.PointerEvent<HTMLCanvasElement>) {
+    const pianoGesture = pianoGestureRef.current;
+    if (pianoGesture?.pointerId === event.pointerId) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      if (event.clientX - rect.left >= PIANO_KEY_WIDTH) {
+        finishPianoGesture(event);
+        return;
+      }
+      const pitch = pitchAtPointer(event.clientY);
+      if (pitch !== pianoGesture.pitch) {
+        pianoGesture.pitch = pitch;
+        performance.previewOn(
+          pitch,
+          performance.defaultVelocity,
+          pianoGesture.source,
+        );
+      }
+      return;
+    }
     const gesture = gestureRef.current;
     if (!gesture || gesture.pointerId !== event.pointerId) {
       const rect = event.currentTarget.getBoundingClientRect();
@@ -834,7 +894,7 @@ export function MidiStemEditor({
         );
         if (primaryNote && primaryNote.pitch !== gesture.lastAuditionPitch) {
           gesture.lastAuditionPitch = primaryNote.pitch;
-          void auditionNote(primaryNote.pitch, primaryNote.velocity);
+          performance.previewNote(primaryNote.pitch, primaryNote.velocity);
         }
       }
     } catch {
@@ -861,13 +921,30 @@ export function MidiStemEditor({
       event.currentTarget.releasePointerCapture(event.pointerId);
   }
 
+  function finishPianoGesture(event: React.PointerEvent<HTMLCanvasElement>) {
+    const gesture = pianoGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    performance.previewOff(gesture.source);
+    pianoGestureRef.current = null;
+    event.currentTarget.style.cursor = "pointer";
+    if (event.currentTarget.hasPointerCapture(event.pointerId))
+      event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+
+  function finishPointerInteraction(
+    event: React.PointerEvent<HTMLCanvasElement>,
+  ) {
+    finishPianoGesture(event);
+    finishPointerGesture(event);
+  }
+
   function handleContextMenu(event: React.MouseEvent<HTMLCanvasElement>) {
     const hit = noteAtPointer(event.clientX, event.clientY);
     if (!hit) return;
     event.preventDefault();
     commitCommand(
       { type: "deleteNotes", noteIds: [hit.note.noteId] },
-      `${pitchName(hit.note.pitch)} removed.`,
+      `${midiPitchName(hit.note.pitch)} removed.`,
       [],
     );
   }
@@ -918,7 +995,7 @@ export function MidiStemEditor({
       durationTicks,
     };
     commitCommand({ type: "addNote", note }, "Note added.", [note.noteId]);
-    void auditionNote(note.pitch, note.velocity);
+    performance.previewNote(note.pitch, note.velocity);
   }
 
   function addStarterPattern() {
@@ -1249,7 +1326,7 @@ export function MidiStemEditor({
         value >= preset.minNote &&
         value <= preset.maxNote
       ) {
-        void auditionNote(value, selectedNote.velocity);
+        performance.previewNote(value, selectedNote.velocity);
       }
     }
   }
@@ -1448,38 +1525,65 @@ export function MidiStemEditor({
             className="mt-4 flex max-w-full gap-1 overflow-x-auto pb-2"
             aria-label="On-screen piano"
           >
-            {performancePitches.map((pitch) => (
-              <button
-                key={pitch}
-                type="button"
-                className={`focus-visible:ring-accent min-h-20 min-w-12 rounded-b-md border px-2 text-xs font-semibold focus-visible:ring-2 ${
-                  isBlackKey(pitch)
-                    ? "border-strong bg-canvas text-ink"
-                    : "border-subtle bg-ink text-canvas"
-                }`}
-                aria-label={`Play ${pitchName(pitch)}, MIDI note ${pitch}`}
-                onPointerDown={(event) => {
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                  performance.noteOn(
-                    pitch,
-                    performance.defaultVelocity,
-                    globalThis.performance.now(),
-                  );
-                }}
-                onPointerUp={() =>
-                  performance.noteOff(pitch, globalThis.performance.now())
-                }
-                onPointerCancel={() =>
-                  performance.noteOff(pitch, globalThis.performance.now())
-                }
-                onLostPointerCapture={() =>
-                  performance.noteOff(pitch, globalThis.performance.now())
-                }
-              >
-                {preset.drumMap?.[String(pitch)] ?? pitchName(pitch)}
-              </button>
-            ))}
+            {performancePitches.map((pitch) => {
+              const active = performance.activePitches.has(pitch);
+              return (
+                <button
+                  key={pitch}
+                  type="button"
+                  className={`focus-visible:ring-accent min-h-20 min-w-12 rounded-b-md border px-2 text-xs font-semibold transition-[background-color,color,box-shadow,transform] duration-100 focus-visible:ring-2 motion-reduce:transform-none motion-reduce:transition-none ${
+                    active
+                      ? "border-accent-2 bg-accent-2 text-accent-contrast -translate-y-0.5 shadow-[0_0_16px_var(--color-accent-2)]"
+                      : isBlackPianoKey(pitch)
+                        ? "border-strong bg-canvas text-ink"
+                        : "border-subtle bg-ink text-canvas"
+                  }`}
+                  aria-label={`Play ${midiPitchName(pitch)}, MIDI note ${pitch}`}
+                  aria-pressed={active}
+                  onPointerDown={(event) => {
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                    performance.noteOn(
+                      pitch,
+                      performance.defaultVelocity,
+                      globalThis.performance.now(),
+                      `performance-key:${event.pointerId}`,
+                    );
+                  }}
+                  onPointerUp={(event) =>
+                    performance.noteOff(
+                      pitch,
+                      globalThis.performance.now(),
+                      `performance-key:${event.pointerId}`,
+                    )
+                  }
+                  onPointerCancel={(event) =>
+                    performance.noteOff(
+                      pitch,
+                      globalThis.performance.now(),
+                      `performance-key:${event.pointerId}`,
+                    )
+                  }
+                  onLostPointerCapture={(event) =>
+                    performance.noteOff(
+                      pitch,
+                      globalThis.performance.now(),
+                      `performance-key:${event.pointerId}`,
+                    )
+                  }
+                >
+                  {preset.drumMap?.[String(pitch)] ?? midiPitchName(pitch)}
+                </button>
+              );
+            })}
           </div>
+          <p className="sr-only" aria-live="polite">
+            {performance.activePitches.size
+              ? `Playing ${[...performance.activePitches]
+                  .sort((left, right) => left - right)
+                  .map(midiPitchName)
+                  .join(", ")}`
+              : "No piano notes held"}
+          </p>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {performance.status === "idle" ? (
@@ -1557,7 +1661,11 @@ export function MidiStemEditor({
           </button>
           <button
             type="button"
-            onClick={stopPlayback}
+            onClick={() => {
+              stopPlayback();
+              stopAudition();
+              performance.releaseActive();
+            }}
             disabled={!playing}
             className={secondaryButton}
           >
@@ -1794,13 +1902,16 @@ export function MidiStemEditor({
               tabIndex={0}
               aria-label={`Piano roll with ${history.notes.length} notes. Use the note inspector after the roll for complete keyboard editing.`}
               data-testid="midi-piano-roll"
+              data-middle-c-row={preset.maxNote - 60}
               onDoubleClick={handleDoubleClick}
               onContextMenu={handleContextMenu}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
-              onPointerUp={finishPointerGesture}
-              onPointerCancel={finishPointerGesture}
+              onPointerUp={finishPointerInteraction}
+              onPointerCancel={finishPointerInteraction}
+              onLostPointerCapture={finishPointerInteraction}
               onPointerLeave={(event) => {
+                finishPianoGesture(event);
                 if (!gestureRef.current)
                   event.currentTarget.style.cursor = "crosshair";
               }}
@@ -1835,8 +1946,8 @@ export function MidiStemEditor({
           >
             {history.notes.map((note, index) => (
               <option key={note.noteId} value={note.noteId}>
-                {index + 1}. {pitchName(note.pitch)} · tick {note.startTick} ·{" "}
-                {note.durationTicks} long · velocity {note.velocity}
+                {index + 1}. {midiPitchName(note.pitch)} · tick {note.startTick}{" "}
+                · {note.durationTicks} long · velocity {note.velocity}
               </option>
             ))}
           </select>
@@ -1899,7 +2010,7 @@ export function MidiStemEditor({
               <InspectorField
                 key={`pitch-${selectedNote.noteId}-${selectedNote.pitch}`}
                 label="MIDI pitch"
-                detail={pitchName(selectedNote.pitch)}
+                detail={midiPitchName(selectedNote.pitch)}
                 min={preset.minNote}
                 max={preset.maxNote}
                 value={selectedNote.pitch}

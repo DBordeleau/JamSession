@@ -250,6 +250,11 @@ Editable sessions keep the next Add a track row pinned beneath the channels. Its
 pending MIDI lane uses the established dashed/accent state, pill actions, centered
 timeline copy, and semantic focus treatment; it is visibly provisional until a clip
 materializes it.
+The shared MIDI editor piano uses full white faces, shorter gradient black faces,
+warm semantic dividers, and accent/gold held-note feedback. Melodic gutters label
+only C rows while drum presets retain their mapped names; performance keys expose
+the same held state with shape, contrast-safe colour, glow, and reduced-motion-safe
+press feedback.
 Legacy manifest-v1 waveforms remain canvas-rendered, so their colours still come from
 the `studioTheme` engine configuration in
 [`studio-surface.tsx`](../../src/features/studio/waveform-playlist-adapter/studio-surface.tsx).
@@ -320,6 +325,7 @@ pages, the create/edit form.
 | Studio surface + theme    | `src/features/studio/waveform-playlist-adapter/studio-surface.tsx`        |
 | Unified arranger          | `src/features/studio/arranger/arranger-workspace.tsx`                     |
 | Integrated MIDI composer  | `src/features/studio/integrated-midi/integrated-midi-composer.client.tsx` |
+| Shared MIDI piano         | `src/features/midi/stems/stem-editor.client.tsx` and `piano-roll.ts`      |
 | Icons                     | `react-icons` (Feather set, `react-icons/fi`)                             |
 | Page-transition wrapper   | `src/app/template.tsx`                                                    |
 | Musical key formatting    | `src/features/projects/musical-key.ts`                                    |

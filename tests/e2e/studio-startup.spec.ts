@@ -174,6 +174,33 @@ test.describe("studio startup smoke", () => {
     await expect(
       page.getByRole("heading", { name: "Perform a take" }),
     ).toBeVisible();
+    const integratedRoll = page.getByTestId("midi-piano-roll");
+    const integratedViewport = await integratedRoll.evaluate((element) => {
+      const scroller = element.parentElement?.parentElement;
+      if (!(scroller instanceof HTMLElement))
+        throw new Error("Piano-roll scroller is unavailable");
+      return {
+        height: scroller.clientHeight,
+        scrollTop: scroller.scrollTop,
+        middleCRow: Number(element.dataset.middleCRow),
+      };
+    });
+    expect(
+      Math.abs(
+        integratedViewport.middleCRow * 22 +
+          11 -
+          integratedViewport.scrollTop -
+          integratedViewport.height / 2,
+      ),
+    ).toBeLessThanOrEqual(12);
+    const c4Key = page.getByRole("button", {
+      name: "Play C4, MIDI note 60",
+    });
+    await integratedRoll.focus();
+    await page.keyboard.down("a");
+    await expect(c4Key).toHaveAttribute("aria-pressed", "true");
+    await page.keyboard.up("a");
+    await expect(c4Key).toHaveAttribute("aria-pressed", "false");
     await expect(
       page.getByRole("button", { name: "Publish immutable revision" }),
     ).toBeDisabled();
