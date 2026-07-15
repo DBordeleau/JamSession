@@ -118,6 +118,7 @@ type DragGesture = {
   noteIds: readonly string[];
   notes: readonly MidiNoteV1[];
   lastAuditionPitch: number;
+  auditionNoteId: string;
   copyIds: readonly string[];
   previewNotes: readonly MidiNoteV1[] | null;
 };
@@ -134,6 +135,12 @@ type MarqueeGesture = {
 };
 
 type PianoGesture = {
+  pointerId: number;
+  pitch: number;
+  source: string;
+};
+
+type PerformanceKeyGesture = {
   pointerId: number;
   pitch: number;
   source: string;
@@ -206,6 +213,7 @@ export function MidiStemEditor({
   >({ status: "idle", message: "" });
   const rollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const performanceKeyboardRef = useRef<HTMLDivElement>(null);
   const lockVersionRef = useRef(draft.lockVersion);
   const contentSha256Ref = useRef(draft.contentSha256);
   const savingRef = useRef(false);
@@ -220,6 +228,7 @@ export function MidiStemEditor({
   );
   const noteClipboardRef = useRef<readonly MidiNoteV1[]>([]);
   const pianoGestureRef = useRef<PianoGesture | null>(null);
+  const performanceKeyGestureRef = useRef<PerformanceKeyGesture | null>(null);
   const initialViewportRef = useRef(false);
   const voiceRef = useRef<PresetVoice | null>(null);
   const auditionVoiceRef = useRef<AuditionVoice | null>(null);
@@ -386,6 +395,21 @@ export function MidiStemEditor({
       (pitch) => pitch >= preset.minNote && pitch <= preset.maxNote,
     );
   }, [performance.octave, preset.maxNote, preset.minNote]);
+
+  useEffect(() => {
+    const clearPerformanceGesture = () => {
+      performanceKeyGestureRef.current = null;
+    };
+    const clearHiddenGesture = () => {
+      if (document.visibilityState === "hidden") clearPerformanceGesture();
+    };
+    window.addEventListener("blur", clearPerformanceGesture);
+    document.addEventListener("visibilitychange", clearHiddenGesture);
+    return () => {
+      window.removeEventListener("blur", clearPerformanceGesture);
+      document.removeEventListener("visibilitychange", clearHiddenGesture);
+    };
+  }, []);
 
   useEffect(() => stopPlayback, [stopPlayback]);
   useEffect(() => stopAudition, [stopAudition]);
@@ -904,19 +928,22 @@ export function MidiStemEditor({
       return;
     }
     const mode = modifier ? "copy" : hit.resize ? "resize" : "move";
+    const noteIds = [...nextSelection];
+    const copyIds =
+      mode === "copy" ? noteIds.map(() => crypto.randomUUID()) : [];
+    const grabbedNoteIndex = noteIds.indexOf(hit.note.noteId);
     event.currentTarget.setPointerCapture(event.pointerId);
     gestureRef.current = {
       mode,
       pointerId: event.pointerId,
       clientX: event.clientX,
       clientY: event.clientY,
-      noteIds: [...nextSelection],
+      noteIds,
       notes: history.notes,
       lastAuditionPitch: hit.note.pitch,
-      copyIds:
-        mode === "copy"
-          ? [...nextSelection].map(() => crypto.randomUUID())
-          : [],
+      auditionNoteId:
+        mode === "copy" ? copyIds[grabbedNoteIndex] : hit.note.noteId,
+      copyIds,
       previewNotes: null,
     };
     event.currentTarget.style.cursor =
@@ -1044,9 +1071,7 @@ export function MidiStemEditor({
       setPreviewNotes(next.notes);
       if (gesture.mode === "move" || gesture.mode === "copy") {
         const primaryNote = next.notes.find(
-          ({ noteId }) =>
-            noteId ===
-            (gesture.mode === "copy" ? gesture.copyIds[0] : gesture.noteIds[0]),
+          ({ noteId }) => noteId === gesture.auditionNoteId,
         );
         if (primaryNote && primaryNote.pitch !== gesture.lastAuditionPitch) {
           gesture.lastAuditionPitch = primaryNote.pitch;
@@ -1105,6 +1130,87 @@ export function MidiStemEditor({
     event.currentTarget.style.cursor = "pointer";
     if (event.currentTarget.hasPointerCapture(event.pointerId))
       event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+
+  function performancePitchFromElement(element: Element | null) {
+    const key = element?.closest<HTMLElement>("[data-performance-pitch]");
+    if (!key || !performanceKeyboardRef.current?.contains(key)) return null;
+    const pitch = Number(key.dataset.performancePitch);
+    return Number.isInteger(pitch) ? pitch : null;
+  }
+
+  function startPerformanceKeyGesture(
+    event: React.PointerEvent<HTMLDivElement>,
+  ) {
+    if (event.button !== 0 || performanceKeyGestureRef.current) return;
+    const pitch = performancePitchFromElement(event.target as Element);
+    if (pitch === null) return;
+    const source = `performance-key:${event.pointerId}`;
+    performanceKeyGestureRef.current = {
+      pointerId: event.pointerId,
+      pitch,
+      source,
+    };
+    performance.noteOn(
+      pitch,
+      performance.defaultVelocity,
+      globalThis.performance.now(),
+      source,
+    );
+  }
+
+  function movePerformanceKeyGesture(
+    event: React.PointerEvent<HTMLDivElement>,
+  ) {
+    const gesture = performanceKeyGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (
+      event.clientX < rect.left ||
+      event.clientX > rect.right ||
+      event.clientY < rect.top ||
+      event.clientY > rect.bottom
+    ) {
+      finishPerformanceKeyGesture(event);
+      return;
+    }
+    const pitch = performancePitchFromElement(
+      document.elementFromPoint(event.clientX, event.clientY) ??
+        (event.target as Element),
+    );
+    if (pitch === null || pitch === gesture.pitch) return;
+    gesture.pitch = pitch;
+    performance.noteOn(
+      pitch,
+      performance.defaultVelocity,
+      globalThis.performance.now(),
+      gesture.source,
+    );
+  }
+
+  function finishPerformanceKeyGesture(
+    event: React.PointerEvent<HTMLDivElement>,
+  ) {
+    const gesture = performanceKeyGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    performance.noteOff(
+      gesture.pitch,
+      globalThis.performance.now(),
+      gesture.source,
+    );
+    performanceKeyGestureRef.current = null;
+  }
+
+  function enterPerformanceKey(pitch: number) {
+    const gesture = performanceKeyGestureRef.current;
+    if (!gesture || pitch === gesture.pitch) return;
+    gesture.pitch = pitch;
+    performance.noteOn(
+      pitch,
+      performance.defaultVelocity,
+      globalThis.performance.now(),
+      gesture.source,
+    );
   }
 
   function finishPointerInteraction(
@@ -1781,8 +1887,14 @@ export function MidiStemEditor({
           </div>
 
           <div
+            ref={performanceKeyboardRef}
             className="mt-4 flex max-w-full gap-1 overflow-x-auto pb-2"
             aria-label="On-screen piano"
+            onPointerDown={startPerformanceKeyGesture}
+            onPointerMove={movePerformanceKeyGesture}
+            onPointerUp={finishPerformanceKeyGesture}
+            onPointerCancel={finishPerformanceKeyGesture}
+            onPointerLeave={finishPerformanceKeyGesture}
           >
             {performancePitches.map((pitch) => {
               const active = performance.activePitches.has(pitch);
@@ -1799,36 +1911,8 @@ export function MidiStemEditor({
                   }`}
                   aria-label={`Play ${midiPitchName(pitch)}, MIDI note ${pitch}`}
                   aria-pressed={active}
-                  onPointerDown={(event) => {
-                    event.currentTarget.setPointerCapture(event.pointerId);
-                    performance.noteOn(
-                      pitch,
-                      performance.defaultVelocity,
-                      globalThis.performance.now(),
-                      `performance-key:${event.pointerId}`,
-                    );
-                  }}
-                  onPointerUp={(event) =>
-                    performance.noteOff(
-                      pitch,
-                      globalThis.performance.now(),
-                      `performance-key:${event.pointerId}`,
-                    )
-                  }
-                  onPointerCancel={(event) =>
-                    performance.noteOff(
-                      pitch,
-                      globalThis.performance.now(),
-                      `performance-key:${event.pointerId}`,
-                    )
-                  }
-                  onLostPointerCapture={(event) =>
-                    performance.noteOff(
-                      pitch,
-                      globalThis.performance.now(),
-                      `performance-key:${event.pointerId}`,
-                    )
-                  }
+                  onPointerEnter={() => enterPerformanceKey(pitch)}
+                  data-performance-pitch={pitch}
                 >
                   {preset.drumMap?.[String(pitch)] ?? midiPitchName(pitch)}
                 </button>

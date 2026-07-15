@@ -2,7 +2,7 @@
 
 Jam Session is an asynchronous music-collaboration platform inspired by Git and open-source development. Musicians create projects from reusable MIDI stems and compatible legacy audio, preserve immutable revision history, propose contributions with durable attribution, and create copy-on-write forks with navigable lineage.
 
-> **Current status:** PRs 01–17, the five-slice $0 audio-delivery optimization, MIDI-01–MIDI-07, STUDIO-01–STUDIO-06, and UX-01–UX-05 are complete in the repository. The completed Studio evidence now awaits its milestone pulse check, authorized hosted review, and recorded final capability state before PR 18. Source admission remains enabled.
+> **Current status:** PRs 01–17, the five-slice $0 audio-delivery optimization, MIDI-01–MIDI-07, STUDIO-01–STUDIO-06, and UX-01–UX-05 are complete in the repository, and the Studio usability milestone pulse is accepted. The authorized hosted parity review and recorded final source-admission capability state remain before PR 18. Source admission remains enabled.
 
 ## Target MVP scope
 

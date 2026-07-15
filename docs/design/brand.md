@@ -254,7 +254,8 @@ The shared MIDI editor piano uses full white faces, shorter gradient black faces
 warm semantic dividers, and accent/gold held-note feedback. Melodic gutters label
 only C rows while drum presets retain their mapped names; performance keys expose
 the same held state with shape, contrast-safe colour, glow, and reduced-motion-safe
-press feedback. Its pill-shaped Pencil/Select tool group uses visible pressed state;
+press feedback, and a held pointer may glide across them as one continuous gesture.
+Its pill-shaped Pencil/Select tool group uses visible pressed state;
 Select renders a translucent semantic-gold marquee while the synchronized note list
 and inspector retain exact, keyboard-accessible selection controls.
 Legacy manifest-v1 waveforms remain canvas-rendered, so their colours still come from

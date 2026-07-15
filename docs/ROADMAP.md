@@ -3,7 +3,7 @@
 Status: Active  
 Last updated: 2026-07-15
 
-Repository checkpoint: PRs 01–17, OPT-01–OPT-05, MIDI-01–MIDI-07, STUDIO-01–STUDIO-06, and UX-01–UX-05 complete; the Studio usability interruption now awaits its milestone pulse check, hosted evidence acceptance, separately authorized audio-lock transition, and PR 18
+Repository checkpoint: PRs 01–17, OPT-01–OPT-05, MIDI-01–MIDI-07, STUDIO-01–STUDIO-06, and UX-01–UX-05 complete; the Studio usability pulse is accepted, leaving hosted evidence acceptance and the separately authorized audio-lock transition before PR 18
 
 ## Purpose
 
@@ -38,7 +38,7 @@ The remaining roadmap programs and gates before PR 18 are:
 
 1. **`MIDI-01`–`MIDI-07` — MIDI-first foundation and transition readiness:** complete. The versioned stem/editor/runtime/collaboration path and reversible source-admission capability are implemented and tested while admission remains enabled.
 2. **`STUDIO-01`–`STUDIO-06` — Studio-native creation and arrangement:** repository complete. Hosted parity acceptance and the separately authorized source-admission transition remain operational gates.
-3. **`UX-01`–`UX-05` — Studio and MIDI usability:** repository complete. This bounded pass repairs transport/mixer correctness, establishes a familiar DAW shell and inline track workflow, improves piano interaction, and adds spatial block editing without changing immutable history or manifest compatibility. Its milestone pulse check remains next.
+3. **`UX-01`–`UX-05` — Studio and MIDI usability:** complete with its milestone pulse accepted. This bounded pass repairs transport/mixer correctness, establishes a familiar DAW shell and inline track workflow, improves piano interaction, and adds spatial block editing without changing immutable history or manifest compatibility.
 
 After the UX pass and hosted capability handoff complete, **PR 18 — Moderation, retention, quotas, and storage operations** resumes with legacy audio, derived peaks, and MIDI relational history included in its reference and capacity model. Any separately approved audio preview must be included only if it lands before PR 18 re-anchors. PRs 19–20 remain final hardening and release gates, not buckets for known feature debt.
 
@@ -301,13 +301,15 @@ Status: Paused — PRs 16–17 complete; optimization is complete and MIDI/studi
 
 ## Roadmap program U — Studio and MIDI usability
 
-**Status:** Repository complete — UX-01 through UX-05 implemented; milestone pulse check next
+**Status:** Complete — UX-01 through UX-05 implemented and milestone pulse accepted
 
 **Outcome:** Iterate on the merged Studio with musician feedback before inviting users: playback remains synchronized through live mixer changes, project and track workflows follow familiar DAW conventions, MIDI keys respond like an instrument, and clips/notes can be arranged spatially without changing manifest-v2 or immutable collaboration semantics.
 
 **Slices:** `UX-01` transport, live mixer, drag, and continuous timeline correctness; `UX-02` DAW shell and blank Studio; `UX-03` inline track creation and track-as-container workflow; `UX-04` piano feel, labels, initial viewport, active-note feedback, and pointer glissando; `UX-05` marquee selection and block editing.
 
-**Delivered through UX-05:** Playback now follows one browser-audio clock through live mixer changes, continuous seeking, and clip drag completion. `/studio` renders a runtime-free blank workstation with a compact File menu. Selected sessions keep an in-context Add a track row, session-only named pending lanes, direct blank/imported piano-roll drafts, atomic immutable finalization with focus return, same-track multi-clip copy/paste, full MIDI-track duplication, freely spaced non-overlapping clips, and compatible two-axis MIDI move/copy while exact version and credit lineage remain authoritative. The shared editor adds layered semantic piano keys, C-only melodic and mapped-drum labels, a one-time clamped middle-C viewport, source-aware held-note feedback across pointer/QWERTY/Web MIDI/previews, and pointer-captured gutter glissando with complete release cleanup. Explicit Pencil and Select tools now add tick/pitch marquee selection, Shift toggling, snapped or Alt-free block movement, one-step copy-drag, deterministic keyboard copy/paste, and single-step undo/redo while the note list remains the accessible selection authority.
+**Delivered through UX-05:** Playback now follows one browser-audio clock through live mixer changes, continuous seeking, and clip drag completion. `/studio` renders a runtime-free blank workstation with a compact File menu. Selected sessions keep an in-context Add a track row, session-only named pending lanes, direct blank/imported piano-roll drafts, atomic immutable finalization with focus return, same-track multi-clip copy/paste, full MIDI-track duplication, freely spaced non-overlapping clips, and compatible two-axis MIDI move/copy while exact version and credit lineage remain authoritative. The shared editor adds layered semantic piano keys, C-only melodic and mapped-drum labels, a one-time clamped middle-C viewport, source-aware held-note feedback across pointer/QWERTY/Web MIDI/previews, and gutter/performance-key pointer glissando with complete release cleanup. Explicit Pencil and Select tools now add tick/pitch marquee selection, Shift toggling, snapped or Alt-free block movement, grabbed-note audition, one-step copy-drag, deterministic keyboard copy/paste, and single-step undo/redo while the note list remains the accessible selection authority.
+
+**Milestone pulse:** Accepted on 2026-07-15. Unit/component coverage, the bounded 2,048-note/128-selection fixture, established Chromium Studio coverage, immutable round-trip coverage, and the production build support moving past the repository interruption. Perceptual mixer smoothness/latency, hardware Web MIDI, screen-reader narration, extended browser coverage, and hosted delivery remain the already recorded manual/release matrix. UX-01 did not add a separate development drift logger or perceptual late-note threshold; its single audio-clock contract removes the independent drift source structurally, while long-session/perceptual measurement remains PR 19 hardening rather than a blocker to PR 18.
 
 **Implementation authority:** The detailed slice plan is intentionally local at `local/implementation-plans/023-studio-midi-usability-pass.md`. Tracked architecture, design, evidence, and this roadmap are updated as each behavior lands. Signal is an MIT-licensed interaction reference pinned in the plan and existing third-party notice; Jam Session retains its own state, persistence, authorization, collaboration, styling, and browser-runtime boundaries.
 
@@ -315,7 +317,7 @@ Status: Paused — PRs 16–17 complete; optimization is complete and MIDI/studi
 
 ### PR 18 — Moderation, retention, quotas, and storage operations
 
-**Status:** Pending — complete the UX milestone pulse check, then record the deployed hosted parity review and final source-admission capability state before implementation
+**Status:** Pending operational handoff — record the deployed hosted parity review and final source-admission capability state before implementation
 
 **Outcome:** The invited demo can be operated safely within Supabase Free limits using manual reports and deterministic cleanup that cannot break surviving history.
 

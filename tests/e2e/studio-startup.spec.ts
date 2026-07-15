@@ -201,6 +201,27 @@ test.describe("studio startup smoke", () => {
     await expect(c4Key).toHaveAttribute("aria-pressed", "true");
     await page.keyboard.up("a");
     await expect(c4Key).toHaveAttribute("aria-pressed", "false");
+    const cSharp4Key = page.getByRole("button", {
+      name: /MIDI note 61/,
+    });
+    const c4Box = await c4Key.boundingBox();
+    const cSharp4Box = await cSharp4Key.boundingBox();
+    if (!c4Box || !cSharp4Box)
+      throw new Error("Performance keys are not laid out");
+    await page.mouse.move(
+      c4Box.x + c4Box.width / 2,
+      c4Box.y + c4Box.height / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      cSharp4Box.x + cSharp4Box.width / 2,
+      cSharp4Box.y + cSharp4Box.height / 2,
+      { steps: 3 },
+    );
+    await expect(c4Key).toHaveAttribute("aria-pressed", "false");
+    await expect(cSharp4Key).toHaveAttribute("aria-pressed", "true");
+    await page.mouse.up();
+    await expect(cSharp4Key).toHaveAttribute("aria-pressed", "false");
     await expect(
       page.getByRole("button", { name: "Publish immutable revision" }),
     ).toBeDisabled();

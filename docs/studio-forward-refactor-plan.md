@@ -1,8 +1,8 @@
 # Studio-forward workspace refactor plan
 
-Status: Accepted roadmap program; implementation authority is limited to the staged slices below
+Status: Repository complete through STUDIO-06 and UX-05; milestone pulse accepted
 Prepared: 2026-07-14  
-Sequence: MIDI-01–MIDI-07 delivered the contracts/runtime/collaboration foundation and reversible admission control; STUDIO-01–STUDIO-05 delivered the canonical shell/routes, safe project lifecycle, unified arranger, core arrangement mutation, and integrated MIDI creation/recording, and STUDIO-06 delivers parity before the audio lock and PR 18
+Sequence: MIDI-01–MIDI-07, STUDIO-01–STUDIO-06, and UX-01–UX-05 are repository-complete; hosted capability review and the separately authorized audio lock remain before PR 18
 
 ## Executive recommendation
 
@@ -22,7 +22,7 @@ The recommended canonical routes are:
 
 The proposal is realistic with the current stack. Project loading, creation, switching, vertical track reordering, timeline movement, trimming, copying, looping, splitting, integrated piano-roll editing, and MIDI recording are achievable. Manifest v2 and its normalized projections now provide the multi-clip foundation; UI support still must prove exact workspace/revision/contribution/fork round trips before exposing every operation. Independent playback-speed and pitch controls are a separate DSP problem and should not be promised as part of the structural refactor.
 
-The route-neutral session contract, studio-first project creation flow, manifest-v2 clip shape, future engine-portability rules, and reversible source-admission control were implemented through MIDI-07. Admission remains enabled. The remaining refactor must now turn those foundations into the primary creation workflow. Studio-native composition, recording, arranging, collaboration, and export parity are required before STUDIO-06 may enable the lock.
+The route-neutral session contract, studio-first project creation flow, manifest-v2 clip shape, future engine-portability rules, and reversible source-admission control were implemented through MIDI-07. STUDIO-01–STUDIO-06 and UX-01–UX-05 now provide the primary creation workflow and usability pass. Admission remains enabled pending the authorized hosted review and separately approved capability transition.
 
 ## Roadmap integration
 
@@ -32,7 +32,8 @@ This document no longer describes one large post-MIDI rewrite. Work is divided d
 - **MIDI-01:** executable contracts and fixtures for the session descriptor, composite capabilities, manifest identity, and stable audio/MIDI clips.
 - **MIDI-05:** composite MIDI/audio runtime, normalized clip foundations, and atomic project-plus-empty-workspace creation. The current nested route may remain canonical during MIDI delivery.
 - **MIDI-07:** complete; reversible source-admission authority and compatibility behavior are tested while admission remains enabled.
-- **STUDIO-01–STUDIO-06 after MIDI-07:** route migration, project browser/switching/creation, unified arrangement layout, clip interactions, Studio-integrated MIDI composition/recording, and final parity/hardening/audio-lock enablement.
+- **STUDIO-01–STUDIO-06 after MIDI-07:** complete; route migration, project browser/switching/creation, unified arrangement layout, clip interactions, Studio-integrated MIDI composition/recording, and repository parity/hardening.
+- **UX-01–UX-05:** complete; transport correctness, blank DAW shell, inline track/clip workflows, responsive piano interaction, and block editing.
 - **Outside the MVP critical path:** pitch/varispeed/time-stretch spikes and OpenDAW integration.
 
 MIDI-02–MIDI-04 intentionally delivered the editor and recorder as a standalone vertical foundation. That route remains valuable, but the final product experience reuses those components inside Studio instead of requiring a musician to export/import or navigate between unrelated screens for ordinary project work. Splitting the remaining work into six slices keeps shell, arranger, interaction, integrated composition, and release-risk changes independently reviewable.
@@ -541,11 +542,11 @@ Implemented: the unified arranger pins an Add a track row below the channels and
 
 ### UX-04 usability outcome — responsive piano interaction
 
-Implemented: the one shared standalone/integrated MIDI editor renders semantic layered white/black key depth, labels only C rows for melodic presets and named rows for drum maps, and centers clamped middle C on its first measured viewport without taking authority from later scrolling. A source-aware transient active-pitch union connects performance-key pointer input, QWERTY, Web MIDI, gutter audition, and bounded editor previews to matching canvas and `aria-pressed` feedback. Pointer capture turns the gutter into a glissando surface that switches each crossed pitch once and releases on exit, up, cancel, capture loss, blur, disconnect, stop, and disposal. The state is session-only and required no manifest, schema, RPC, authorization, or source-admission change.
+Implemented: the one shared standalone/integrated MIDI editor renders semantic layered white/black key depth, labels only C rows for melodic presets and named rows for drum maps, and centers clamped middle C on its first measured viewport without taking authority from later scrolling. A source-aware transient active-pitch union connects performance-key pointer input, QWERTY, Web MIDI, gutter audition, and bounded editor previews to matching canvas and `aria-pressed` feedback. Pointer capture turns the gutter into a glissando surface, while the performance strip tracks one held pointer across its keys; both switch each crossed pitch once and release on exit, up, cancel, blur, disconnect, stop, and disposal. The state is session-only and required no manifest, schema, RPC, authorization, or source-admission change.
 
 ### UX-05 usability outcome — marquee selection and block editing
 
-Implemented: the shared editor exposes explicit Pencil and Select tools with pressed state, help, and P/V shortcuts. Select-mode drags create transient tick/pitch rectangles and choose notes by musical intersection; Shift toggles the intersected set, Escape or an empty click clears it, and the synchronized note list/inspector remain the accessible authority. Dragging any selected note emits one snapped semantic `moveNotes` edit, Alt uses exact integer ticks, and Ctrl/Cmd-drag creates fresh IDs and positions the copies in one history step. Ctrl/Cmd+C/V and Duplicate use the same bounded semantic duplication boundary. Pointer cancellation discards previews, while completed gestures create one autosave/history generation. No selection, rectangle, clipboard, preview, schema, RPC, authorization, manifest, or source-admission state changed.
+Implemented: the shared editor exposes explicit Pencil and Select tools with pressed state, help, and P/V shortcuts. Select-mode drags create transient tick/pitch rectangles and choose notes by musical intersection; Shift toggles the intersected set, Escape or an empty click clears it, and the synchronized note list/inspector remain the accessible authority. Dragging any selected note emits one snapped semantic `moveNotes` edit and auditions the grabbed note as the block changes pitch; Alt uses exact integer ticks, and Ctrl/Cmd-drag creates fresh IDs and positions the copies in one history step. Ctrl/Cmd+C/V and Duplicate use the same bounded semantic duplication boundary. Pointer cancellation discards previews, while completed gestures create one autosave/history generation. No selection, rectangle, clipboard, preview, schema, RPC, authorization, manifest, or source-admission state changed.
 
 ### Post-MVP DSP research — not sequenced delivery
 
