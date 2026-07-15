@@ -2,7 +2,7 @@
 
 Status: Accepted roadmap program; implementation authority is limited to the staged slices below
 Prepared: 2026-07-14  
-Sequence: MIDI-01–MIDI-06 delivered the contracts/runtime/collaboration foundation; MIDI-07 prepares the reversible admission control; STUDIO-01–STUDIO-06 deliver Studio-native parity before the audio lock and PR 18
+Sequence: MIDI-01–MIDI-07 delivered the contracts/runtime/collaboration foundation and reversible admission control; STUDIO-01 is next, then STUDIO-02–STUDIO-06 deliver Studio-native parity before the audio lock and PR 18
 
 ## Executive recommendation
 
@@ -31,7 +31,7 @@ This document no longer describes one large post-MIDI rewrite. Work is divided d
 - **Accepted now:** canonical routes, one-live-project model, start-center behavior, route-neutral session descriptor, manifest-v2 identity/clip shape, and engine-portability boundaries.
 - **MIDI-01:** executable contracts and fixtures for the session descriptor, composite capabilities, manifest identity, and stable audio/MIDI clips.
 - **MIDI-05:** composite MIDI/audio runtime, normalized clip foundations, and atomic project-plus-empty-workspace creation. The current nested route may remain canonical during MIDI delivery.
-- **MIDI-07:** add and test reversible source-admission authority and compatibility behavior while leaving admission enabled.
+- **MIDI-07:** complete; reversible source-admission authority and compatibility behavior are tested while admission remains enabled.
 - **STUDIO-01–STUDIO-06 after MIDI-07:** route migration, project browser/switching/creation, unified arrangement layout, clip interactions, Studio-integrated MIDI composition/recording, and final parity/hardening/audio-lock enablement.
 - **Outside the MVP critical path:** pitch/varispeed/time-stretch spikes and OpenDAW integration.
 

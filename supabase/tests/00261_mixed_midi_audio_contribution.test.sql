@@ -1,7 +1,7 @@
 begin;
 reset role;
 create extension if not exists pgtap with schema extensions;
-select plan(10);
+select plan(11);
 
 insert into auth.users(instance_id,id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
 ('00000000-0000-0000-0000-000000000000','c6000000-0000-4000-8000-000000000001','authenticated','authenticated','mixed-owner@example.test','','{}','{}',now(),now()),
@@ -79,6 +79,8 @@ update public.projects set current_revision_id='c6500000-0000-4000-8000-00000000
   status='active',published_at=now(),open_to_contributions=true,lock_version=2
 where id='c6300000-0000-4000-8000-000000000001';
 
+update private.source_admission_control set enabled=false where singleton;
+select is((select source_audio_admission_enabled from public.get_source_admission_capability()),false,'mixed legacy compatibility runs with new source admission disabled');
 select is((select count(*) from public.assets where kind='source_audio'),1::bigint,'mixed fixture begins with one admitted source asset');
 set local role authenticated;
 set local request.jwt.claim.sub='c6000000-0000-4000-8000-000000000002';

@@ -10,15 +10,22 @@ import {
   cancelWaveformPeakDerivative,
   finalizeWaveformPeakDerivative,
   reserveWaveformPeakDerivative,
+  getSourceAdmissionCapability,
 } from "@/server/repositories/assets";
 import { z } from "zod";
+import {
+  SOURCE_ADMISSION_UNAVAILABLE_MESSAGE,
+  sourceReservationErrorMessage,
+} from "./source-admission";
 
 export async function reserveUpload(input: unknown) {
   const parsed = sourceReservationSchema.safeParse(input);
   if (!parsed.success) return { error: "Invalid upload details." };
+  if (!(await getSourceAdmissionCapability()))
+    return { error: SOURCE_ADMISSION_UNAVAILABLE_MESSAGE };
   const { data, error } = await reserveSourceAsset(parsed.data);
   if (error || !data?.[0])
-    return { error: error?.message ?? "Could not reserve storage." };
+    return { error: sourceReservationErrorMessage(error?.message) };
   const row = data[0] as Record<string, unknown>;
   return {
     instruction: {

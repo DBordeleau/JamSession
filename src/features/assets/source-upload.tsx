@@ -13,14 +13,23 @@ import type {
   LosslessAudioMetadata,
 } from "./browser-codec/contract";
 import { persistGeneratedWaveformPeaks } from "./waveform-peaks/persistence.client";
+import { SOURCE_ADMISSION_UNAVAILABLE_MESSAGE } from "./source-admission";
 
 type PendingWav = {
   file: File;
   capabilityReason: string | null;
 };
 
-export function SourceUpload() {
-  const [message, setMessage] = useState("Select a source file to begin.");
+export function SourceUpload({
+  admissionEnabled,
+}: {
+  admissionEnabled: boolean;
+}) {
+  const [message, setMessage] = useState(
+    admissionEnabled
+      ? "Select a source file to begin."
+      : SOURCE_ADMISSION_UNAVAILABLE_MESSAGE,
+  );
   const [progress, setProgress] = useState(0);
   const [conversionProgress, setConversionProgress] = useState(0);
   const [isPreparingUpload, setIsPreparingUpload] = useState(false);
@@ -255,11 +264,20 @@ export function SourceUpload() {
   }
 
   const busy =
-    isPreparingUpload || isUploading || isConverting || hasActiveUpload;
+    !admissionEnabled ||
+    isPreparingUpload ||
+    isUploading ||
+    isConverting ||
+    hasActiveUpload;
 
   return (
     <section className="rounded-card border-subtle bg-surface border p-5">
       <h2 className="text-xl font-semibold">Upload a source</h2>
+      {!admissionEnabled && (
+        <p className="text-accent-2 mt-2 max-w-2xl font-medium">
+          {SOURCE_ADMISSION_UNAVAILABLE_MESSAGE}
+        </p>
+      )}
       <p className="text-muted mt-2 text-sm">
         WAV, FLAC, or MP3 / 45 MiB / 10 minutes. Checks in your browser are
         preliminary.

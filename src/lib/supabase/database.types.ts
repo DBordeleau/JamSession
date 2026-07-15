@@ -2999,6 +2999,12 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: Json
       }
+      get_source_admission_capability: {
+        Args: never
+        Returns: {
+          source_audio_admission_enabled: boolean
+        }[]
+      }
       get_source_verification_status: {
         Args: { p_asset_id: string }
         Returns: {
@@ -3191,6 +3197,10 @@ export type Database = {
           p_lease_token: string
         }
         Returns: string
+      }
+      operator_set_source_admission_enabled: {
+        Args: { p_enabled: boolean }
+        Returns: boolean
       }
       publish_midi_stem_version: {
         Args: {

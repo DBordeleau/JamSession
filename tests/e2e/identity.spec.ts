@@ -197,8 +197,9 @@ test.describe("identity vertical slice", () => {
     await expect(
       page.getByRole("heading", { name: "E2E collaboration draft" }),
     ).toBeVisible();
-    const projectUrl = new URL(page.url()).pathname;
-    await page.reload();
+    const studioUrl = new URL(page.url()).pathname;
+    const projectUrl = studioUrl.replace(/\/studio$/, "");
+    await page.goto(projectUrl);
     await expect(page.getByText("118.5 BPM")).toBeVisible();
     await page.getByRole("link", { name: "Edit metadata" }).click();
     await page.getByLabel("Title").fill("Edited collaboration draft");
