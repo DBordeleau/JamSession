@@ -1,5 +1,10 @@
 import type { ClipTrack, WaveformDataObject } from "@waveform-playlist/core";
 import type { WorkspaceManifestV1, WorkspaceTrackV1 } from "../manifest/schema";
+import {
+  parseWorkspaceManifestV2,
+  type AudioTrackV2,
+  type WorkspaceManifestV2,
+} from "../manifest/v2";
 
 export const millisecondsToSamples = (
   milliseconds: number,
@@ -75,4 +80,86 @@ export function editorTracksToManifest(
       };
     }),
   };
+}
+
+export function manifestAudioTrackV2ToClipTrack(
+  track: AudioTrackV2,
+  audioBuffer?: AudioBuffer,
+  waveformData?: WaveformDataObject,
+): ClipTrack {
+  const sampleRate =
+    audioBuffer?.sampleRate ?? waveformData?.sample_rate ?? 48_000;
+  const sourceDurationSamples =
+    audioBuffer?.length ??
+    (waveformData
+      ? Math.round(waveformData.duration * waveformData.sample_rate)
+      : undefined) ??
+    Math.max(
+      ...track.clips.map((clip) =>
+        millisecondsToSamples(clip.trimStartMs + clip.durationMs, sampleRate),
+      ),
+    );
+  return {
+    id: track.trackId,
+    name: track.name,
+    muted: track.muted,
+    soloed: track.soloed,
+    volume: decibelsToGain(track.gainDb),
+    pan: track.pan,
+    clips: track.clips.map((clip) => ({
+      id: clip.clipId,
+      ...(audioBuffer ? { audioBuffer } : {}),
+      ...(!audioBuffer && waveformData ? { waveformData } : {}),
+      startSample: millisecondsToSamples(clip.positionMs, sampleRate),
+      durationSamples: millisecondsToSamples(clip.durationMs, sampleRate),
+      offsetSamples: millisecondsToSamples(clip.trimStartMs, sampleRate),
+      sourceDurationSamples,
+      sampleRate,
+      gain: 1,
+      name: track.name,
+    })),
+  };
+}
+
+export function editorAudioTracksToManifestV2(
+  base: WorkspaceManifestV2,
+  tracks: readonly ClipTrack[],
+): WorkspaceManifestV2 {
+  const editorById = new Map(tracks.map((track) => [track.id, track]));
+  return parseWorkspaceManifestV2({
+    ...base,
+    tracks: base.tracks.map((persisted) => {
+      if (persisted.kind !== "audio") return persisted;
+      const editor = editorById.get(persisted.trackId);
+      if (!editor) throw new Error(`Missing editor track ${persisted.trackId}`);
+      const persistedIds = new Set(persisted.clips.map(({ clipId }) => clipId));
+      if (
+        editor.clips.length !== persistedIds.size ||
+        editor.clips.some((clip) => !persistedIds.has(clip.id))
+      )
+        throw new Error(
+          `Editor clips do not match manifest track ${persisted.trackId}`,
+        );
+      return {
+        ...persisted,
+        name: editor.name,
+        gainDb: Number(gainToDecibels(editor.volume).toFixed(3)),
+        pan: editor.pan,
+        muted: editor.muted,
+        soloed: editor.soloed,
+        clips: editor.clips.map((clip) => ({
+          clipId: clip.id,
+          positionMs: samplesToMilliseconds(clip.startSample, clip.sampleRate),
+          trimStartMs: samplesToMilliseconds(
+            clip.offsetSamples,
+            clip.sampleRate,
+          ),
+          durationMs: samplesToMilliseconds(
+            clip.durationSamples,
+            clip.sampleRate,
+          ),
+        })),
+      };
+    }),
+  });
 }

@@ -51,6 +51,10 @@ select lives_ok($$select public.save_midi_workspace(
         'clipId','b6200000-0000-4000-8000-000000000004',
         'midiStemVersionId',(select id from public.midi_stem_versions where owner_id='b6000000-0000-4000-8000-000000000001'),
         'startTick',0,'durationTicks',1920,'sourceStartTick',0,'loop',false
+      ),jsonb_build_object(
+        'clipId','b6200000-0000-4000-8000-000000000006',
+        'midiStemVersionId',(select id from public.midi_stem_versions where owner_id='b6000000-0000-4000-8000-000000000001'),
+        'startTick',2400,'durationTicks',960,'sourceStartTick',480,'loop',false
       ))
     ))
   )
@@ -77,7 +81,7 @@ select lives_ok($$select public.create_contribution_workspace(
   'Add a harmony note','A derived exact stem version.'
 )$$,'contributor branches a v2 workspace from the exact revision');
 select is((select manifest_version from public.workspaces where owner_id='b6000000-0000-4000-8000-000000000002'),2::smallint,'contribution workspace preserves manifest v2');
-select is((select count(*) from public.workspace_clips wc join public.workspaces w on w.id=wc.workspace_id where w.owner_id='b6000000-0000-4000-8000-000000000002'),1::bigint,'contribution workspace reuses the exact base clip');
+select is((select count(*) from public.workspace_clips wc join public.workspaces w on w.id=wc.workspace_id where w.owner_id='b6000000-0000-4000-8000-000000000002'),2::bigint,'contribution workspace reuses every exact base clip');
 select lives_ok($$select public.create_midi_stem_draft(
   'b6400000-0000-4000-8000-000000000001','Harmony phrase','derive',
   (select id from public.midi_stem_versions where owner_id='b6000000-0000-4000-8000-000000000001')
@@ -109,8 +113,8 @@ select lives_ok($$select public.submit_contribution(
   (select manifest_sha256 from public.workspaces where owner_id='b6000000-0000-4000-8000-000000000002'),
   'contributor-attestation-v1'
 )$$,'submission freezes the exact v2 projection');
-select is((select count(*) from public.contribution_version_clips),1::bigint,'submission stores one immutable MIDI clip reference');
-select is((select count(*) from public.contribution_version_midi_track_credits),2::bigint,'submission snapshots contributor and derivation-source credits');
+select is((select count(*) from public.contribution_version_clips),2::bigint,'submission stores every immutable MIDI clip reference');
+select is((select count(*) from public.contribution_version_midi_track_credits),3::bigint,'submission snapshots selected-clip contributor, retained source, and derivation credits');
 select throws_ok($$select public.save_midi_workspace(
   (select id from public.workspaces where owner_id='b6000000-0000-4000-8000-000000000002'),gen_random_uuid(),2,
   (select manifest from public.workspaces where owner_id='b6000000-0000-4000-8000-000000000002')
@@ -126,7 +130,7 @@ select lives_ok($$select public.review_contribution(
   (select current_revision_id from public.projects where owner_id='b6000000-0000-4000-8000-000000000001'),null
 )$$,'owner atomically accepts the exact submitted MIDI version');
 select is((select status from public.contributions where author_id='b6000000-0000-4000-8000-000000000002'),'accepted'::public.contribution_status,'accepted contribution reaches the terminal state');
-select is((select count(*) from public.revision_midi_track_credits rmc join public.projects p on p.current_revision_id=rmc.revision_id where p.owner_id='b6000000-0000-4000-8000-000000000001'),2::bigint,'accepted revision preserves creator and derivation lineage');
+select is((select count(*) from public.revision_midi_track_credits rmc join public.projects p on p.current_revision_id=rmc.revision_id where p.owner_id='b6000000-0000-4000-8000-000000000001'),3::bigint,'accepted revision preserves selected-clip creator, retained source, and derivation lineage');
 select is((select source_bytes from public.project_storage_usage u join public.projects p on p.id=u.project_id where p.owner_id='b6000000-0000-4000-8000-000000000001'),0::bigint,'MIDI acceptance consumes zero Storage bytes');
 reset role;
 

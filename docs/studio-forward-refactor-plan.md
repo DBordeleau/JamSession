@@ -2,7 +2,7 @@
 
 Status: Accepted roadmap program; implementation authority is limited to the staged slices below
 Prepared: 2026-07-14  
-Sequence: MIDI-01–MIDI-07 delivered the contracts/runtime/collaboration foundation and reversible admission control; STUDIO-01–STUDIO-03 delivered the canonical shell/routes, safe project lifecycle, and unified arranger visualization, and STUDIO-04–STUDIO-06 deliver Studio-native parity before the audio lock and PR 18
+Sequence: MIDI-01–MIDI-07 delivered the contracts/runtime/collaboration foundation and reversible admission control; STUDIO-01–STUDIO-04 delivered the canonical shell/routes, safe project lifecycle, unified arranger visualization, and core arrangement mutation, and STUDIO-05–STUDIO-06 deliver Studio-native parity before the audio lock and PR 18
 
 ## Executive recommendation
 
@@ -74,7 +74,7 @@ The main constraints are:
 - the studio surface combines loading, transport, mixer, timeline, recovery, publishing, exporting, and contribution context in one large client component; and
 - `manifest.workspaceId` is currently checked against `project_id`, so the v1 field name does not describe what it actually identifies.
 
-Before STUDIO-03, the composite surface rendered tracks as stacked forms with numeric start/duration fields and assumed `clips[0]` in key interactions. The unified arranger now presents every audio and MIDI clip on one visual timeline. The standalone piano roll still owns the best note-editing experience, so ordinary composition and recording currently pull musicians away from the project context. STUDIO-04–STUDIO-05 complete arrangement mutation and remove that remaining split.
+Before STUDIO-03, the composite surface rendered tracks as stacked forms with numeric start/duration fields and assumed `clips[0]` in key interactions. The unified arranger now presents every audio and MIDI clip on one visual timeline, and STUDIO-04 adds direct validated arrangement mutation without discarding secondary clips. The standalone piano roll still owns the best note-editing experience, so ordinary composition and recording currently pull musicians away from the project context. STUDIO-05 removes that remaining split.
 
 ## Target user experience
 
@@ -489,6 +489,8 @@ Scope:
 - focused unit, database, and browser round trips that reload the exact edited arrangement.
 
 Non-goals: editing immutable MIDI notes in place, arbitrary cross-asset audio lanes, automatic musical merge, or persistent clipboard history.
+
+Implemented: one deterministic manifest-v2 command boundary now validates compatible targets, source/project/collision/capacity bounds, fresh clip IDs, selected-clip version replacement, and canonical ordering. The arranger maps pointer release, keyboard shortcuts, explicit reorder controls, snap/no-snap, and exact inspector edits into that boundary; a bounded grouped session history feeds the existing recovery generation and debounced optimistic save. Waveform adapter fixtures reject dropped secondary audio clips, while mixed pgTAP fixtures prove multi-clip MIDI/audio state across workspace branching, publish/submit, accept, and fork projections. No schema or RPC change was required, and source admission remains enabled.
 
 ### STUDIO-05 — Integrated MIDI composition and recording
 

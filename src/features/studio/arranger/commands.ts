@@ -1,0 +1,480 @@
+import type {
+  AudioClipReferenceV1,
+  MidiClipReferenceV1,
+  WorkspaceManifestV2,
+  WorkspaceTrackV2,
+} from "../manifest/v2";
+import { MAX_CLIPS_PER_TRACK, parseWorkspaceManifestV2 } from "../manifest/v2";
+import { ticksToMilliseconds } from "./timeline";
+
+export type ArrangementCommandContext = {
+  midiVersionDurations: ReadonlyMap<string, number>;
+  audioAssetDurations: ReadonlyMap<string, number>;
+};
+
+export type ArrangementClipboard =
+  | {
+      kind: "audio";
+      sourceTrackId: string;
+      assetId: string;
+      clip: AudioClipReferenceV1;
+    }
+  | {
+      kind: "midi";
+      sourceTrackId: string;
+      presetId: string;
+      presetVersion: number;
+      clip: MidiClipReferenceV1;
+    };
+
+export type ArrangementCommand =
+  | { type: "patchTrack"; trackId: string; patch: Partial<WorkspaceTrackV2> }
+  | { type: "removeTrack"; trackId: string }
+  | { type: "reorderTrack"; trackId: string; targetIndex: number }
+  | {
+      type: "patchClip";
+      trackId: string;
+      clipId: string;
+      patch: Record<string, number | boolean>;
+    }
+  | { type: "moveClip"; trackId: string; clipId: string; startTick: number }
+  | {
+      type: "duplicateClip";
+      trackId: string;
+      clipId: string;
+      newClipId: string;
+    }
+  | {
+      type: "pasteClip";
+      targetTrackId: string;
+      clipboard: ArrangementClipboard;
+      newClipId: string;
+    }
+  | { type: "deleteMidiClip"; trackId: string; clipId: string }
+  | {
+      type: "splitAudioClip";
+      trackId: string;
+      clipId: string;
+      splitOffsetMs: number;
+      newClipId: string;
+    }
+  | {
+      type: "replaceMidiVersion";
+      trackId: string;
+      clipId: string;
+      midiStemVersionId: string;
+    };
+
+export class ArrangementCommandError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ArrangementCommandError";
+  }
+}
+
+export function copyArrangementClip(
+  manifest: WorkspaceManifestV2,
+  trackId: string,
+  clipId: string,
+): ArrangementClipboard {
+  const track = findTrack(manifest, trackId);
+  const clip = findClip(track, clipId);
+  return track.kind === "audio"
+    ? {
+        kind: "audio",
+        sourceTrackId: track.trackId,
+        assetId: track.assetId,
+        clip: { ...clip } as AudioClipReferenceV1,
+      }
+    : {
+        kind: "midi",
+        sourceTrackId: track.trackId,
+        presetId: track.presetId,
+        presetVersion: track.presetVersion,
+        clip: { ...clip } as MidiClipReferenceV1,
+      };
+}
+
+export function applyArrangementCommand(
+  manifest: WorkspaceManifestV2,
+  command: ArrangementCommand,
+  context: ArrangementCommandContext,
+): WorkspaceManifestV2 {
+  let next: WorkspaceManifestV2;
+  switch (command.type) {
+    case "patchTrack":
+      next = {
+        ...manifest,
+        tracks: manifest.tracks.map((track) =>
+          track.trackId === command.trackId
+            ? ({ ...track, ...command.patch } as WorkspaceTrackV2)
+            : track,
+        ),
+      };
+      break;
+    case "removeTrack":
+      assertTrack(manifest, command.trackId);
+      next = withContiguousOrder(
+        manifest,
+        manifest.tracks.filter((track) => track.trackId !== command.trackId),
+      );
+      break;
+    case "reorderTrack": {
+      const ordered = [...manifest.tracks].sort(
+        (left, right) => left.sortOrder - right.sortOrder,
+      );
+      const sourceIndex = ordered.findIndex(
+        (track) => track.trackId === command.trackId,
+      );
+      if (sourceIndex < 0)
+        throw new ArrangementCommandError("Track not found.");
+      const targetIndex = Math.max(
+        0,
+        Math.min(ordered.length - 1, command.targetIndex),
+      );
+      const [moved] = ordered.splice(sourceIndex, 1);
+      ordered.splice(targetIndex, 0, moved!);
+      next = withContiguousOrder(manifest, ordered);
+      break;
+    }
+    case "patchClip":
+      next = mapClip(manifest, command.trackId, command.clipId, (clip) => ({
+        ...clip,
+        ...command.patch,
+      }));
+      break;
+    case "moveClip": {
+      if (!Number.isInteger(command.startTick) || command.startTick < 0)
+        throw new ArrangementCommandError("Clip start must be zero or later.");
+      const track = findTrack(manifest, command.trackId);
+      next = mapClip(manifest, command.trackId, command.clipId, (clip) =>
+        track.kind === "audio"
+          ? {
+              ...clip,
+              positionMs: ticksToMilliseconds(
+                command.startTick,
+                manifest.tempoBpm,
+              ),
+            }
+          : { ...clip, startTick: command.startTick },
+      );
+      break;
+    }
+    case "duplicateClip": {
+      const track = findTrack(manifest, command.trackId);
+      const clip = findClip(track, command.clipId);
+      next = appendClip(
+        manifest,
+        track,
+        duplicateAtNextOpening(manifest, track, clip, command.newClipId),
+      );
+      break;
+    }
+    case "pasteClip": {
+      const track = findTrack(manifest, command.targetTrackId);
+      assertCompatibleClipboard(track, command.clipboard);
+      next = appendClip(
+        manifest,
+        track,
+        duplicateAtNextOpening(
+          manifest,
+          track,
+          command.clipboard.clip,
+          command.newClipId,
+        ),
+      );
+      break;
+    }
+    case "deleteMidiClip": {
+      const track = findTrack(manifest, command.trackId);
+      if (track.kind !== "midi")
+        throw new ArrangementCommandError(
+          "Only MIDI clips can be deleted here.",
+        );
+      findClip(track, command.clipId);
+      if (track.clips.length === 1) {
+        next = withContiguousOrder(
+          manifest,
+          manifest.tracks.filter(
+            (candidate) => candidate.trackId !== command.trackId,
+          ),
+        );
+      } else {
+        next = {
+          ...manifest,
+          tracks: manifest.tracks.map((candidate) =>
+            candidate.trackId === command.trackId
+              ? {
+                  ...candidate,
+                  clips: candidate.clips.filter(
+                    (clip) => clip.clipId !== command.clipId,
+                  ),
+                }
+              : candidate,
+          ) as WorkspaceTrackV2[],
+        };
+      }
+      break;
+    }
+    case "splitAudioClip": {
+      const track = findTrack(manifest, command.trackId);
+      if (track.kind !== "audio")
+        throw new ArrangementCommandError("Only audio clips can be split.");
+      const clip = findClip(track, command.clipId) as AudioClipReferenceV1;
+      if (
+        !Number.isInteger(command.splitOffsetMs) ||
+        command.splitOffsetMs <= 0 ||
+        command.splitOffsetMs >= clip.durationMs
+      )
+        throw new ArrangementCommandError(
+          "Split point must be inside the selected audio clip.",
+        );
+      if (track.clips.length >= MAX_CLIPS_PER_TRACK)
+        throw new ArrangementCommandError(
+          `A track can contain at most ${MAX_CLIPS_PER_TRACK} clips.`,
+        );
+      const left = { ...clip, durationMs: command.splitOffsetMs };
+      const right = {
+        ...clip,
+        clipId: command.newClipId,
+        positionMs: clip.positionMs + command.splitOffsetMs,
+        trimStartMs: clip.trimStartMs + command.splitOffsetMs,
+        durationMs: clip.durationMs - command.splitOffsetMs,
+      };
+      next = {
+        ...manifest,
+        tracks: manifest.tracks.map((candidate) =>
+          candidate.trackId === track.trackId
+            ? {
+                ...candidate,
+                clips: candidate.clips.flatMap((candidateClip) =>
+                  candidateClip.clipId === clip.clipId
+                    ? [left, right]
+                    : [candidateClip],
+                ),
+              }
+            : candidate,
+        ) as WorkspaceTrackV2[],
+      };
+      break;
+    }
+    case "replaceMidiVersion": {
+      const track = findTrack(manifest, command.trackId);
+      if (track.kind !== "midi")
+        throw new ArrangementCommandError(
+          "Only a MIDI clip can replace its immutable version.",
+        );
+      const duration = context.midiVersionDurations.get(
+        command.midiStemVersionId,
+      );
+      if (!duration)
+        throw new ArrangementCommandError(
+          "That immutable MIDI version is not available in this session.",
+        );
+      next = mapClip(manifest, command.trackId, command.clipId, (clip) => ({
+        ...clip,
+        midiStemVersionId: command.midiStemVersionId,
+        sourceStartTick: 0,
+        durationTicks: Math.min(
+          (clip as MidiClipReferenceV1).durationTicks,
+          duration,
+        ),
+      }));
+      break;
+    }
+  }
+  return validateArrangement(next, context);
+}
+
+export function snapArrangementTick(tick: number, gridTicks: number | null) {
+  const bounded = Math.max(0, Math.round(tick));
+  return gridTicks ? Math.round(bounded / gridTicks) * gridTicks : bounded;
+}
+
+function validateArrangement(
+  manifest: WorkspaceManifestV2,
+  context: ArrangementCommandContext,
+) {
+  let canonical: WorkspaceManifestV2;
+  try {
+    canonical = parseWorkspaceManifestV2(manifest);
+  } catch (error) {
+    const issue =
+      typeof error === "object" &&
+      error !== null &&
+      "issues" in error &&
+      Array.isArray(error.issues)
+        ? error.issues[0]
+        : null;
+    throw new ArrangementCommandError(
+      issue && typeof issue.message === "string"
+        ? issue.message
+        : "The arrangement change is outside the project limits.",
+    );
+  }
+  for (const track of canonical.tracks) {
+    const ordered = [...track.clips].sort(
+      (left, right) => clipStart(left) - clipStart(right),
+    );
+    ordered.forEach((clip, index) => {
+      const next = ordered[index + 1];
+      if (next && clipStart(clip) + clipDuration(clip) > clipStart(next))
+        throw new ArrangementCommandError(
+          `Clips on ${track.name} cannot overlap. Move or trim the selected clip.`,
+        );
+      if (track.kind === "audio") {
+        const sourceDuration = context.audioAssetDurations.get(track.assetId);
+        if (
+          sourceDuration !== undefined &&
+          "trimStartMs" in clip &&
+          clip.trimStartMs + clip.durationMs > sourceDuration
+        )
+          throw new ArrangementCommandError(
+            `The audio trim on ${track.name} exceeds its immutable source.`,
+          );
+      } else if ("midiStemVersionId" in clip) {
+        const sourceDuration = context.midiVersionDurations.get(
+          clip.midiStemVersionId,
+        );
+        if (sourceDuration === undefined)
+          throw new ArrangementCommandError(
+            `The immutable MIDI source for ${track.name} is unavailable.`,
+          );
+        if (clip.sourceStartTick >= sourceDuration)
+          throw new ArrangementCommandError(
+            `The MIDI source offset on ${track.name} is outside its immutable version.`,
+          );
+        if (
+          !clip.loop &&
+          clip.sourceStartTick + clip.durationTicks > sourceDuration
+        )
+          throw new ArrangementCommandError(
+            `Enable loop or shorten ${track.name}; the clip exceeds its immutable MIDI source.`,
+          );
+      }
+    });
+  }
+  return canonical;
+}
+
+function assertCompatibleClipboard(
+  track: WorkspaceTrackV2,
+  clipboard: ArrangementClipboard,
+) {
+  if (track.trackId !== clipboard.sourceTrackId)
+    throw new ArrangementCommandError(
+      "Paste into the original track to preserve source ownership and sound.",
+    );
+  if (
+    (track.kind === "audio" &&
+      (clipboard.kind !== "audio" || track.assetId !== clipboard.assetId)) ||
+    (track.kind === "midi" &&
+      (clipboard.kind !== "midi" ||
+        track.presetId !== clipboard.presetId ||
+        track.presetVersion !== clipboard.presetVersion))
+  )
+    throw new ArrangementCommandError(
+      "The target track is not compatible with this clip source.",
+    );
+}
+
+function duplicateAtNextOpening(
+  manifest: WorkspaceManifestV2,
+  track: WorkspaceTrackV2,
+  source: AudioClipReferenceV1 | MidiClipReferenceV1,
+  newClipId: string,
+) {
+  if (track.clips.length >= MAX_CLIPS_PER_TRACK)
+    throw new ArrangementCommandError(
+      `A track can contain at most ${MAX_CLIPS_PER_TRACK} clips.`,
+    );
+  let start = clipStart(source) + clipDuration(source);
+  for (const clip of [...track.clips].sort(
+    (left, right) => clipStart(left) - clipStart(right),
+  )) {
+    if (start + clipDuration(source) <= clipStart(clip)) break;
+    if (start < clipStart(clip) + clipDuration(clip))
+      start = clipStart(clip) + clipDuration(clip);
+  }
+  if (track.kind === "audio" && "positionMs" in source)
+    return { ...source, clipId: newClipId, positionMs: start };
+  if (track.kind === "midi" && "startTick" in source)
+    return { ...source, clipId: newClipId, startTick: start };
+  throw new ArrangementCommandError("Track and clip types do not match.");
+}
+
+function appendClip(
+  manifest: WorkspaceManifestV2,
+  track: WorkspaceTrackV2,
+  clip: AudioClipReferenceV1 | MidiClipReferenceV1,
+) {
+  return {
+    ...manifest,
+    tracks: manifest.tracks.map((candidate) =>
+      candidate.trackId === track.trackId
+        ? { ...candidate, clips: [...candidate.clips, clip] }
+        : candidate,
+    ) as WorkspaceTrackV2[],
+  };
+}
+
+function mapClip(
+  manifest: WorkspaceManifestV2,
+  trackId: string,
+  clipId: string,
+  update: (
+    clip: AudioClipReferenceV1 | MidiClipReferenceV1,
+  ) => AudioClipReferenceV1 | MidiClipReferenceV1,
+) {
+  const track = findTrack(manifest, trackId);
+  findClip(track, clipId);
+  return {
+    ...manifest,
+    tracks: manifest.tracks.map((candidate) =>
+      candidate.trackId === trackId
+        ? {
+            ...candidate,
+            clips: candidate.clips.map((clip) =>
+              clip.clipId === clipId ? update(clip) : clip,
+            ),
+          }
+        : candidate,
+    ) as WorkspaceTrackV2[],
+  };
+}
+
+function withContiguousOrder(
+  manifest: WorkspaceManifestV2,
+  tracks: readonly WorkspaceTrackV2[],
+): WorkspaceManifestV2 {
+  return {
+    ...manifest,
+    tracks: tracks.map((track, sortOrder) => ({ ...track, sortOrder })),
+  };
+}
+
+function findTrack(manifest: WorkspaceManifestV2, trackId: string) {
+  const track = manifest.tracks.find(
+    (candidate) => candidate.trackId === trackId,
+  );
+  if (!track) throw new ArrangementCommandError("Track not found.");
+  return track;
+}
+
+function assertTrack(manifest: WorkspaceManifestV2, trackId: string) {
+  findTrack(manifest, trackId);
+}
+
+function findClip(track: WorkspaceTrackV2, clipId: string) {
+  const clip = track.clips.find((candidate) => candidate.clipId === clipId);
+  if (!clip) throw new ArrangementCommandError("Clip not found.");
+  return clip;
+}
+
+function clipStart(clip: AudioClipReferenceV1 | MidiClipReferenceV1) {
+  return "startTick" in clip ? clip.startTick : clip.positionMs;
+}
+
+function clipDuration(clip: AudioClipReferenceV1 | MidiClipReferenceV1) {
+  return "durationTicks" in clip ? clip.durationTicks : clip.durationMs;
+}
