@@ -95,6 +95,11 @@ describe("ArrangerWorkspace", () => {
         onMoveTrack={vi.fn()}
         onRemoveTrack={vi.fn()}
         onReplaceVersion={vi.fn()}
+        onCommand={vi.fn()}
+        canUndo={false}
+        canRedo={false}
+        onUndo={vi.fn()}
+        onRedo={vi.fn()}
         actionRegion={<button type="button">Actions</button>}
         statusRegion={<span>Read only</span>}
       />,

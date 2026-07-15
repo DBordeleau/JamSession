@@ -1,7 +1,7 @@
 begin;
 reset role;
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(13);
 
 insert into auth.users(instance_id,id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
 ('00000000-0000-0000-0000-000000000000','c6000000-0000-4000-8000-000000000001','authenticated','authenticated','mixed-owner@example.test','','{}','{}',now(),now()),
@@ -48,8 +48,11 @@ with manifest(value) as (values(jsonb_build_object(
     jsonb_build_object('kind','audio','trackId','c6400000-0000-4000-8000-000000000001',
       'name','Legacy audio','instrumentId',null,'assetId','c6100000-0000-4000-8000-000000000001',
       'gainDb',0,'pan',0,'muted',false,'soloed',false,'sortOrder',0,
-      'clips',jsonb_build_array(jsonb_build_object('clipId','c6400000-0000-4000-8000-000000000002',
-        'positionMs',0,'trimStartMs',0,'durationMs',1000))),
+      'clips',jsonb_build_array(
+        jsonb_build_object('clipId','c6400000-0000-4000-8000-000000000002',
+          'positionMs',0,'trimStartMs',0,'durationMs',600),
+        jsonb_build_object('clipId','c6400000-0000-4000-8000-000000000005',
+          'positionMs',600,'trimStartMs',600,'durationMs',400))),
     jsonb_build_object('kind','midi','trackId','c6400000-0000-4000-8000-000000000003',
       'name','MIDI harmony','instrumentId',null,'presetId','warm-poly','presetVersion',1,
       'gainDb',0,'pan',0,'muted',false,'soloed',false,'sortOrder',1,
@@ -69,7 +72,8 @@ insert into public.revision_tracks(revision_id,id,asset_id,instrument_id,name,po
 ('c6500000-0000-4000-8000-000000000001','c6400000-0000-4000-8000-000000000001','c6100000-0000-4000-8000-000000000001',null,'Legacy audio',0,0,1000,0,0,false,false,0,'c6000000-0000-4000-8000-000000000001','audio',null,null),
 ('c6500000-0000-4000-8000-000000000001','c6400000-0000-4000-8000-000000000003',null,null,'MIDI harmony',0,0,2000,0,0,false,false,1,'c6000000-0000-4000-8000-000000000001','midi','warm-poly',1);
 insert into public.revision_clips(revision_id,track_id,clip_id,kind,position_ms,trim_start_ms,duration_ms,midi_stem_version_id,start_tick,duration_ticks,source_start_tick,loop) values
-('c6500000-0000-4000-8000-000000000001','c6400000-0000-4000-8000-000000000001','c6400000-0000-4000-8000-000000000002','audio',0,0,1000,null,null,null,null,null),
+('c6500000-0000-4000-8000-000000000001','c6400000-0000-4000-8000-000000000001','c6400000-0000-4000-8000-000000000002','audio',0,0,600,null,null,null,null,null),
+('c6500000-0000-4000-8000-000000000001','c6400000-0000-4000-8000-000000000001','c6400000-0000-4000-8000-000000000005','audio',600,600,400,null,null,null,null,null),
 ('c6500000-0000-4000-8000-000000000001','c6400000-0000-4000-8000-000000000003','c6400000-0000-4000-8000-000000000004','midi',null,null,null,'c6200000-0000-4000-8000-000000000003',0,1920,0,false);
 insert into public.project_asset_references(project_id,asset_id,first_revision_id,added_by)
 values('c6300000-0000-4000-8000-000000000001','c6100000-0000-4000-8000-000000000001','c6500000-0000-4000-8000-000000000001','c6000000-0000-4000-8000-000000000001');
@@ -101,6 +105,7 @@ select lives_ok($$select public.submit_contribution(
 )$$,'mixed contribution freezes audio and MIDI clip projections');
 select is((select count(*) from public.contribution_version_tracks where kind='audio'),1::bigint,'submission preserves the audio track');
 select is((select count(*) from public.contribution_version_tracks where kind='midi'),1::bigint,'submission preserves the MIDI track');
+select is((select count(*) from public.contribution_version_clips where kind='audio'),2::bigint,'submission preserves every split audio clip');
 reset role;
 
 set local role authenticated;
@@ -112,6 +117,7 @@ select lives_ok($$select public.review_contribution(
   'c6500000-0000-4000-8000-000000000001',null
 )$$,'owner accepts the exact mixed contribution');
 select is((select count(distinct kind) from public.revision_tracks rt join public.projects p on p.current_revision_id=rt.revision_id where p.id='c6300000-0000-4000-8000-000000000001'),2::bigint,'accepted revision contains both track kinds');
+select is((select count(*) from public.revision_clips rc join public.projects p on p.current_revision_id=rc.revision_id where p.id='c6300000-0000-4000-8000-000000000001' and rc.kind='audio'),2::bigint,'accepted revision preserves every split audio clip');
 select is((select count(*) from public.assets where kind='source_audio'),1::bigint,'contribution and acceptance create no source asset');
 select is((select source_bytes from public.project_storage_usage where project_id='c6300000-0000-4000-8000-000000000001'),1000::bigint,'mixed acceptance keeps unique source-byte usage stable');
 

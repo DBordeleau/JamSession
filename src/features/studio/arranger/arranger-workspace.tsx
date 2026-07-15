@@ -1,14 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import {
   FiChevronDown,
   FiChevronUp,
+  FiCopy,
   FiCrosshair,
+  FiLayers,
   FiMinus,
+  FiMove,
   FiPause,
   FiPlay,
   FiPlus,
+  FiRotateCcw,
+  FiRotateCw,
+  FiScissors,
   FiTrash2,
 } from "react-icons/fi";
 import type { MidiStemVersion } from "@/features/midi/stems/types";
@@ -22,6 +35,13 @@ import {
   ticksToPixels,
 } from "./timeline";
 import { buildArrangerViewModel } from "./view-model";
+import {
+  copyArrangementClip,
+  snapArrangementTick,
+  type ArrangementClipboard,
+  type ArrangementCommand,
+} from "./commands";
+import { pixelsToTicks } from "./timeline";
 
 const iconButton =
   "border-strong text-muted hover:border-accent hover:text-accent grid h-9 w-9 shrink-0 place-items-center rounded-full border transition-colors disabled:opacity-40";
@@ -55,6 +75,11 @@ type Props = {
     clipId: string,
     versionId: string,
   ) => void;
+  onCommand: (command: ArrangementCommand, group?: string | null) => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
   actionRegion: ReactNode;
   statusRegion: ReactNode;
 };
@@ -76,6 +101,23 @@ export function ArrangerWorkspace(props: Props) {
     DEFAULT_PIXELS_PER_QUARTER,
   );
   const [follow, setFollow] = useState(true);
+  const [snapTicks, setSnapTicks] = useState<number | null>(120);
+  const [clipboard, setClipboard] = useState<ArrangementClipboard | null>(null);
+  const [clipDrag, setClipDrag] = useState<{
+    trackId: string;
+    clipId: string;
+    pointerId: number;
+    originX: number;
+    startTick: number;
+    previewTick: number;
+  } | null>(null);
+  const [trackDrag, setTrackDrag] = useState<{
+    trackId: string;
+    pointerId: number;
+    originY: number;
+    sourceIndex: number;
+    targetIndex: number;
+  } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scale = { tempoBpm: view.tempoBpm, pixelsPerQuarter };
   const timelineWidth = Math.max(720, ticksToPixels(view.durationTicks, scale));
@@ -105,6 +147,92 @@ export function ArrangerWorkspace(props: Props) {
       ? selectedTrack?.clips.find((clip) => clip.clipId === selection.clipId)
       : null;
 
+  function beginClipDrag(
+    event: ReactPointerEvent<HTMLButtonElement>,
+    trackId: string,
+    clipId: string,
+    startTick: number,
+  ) {
+    if (!props.editable || event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSelection({ kind: "clip", trackId, clipId });
+    setClipDrag({
+      trackId,
+      clipId,
+      pointerId: event.pointerId,
+      originX: event.clientX,
+      startTick,
+      previewTick: startTick,
+    });
+  }
+
+  function previewClipDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!clipDrag || clipDrag.pointerId !== event.pointerId) return;
+    const deltaTicks = pixelsToTicks(event.clientX - clipDrag.originX, scale);
+    const unsnapped = Math.max(0, clipDrag.startTick + deltaTicks);
+    setClipDrag({
+      ...clipDrag,
+      previewTick: snapArrangementTick(
+        unsnapped,
+        event.altKey ? null : snapTicks,
+      ),
+    });
+  }
+
+  function commitClipDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!clipDrag || clipDrag.pointerId !== event.pointerId) return;
+    if (clipDrag.previewTick !== clipDrag.startTick)
+      props.onCommand({
+        type: "moveClip",
+        trackId: clipDrag.trackId,
+        clipId: clipDrag.clipId,
+        startTick: clipDrag.previewTick,
+      });
+    setClipDrag(null);
+  }
+
+  function beginTrackDrag(
+    event: ReactPointerEvent<HTMLButtonElement>,
+    trackId: string,
+    sourceIndex: number,
+  ) {
+    if (!props.editable || event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setTrackDrag({
+      trackId,
+      pointerId: event.pointerId,
+      originY: event.clientY,
+      sourceIndex,
+      targetIndex: sourceIndex,
+    });
+  }
+
+  function previewTrackDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!trackDrag || trackDrag.pointerId !== event.pointerId) return;
+    setTrackDrag({
+      ...trackDrag,
+      targetIndex: Math.max(
+        0,
+        Math.min(
+          view.tracks.length - 1,
+          trackDrag.sourceIndex +
+            Math.round((event.clientY - trackDrag.originY) / 128),
+        ),
+      ),
+    });
+  }
+
+  function commitTrackDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!trackDrag || trackDrag.pointerId !== event.pointerId) return;
+    if (trackDrag.targetIndex !== trackDrag.sourceIndex)
+      props.onCommand({
+        type: "reorderTrack",
+        trackId: trackDrag.trackId,
+        targetIndex: trackDrag.targetIndex,
+      });
+    setTrackDrag(null);
+  }
+
   return (
     <section
       aria-label="Arrangement workspace"
@@ -115,6 +243,85 @@ export function ArrangerWorkspace(props: Props) {
           event.target.matches("input, select, textarea")
         )
           return;
+        const modifier = event.ctrlKey || event.metaKey;
+        if (modifier && event.key.toLowerCase() === "z") {
+          event.preventDefault();
+          if (event.shiftKey) props.onRedo();
+          else props.onUndo();
+          return;
+        }
+        if (modifier && event.key.toLowerCase() === "y") {
+          event.preventDefault();
+          props.onRedo();
+          return;
+        }
+        if (selection?.kind === "clip" && modifier) {
+          const key = event.key.toLowerCase();
+          if (key === "c") {
+            event.preventDefault();
+            setClipboard(
+              copyArrangementClip(
+                props.manifest,
+                selection.trackId,
+                selection.clipId,
+              ),
+            );
+            return;
+          }
+          if (key === "v" && clipboard) {
+            event.preventDefault();
+            props.onCommand({
+              type: "pasteClip",
+              targetTrackId: selection.trackId,
+              clipboard,
+              newClipId: crypto.randomUUID(),
+            });
+            return;
+          }
+          if (key === "d") {
+            event.preventDefault();
+            props.onCommand({
+              type: "duplicateClip",
+              trackId: selection.trackId,
+              clipId: selection.clipId,
+              newClipId: crypto.randomUUID(),
+            });
+            return;
+          }
+        }
+        if (
+          selection?.kind === "clip" &&
+          (event.key === "ArrowLeft" || event.key === "ArrowRight")
+        ) {
+          event.preventDefault();
+          const selected = selectedClip;
+          if (!selected) return;
+          const step = event.altKey ? 1 : (snapTicks ?? 1);
+          props.onCommand({
+            type: "moveClip",
+            trackId: selection.trackId,
+            clipId: selection.clipId,
+            startTick: Math.max(
+              0,
+              selected.startTick + (event.key === "ArrowLeft" ? -step : step),
+            ),
+          });
+          return;
+        }
+        if (
+          selection?.kind === "clip" &&
+          event.key === "Delete" &&
+          selectedClip?.kind === "midi"
+        ) {
+          event.preventDefault();
+          props.onCommand({
+            type: "deleteMidiClip",
+            trackId: selection.trackId,
+            clipId: selection.clipId,
+          });
+          setSelection({ kind: "track", trackId: selection.trackId });
+          return;
+        }
         if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
         event.preventDefault();
         setSelection(
@@ -149,6 +356,46 @@ export function ArrangerWorkspace(props: Props) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <label className="text-muted hidden text-[10px] font-semibold uppercase md:block">
+            Snap
+            <select
+              aria-label="Arrangement snap grid"
+              className="border-strong bg-canvas rounded-control ml-2 h-9 border px-2 text-xs"
+              value={snapTicks ?? "off"}
+              onChange={(event) =>
+                setSnapTicks(
+                  event.target.value === "off"
+                    ? null
+                    : Number(event.target.value),
+                )
+              }
+            >
+              <option value={480}>1/4</option>
+              <option value={240}>1/8</option>
+              <option value={120}>1/16</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            className={iconButton}
+            aria-label="Undo arrangement edit"
+            title="Undo arrangement edit"
+            disabled={!props.editable || !props.canUndo}
+            onClick={props.onUndo}
+          >
+            <FiRotateCcw />
+          </button>
+          <button
+            type="button"
+            className={iconButton}
+            aria-label="Redo arrangement edit"
+            title="Redo arrangement edit"
+            disabled={!props.editable || !props.canRedo}
+            onClick={props.onRedo}
+          >
+            <FiRotateCw />
+          </button>
           <button
             type="button"
             className={iconButton}
@@ -244,7 +491,7 @@ export function ArrangerWorkspace(props: Props) {
                   return (
                     <li
                       key={track.trackId}
-                      className={`border-subtle grid h-32 grid-cols-[15rem_1fr] border-b ${selected ? "bg-surface-soft" : ""}`}
+                      className={`border-subtle grid h-32 grid-cols-[15rem_1fr] border-b ${selected ? "bg-surface-soft" : ""} ${trackDrag?.targetIndex === trackIndex ? "ring-accent ring-2 ring-inset" : ""}`}
                     >
                       <div className="border-subtle bg-surface sticky left-0 z-20 border-r p-2.5">
                         <button
@@ -338,6 +585,20 @@ export function ArrangerWorkspace(props: Props) {
                           <button
                             className={iconButton}
                             type="button"
+                            aria-label={`Drag ${track.name} to reorder`}
+                            title="Drag to reorder"
+                            disabled={!props.editable}
+                            onPointerDown={(event) =>
+                              beginTrackDrag(event, track.trackId, trackIndex)
+                            }
+                            onPointerMove={previewTrackDrag}
+                            onPointerUp={commitTrackDrag}
+                          >
+                            <FiMove />
+                          </button>
+                          <button
+                            className={iconButton}
+                            type="button"
                             aria-label={`Move ${track.name} up`}
                             disabled={!props.editable || trackIndex === 0}
                             onClick={() => props.onMoveTrack(track.trackId, -1)}
@@ -371,7 +632,11 @@ export function ArrangerWorkspace(props: Props) {
                           />
                         ))}
                         {track.clips.map((clip) => {
-                          const left = ticksToPixels(clip.startTick, scale);
+                          const previewTick =
+                            clipDrag?.clipId === clip.clipId
+                              ? clipDrag.previewTick
+                              : clip.startTick;
+                          const left = ticksToPixels(previewTick, scale);
                           const width = Math.max(
                             12,
                             ticksToPixels(clip.durationTicks, scale),
@@ -390,6 +655,16 @@ export function ArrangerWorkspace(props: Props) {
                                   clipId: clip.clipId,
                                 })
                               }
+                              onPointerDown={(event) =>
+                                beginClipDrag(
+                                  event,
+                                  track.trackId,
+                                  clip.clipId,
+                                  clip.startTick,
+                                )
+                              }
+                              onPointerMove={previewClipDrag}
+                              onPointerUp={commitClipDrag}
                             >
                               <span className="text-ink absolute top-1 left-2 z-10 max-w-[calc(100%-1rem)] truncate text-[10px] font-semibold">
                                 {track.name}
@@ -433,15 +708,20 @@ export function ArrangerWorkspace(props: Props) {
             </p>
           ) : selectedClip ? (
             <ClipInspector
+              key={selectedClip.clipId}
               clip={selectedClip}
               track={selectedTrack}
               editable={props.editable}
               midiVersions={props.midiVersions}
-              onPatch={(patch) =>
-                props.onClipPatch(
-                  selectedTrack.trackId,
-                  selectedClip.clipId,
-                  patch,
+              onPatch={(patch, group) =>
+                props.onCommand(
+                  {
+                    type: "patchClip",
+                    trackId: selectedTrack.trackId,
+                    clipId: selectedClip.clipId,
+                    patch,
+                  },
+                  `${selectedClip.clipId}:${group}`,
                 )
               }
               onReplace={(versionId) =>
@@ -450,6 +730,53 @@ export function ArrangerWorkspace(props: Props) {
                   selectedClip.clipId,
                   versionId,
                 )
+              }
+              canPaste={clipboard?.sourceTrackId === selectedTrack.trackId}
+              onCopy={() =>
+                setClipboard(
+                  copyArrangementClip(
+                    props.manifest,
+                    selectedTrack.trackId,
+                    selectedClip.clipId,
+                  ),
+                )
+              }
+              onPaste={() => {
+                if (!clipboard) return;
+                props.onCommand({
+                  type: "pasteClip",
+                  targetTrackId: selectedTrack.trackId,
+                  clipboard,
+                  newClipId: crypto.randomUUID(),
+                });
+              }}
+              onDuplicate={() =>
+                props.onCommand({
+                  type: "duplicateClip",
+                  trackId: selectedTrack.trackId,
+                  clipId: selectedClip.clipId,
+                  newClipId: crypto.randomUUID(),
+                })
+              }
+              onDelete={() => {
+                props.onCommand({
+                  type: "deleteMidiClip",
+                  trackId: selectedTrack.trackId,
+                  clipId: selectedClip.clipId,
+                });
+                setSelection({
+                  kind: "track",
+                  trackId: selectedTrack.trackId,
+                });
+              }}
+              onSplit={(splitOffsetMs) =>
+                props.onCommand({
+                  type: "splitAudioClip",
+                  trackId: selectedTrack.trackId,
+                  clipId: selectedClip.clipId,
+                  splitOffsetMs,
+                  newClipId: crypto.randomUUID(),
+                })
               }
             />
           ) : (
@@ -624,6 +951,12 @@ function ClipInspector({
   midiVersions,
   onPatch,
   onReplace,
+  canPaste,
+  onCopy,
+  onPaste,
+  onDuplicate,
+  onDelete,
+  onSplit,
 }: {
   clip: ReturnType<
     typeof buildArrangerViewModel
@@ -631,14 +964,70 @@ function ClipInspector({
   track: ReturnType<typeof buildArrangerViewModel>["tracks"][number];
   editable: boolean;
   midiVersions: readonly MidiStemVersion[];
-  onPatch: (patch: Record<string, number | boolean>) => void;
+  onPatch: (patch: Record<string, number | boolean>, group: string) => void;
   onReplace: (versionId: string) => void;
+  canPaste: boolean;
+  onCopy: () => void;
+  onPaste: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  onSplit: (splitOffsetMs: number) => void;
 }) {
+  const [splitOffsetMs, setSplitOffsetMs] = useState(
+    Math.max(1, Math.floor(clip.durationMs / 2)),
+  );
   return (
     <div className="mt-3 space-y-3">
       <h3 className="truncate font-semibold">{track.name} clip</h3>
       <p className="text-muted text-xs">
         {clip.creditName} · {clip.durationTicks} ticks
+      </p>
+      {editable && (
+        <div className="flex flex-wrap gap-2" aria-label="Clip commands">
+          <button
+            type="button"
+            className={iconButton}
+            aria-label="Copy selected clip"
+            title="Copy selected clip"
+            onClick={onCopy}
+          >
+            <FiCopy />
+          </button>
+          <button
+            type="button"
+            className={iconButton}
+            aria-label="Paste clip into this track"
+            title="Paste clip into this track"
+            disabled={!canPaste}
+            onClick={onPaste}
+          >
+            <FiLayers />
+          </button>
+          <button
+            type="button"
+            className={iconButton}
+            aria-label="Duplicate selected clip"
+            title="Duplicate selected clip"
+            onClick={onDuplicate}
+          >
+            <FiCopy />
+          </button>
+          {clip.kind === "midi" && (
+            <button
+              type="button"
+              className={`${iconButton} text-danger`}
+              aria-label="Delete selected MIDI clip"
+              title="Delete selected MIDI clip"
+              onClick={onDelete}
+            >
+              <FiTrash2 />
+            </button>
+          )}
+        </div>
+      )}
+      <p className="text-muted text-[11px]">
+        Copy and paste stay in this Studio session and in the original track.
+        Hold Alt while dragging for no snap.
       </p>
       {clip.kind === "midi" ? (
         <>
@@ -666,21 +1055,32 @@ function ClipInspector({
             value={clip.startTick}
             editable={editable}
             min={0}
-            onChange={(startTick) => onPatch({ startTick })}
+            onChange={(startTick) => onPatch({ startTick }, "start")}
+          />
+          <ExactNumber
+            label="Source offset ticks"
+            value={clip.sourceStartTick ?? 0}
+            editable={editable}
+            min={0}
+            onChange={(sourceStartTick) =>
+              onPatch({ sourceStartTick }, "source-offset")
+            }
           />
           <ExactNumber
             label="Length ticks"
             value={clip.durationTicks}
             editable={editable}
             min={1}
-            onChange={(durationTicks) => onPatch({ durationTicks })}
+            onChange={(durationTicks) => onPatch({ durationTicks }, "duration")}
           />
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={clip.loop}
               disabled={!editable}
-              onChange={(event) => onPatch({ loop: event.target.checked })}
+              onChange={(event) =>
+                onPatch({ loop: event.target.checked }, "loop")
+              }
             />
             Loop
           </label>
@@ -692,22 +1092,42 @@ function ClipInspector({
             value={clip.startMs}
             editable={editable}
             min={0}
-            onChange={(positionMs) => onPatch({ positionMs })}
+            onChange={(positionMs) => onPatch({ positionMs }, "start")}
           />
           <ExactNumber
             label="Trim start ms"
             value={clip.trimStartMs ?? 0}
             editable={editable}
             min={0}
-            onChange={(trimStartMs) => onPatch({ trimStartMs })}
+            onChange={(trimStartMs) =>
+              onPatch({ trimStartMs }, "source-offset")
+            }
           />
           <ExactNumber
             label="Length ms"
             value={clip.durationMs}
             editable={editable}
             min={1}
-            onChange={(durationMs) => onPatch({ durationMs })}
+            onChange={(durationMs) => onPatch({ durationMs }, "duration")}
           />
+          {editable && (
+            <div className="border-subtle rounded-control space-y-2 border p-3">
+              <ExactNumber
+                label="Split offset ms"
+                value={splitOffsetMs}
+                editable
+                min={1}
+                onChange={setSplitOffsetMs}
+              />
+              <button
+                type="button"
+                className="border-strong hover:border-accent inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border px-3 text-sm font-semibold"
+                onClick={() => onSplit(splitOffsetMs)}
+              >
+                <FiScissors /> Split inside immutable source
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

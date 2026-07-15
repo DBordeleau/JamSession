@@ -5,9 +5,12 @@ import {
   editorTracksToManifest,
   gainToDecibels,
   manifestTrackToClipTrack,
+  manifestAudioTrackV2ToClipTrack,
+  editorAudioTracksToManifestV2,
   millisecondsToSamples,
   samplesToMilliseconds,
 } from "./mapping";
+import { parseWorkspaceManifestV2 } from "../manifest/v2";
 import { createWaveformData } from "./persisted-peaks.client";
 import { WAVEFORM_PEAKS_BIN_COUNT } from "@/features/assets/waveform-peaks/contract";
 
@@ -68,5 +71,61 @@ describe("Waveform Playlist mapping", () => {
     expect(track.clips[0]?.audioBuffer).toBeUndefined();
     expect(track.clips[0]?.waveformData).toBe(waveform);
     expect(track.clips[0]?.sampleRate).toBe(44_100);
+  });
+
+  it("round-trips every manifest-v2 audio clip without dropping secondary clips", () => {
+    const manifest = parseWorkspaceManifestV2({
+      manifestVersion: 2,
+      engine: "jam-session-composite",
+      engineVersion: "jam-session-composite-2_tone-15.1.22",
+      projectId: "00000000-0000-4000-8000-000000000001",
+      tempoBpm: 120,
+      timeSignature: { numerator: 4, denominator: 4 },
+      durationTicks: 3_840,
+      tracks: [
+        {
+          kind: "audio",
+          trackId: "00000000-0000-4000-8000-000000000011",
+          assetId: "00000000-0000-4000-8000-000000000021",
+          instrumentId: null,
+          name: "Split guitar",
+          gainDb: -3,
+          pan: 0,
+          muted: false,
+          soloed: false,
+          sortOrder: 0,
+          clips: [
+            {
+              clipId: "00000000-0000-4000-8000-000000000031",
+              positionMs: 0,
+              trimStartMs: 0,
+              durationMs: 500,
+            },
+            {
+              clipId: "00000000-0000-4000-8000-000000000032",
+              positionMs: 750,
+              trimStartMs: 500,
+              durationMs: 500,
+            },
+          ],
+        },
+      ],
+    });
+    const audioTrack = manifest.tracks[0]!;
+    if (audioTrack.kind !== "audio") throw new Error("Expected audio fixture");
+    const editorTrack = manifestAudioTrackV2ToClipTrack(audioTrack, buffer);
+
+    expect(editorTrack.clips.map(({ id }) => id)).toEqual([
+      "00000000-0000-4000-8000-000000000031",
+      "00000000-0000-4000-8000-000000000032",
+    ]);
+    expect(editorAudioTracksToManifestV2(manifest, [editorTrack])).toEqual(
+      manifest,
+    );
+    expect(() =>
+      editorAudioTracksToManifestV2(manifest, [
+        { ...editorTrack, clips: editorTrack.clips.slice(0, 1) },
+      ]),
+    ).toThrow(/do not match/);
   });
 });

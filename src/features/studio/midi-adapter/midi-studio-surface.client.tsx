@@ -38,6 +38,17 @@ import {
   loadAudioLaneSummaries,
   type AudioLaneSummary,
 } from "../arranger/audio-peaks.client";
+import {
+  applyArrangementCommand,
+  ArrangementCommandError,
+  type ArrangementCommand,
+} from "../arranger/commands";
+import {
+  commitArrangementHistory,
+  createArrangementHistory,
+  redoArrangement,
+  undoArrangement,
+} from "../arranger/history";
 
 type Props = StudioLauncherProps & { manifest: WorkspaceManifestV2 };
 type SaveStatus =
@@ -61,6 +72,11 @@ export function MidiStudioSurface(props: Props) {
         : null;
   const [manifest, setManifest] = useState(props.manifest);
   const manifestRef = useRef(props.manifest);
+  const historyRef = useRef(createArrangementHistory(props.manifest));
+  const [historyAvailability, setHistoryAvailability] = useState({
+    canUndo: false,
+    canRedo: false,
+  });
   const [lockVersion, setLockVersion] = useState(editable?.lockVersion ?? 0);
   const lockVersionRef = useRef(editable?.lockVersion ?? 0);
   const [baseRevisionId, setBaseRevisionId] = useState(
@@ -87,6 +103,11 @@ export function MidiStudioSurface(props: Props) {
   const runtime = useRef<BrowserMidiRuntime | null>(null);
   const runtimeAbort = useRef<AbortController | null>(null);
   const playbackTimer = useRef<number | null>(null);
+  const autosaveTimer = useRef<number | null>(null);
+  const saveInFlight = useRef(false);
+  const persistRef = useRef<(next: WorkspaceManifestV2) => Promise<boolean>>(
+    async () => false,
+  );
   const generation = useRef(0);
   const acknowledgedGeneration = useRef(0);
   const [lifecycle] = useState(
@@ -102,6 +123,20 @@ export function MidiStudioSurface(props: Props) {
     () =>
       new Map(midiVersions.map((version) => [version.stemVersionId, version])),
     [midiVersions],
+  );
+  const arrangementContext = useMemo(
+    () => ({
+      midiVersionDurations: new Map(
+        midiVersions.map((version) => [
+          version.stemVersionId,
+          version.durationTicks,
+        ]),
+      ),
+      audioAssetDurations: new Map(
+        (editable?.assets ?? []).map((asset) => [asset.id, asset.durationMs]),
+      ),
+    }),
+    [editable?.assets, midiVersions],
   );
 
   useEffect(() => {
@@ -218,7 +253,18 @@ export function MidiStudioSurface(props: Props) {
     [editable],
   );
 
-  const changeManifest = (next: WorkspaceManifestV2) => {
+  const changeManifest = (
+    next: WorkspaceManifestV2,
+    group: string | null = null,
+    recordHistory = true,
+  ) => {
+    historyRef.current = recordHistory
+      ? commitArrangementHistory(historyRef.current, next, group)
+      : { ...historyRef.current, present: next, group: null };
+    setHistoryAvailability({
+      canUndo: historyRef.current.past.length > 0,
+      canRedo: historyRef.current.future.length > 0,
+    });
     generation.current += 1;
     manifestRef.current = next;
     setManifest(next);
@@ -231,10 +277,68 @@ export function MidiStudioSurface(props: Props) {
       recoveryAvailable: true,
     });
     void cacheRecovery(next);
+    scheduleAutosave(next);
   };
+
+  function scheduleAutosave(next: WorkspaceManifestV2) {
+    if (!editable) return;
+    if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = window.setTimeout(() => {
+      autosaveTimer.current = null;
+      void persistRef.current(next);
+    }, 900);
+  }
+
+  function runArrangementCommand(
+    command: ArrangementCommand,
+    group: string | null = null,
+  ) {
+    if (!editable) return;
+    try {
+      changeManifest(
+        applyArrangementCommand(
+          manifestRef.current,
+          command,
+          arrangementContext,
+        ),
+        group,
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof ArrangementCommandError
+          ? error.message
+          : "That arrangement edit could not be applied.",
+      );
+    }
+  }
+
+  function undo() {
+    const next = undoArrangement(historyRef.current);
+    if (next === historyRef.current) return;
+    historyRef.current = next;
+    changeManifest(next.present, null, false);
+    setMessage("Last arrangement edit undone in this private draft.");
+  }
+
+  function redo() {
+    const next = redoArrangement(historyRef.current);
+    if (next === historyRef.current) return;
+    historyRef.current = next;
+    changeManifest(next.present, null, false);
+    setMessage("Arrangement edit redone in this private draft.");
+  }
 
   async function persist(next = manifest) {
     if (!editable) return false;
+    if (autosaveTimer.current) {
+      window.clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
+    if (saveInFlight.current) {
+      scheduleAutosave(manifestRef.current);
+      return false;
+    }
+    saveInFlight.current = true;
     const saveGeneration = generation.current;
     let canonical: WorkspaceManifestV2;
     try {
@@ -248,6 +352,7 @@ export function MidiStudioSurface(props: Props) {
         acknowledgedGeneration: acknowledgedGeneration.current,
         recoveryAvailable: await cacheRecovery(next),
       });
+      saveInFlight.current = false;
       return false;
     }
     if (!navigator.onLine) {
@@ -259,6 +364,7 @@ export function MidiStudioSurface(props: Props) {
         acknowledgedGeneration: acknowledgedGeneration.current,
         recoveryAvailable: await cacheRecovery(canonical),
       });
+      saveInFlight.current = false;
       return false;
     }
     setStatus("saving");
@@ -268,12 +374,26 @@ export function MidiStudioSurface(props: Props) {
       acknowledgedGeneration: acknowledgedGeneration.current,
       recoveryAvailable: true,
     });
-    const result = await saveMidiWorkspaceAction({
-      workspaceId: editable.workspaceId,
-      requestId: crypto.randomUUID(),
-      expectedLockVersion: lockVersion,
-      manifest: canonical,
-    });
+    let result: Awaited<ReturnType<typeof saveMidiWorkspaceAction>>;
+    try {
+      result = await saveMidiWorkspaceAction({
+        workspaceId: editable.workspaceId,
+        requestId: crypto.randomUUID(),
+        expectedLockVersion: lockVersionRef.current,
+        manifest: canonical,
+      });
+    } catch {
+      setStatus("error");
+      setMessage("The arrangement could not be saved. Try again.");
+      lifecycle.update({
+        status: "error",
+        generation: generation.current,
+        acknowledgedGeneration: acknowledgedGeneration.current,
+        recoveryAvailable: await cacheRecovery(canonical),
+      });
+      saveInFlight.current = false;
+      return false;
+    }
     if (!result.ok) {
       setStatus(result.code === "conflict" ? "conflict" : "error");
       setMessage(
@@ -291,10 +411,9 @@ export function MidiStudioSurface(props: Props) {
         acknowledgedGeneration: acknowledgedGeneration.current,
         recoveryAvailable,
       });
+      saveInFlight.current = false;
       return false;
     }
-    setManifest(canonical);
-    manifestRef.current = canonical;
     lockVersionRef.current = result.lockVersion;
     setLockVersion(result.lockVersion);
     acknowledgedGeneration.current = Math.max(
@@ -302,6 +421,19 @@ export function MidiStudioSurface(props: Props) {
       saveGeneration,
     );
     const fullySaved = generation.current === saveGeneration;
+    if (fullySaved) {
+      historyRef.current = {
+        ...historyRef.current,
+        present: canonical,
+        group: null,
+      };
+      manifestRef.current = canonical;
+      setManifest(canonical);
+      setHistoryAvailability({
+        canUndo: historyRef.current.past.length > 0,
+        canRedo: historyRef.current.future.length > 0,
+      });
+    }
     setStatus(fullySaved ? "saved" : "dirty");
     setMessage(fullySaved ? "Arrangement saved." : null);
     if (fullySaved) {
@@ -316,8 +448,13 @@ export function MidiStudioSurface(props: Props) {
       acknowledgedGeneration: acknowledgedGeneration.current,
       recoveryAvailable: !fullySaved,
     });
+    saveInFlight.current = false;
+    if (!fullySaved) scheduleAutosave(manifestRef.current);
     return true;
   }
+  useEffect(() => {
+    persistRef.current = persist;
+  });
 
   async function importVersion() {
     const version = stemVersions.get(selectedVersionId);
@@ -355,12 +492,12 @@ export function MidiStudioSurface(props: Props) {
     await persist(next);
   }
 
-  async function replaceVersion(
+  function replaceVersion(
     trackId: string,
     clipIdOrVersionId: string,
     requestedVersionId?: string,
   ) {
-    const track = manifest.tracks.find(
+    const track = manifestRef.current.tracks.find(
       (candidate) => candidate.trackId === trackId && candidate.kind === "midi",
     );
     const clipId = requestedVersionId
@@ -368,70 +505,36 @@ export function MidiStudioSurface(props: Props) {
       : track?.clips[0]?.clipId;
     const stemVersionId = requestedVersionId ?? clipIdOrVersionId;
     if (!clipId) return;
-    const version = stemVersions.get(stemVersionId);
-    if (!version || !editable) return;
-    const next = parseWorkspaceManifestV2({
-      ...manifest,
-      durationTicks: Math.max(manifest.durationTicks, version.durationTicks),
-      tracks: manifest.tracks.map((track) =>
-        track.trackId !== trackId || track.kind !== "midi"
-          ? track
-          : {
-              ...track,
-              name: version.name,
-              presetId: version.defaultPresetId,
-              presetVersion: version.defaultPresetVersion,
-              clips: track.clips.map((clip) =>
-                clip.clipId === clipId
-                  ? {
-                      ...clip,
-                      midiStemVersionId: version.stemVersionId,
-                      durationTicks: Math.min(
-                        clip.durationTicks,
-                        version.durationTicks,
-                      ),
-                      sourceStartTick: 0,
-                    }
-                  : clip,
-              ),
-            },
-      ),
+    runArrangementCommand({
+      type: "replaceMidiVersion",
+      trackId,
+      clipId,
+      midiStemVersionId: stemVersionId,
     });
-    changeManifest(next);
-    await persist(next);
   }
 
   function updateTrack(trackId: string, patch: Partial<WorkspaceTrackV2>) {
-    changeManifest({
-      ...manifest,
-      tracks: manifest.tracks.map((track) =>
-        track.trackId === trackId
-          ? ({ ...track, ...patch } as WorkspaceTrackV2)
-          : track,
-      ),
-    });
+    runArrangementCommand(
+      { type: "patchTrack", trackId, patch },
+      `${trackId}:${Object.keys(patch).sort().join(",")}`,
+    );
   }
 
   function removeTrack(trackId: string) {
-    changeManifest({
-      ...manifest,
-      tracks: manifest.tracks
-        .filter((track) => track.trackId !== trackId)
-        .map((track, sortOrder) => ({ ...track, sortOrder })),
-    });
+    runArrangementCommand({ type: "removeTrack", trackId });
   }
 
   function moveTrack(trackId: string, delta: -1 | 1) {
-    const ordered = [...manifest.tracks].sort(
+    const ordered = [...manifestRef.current.tracks].sort(
       (left, right) => left.sortOrder - right.sortOrder,
     );
     const index = ordered.findIndex((track) => track.trackId === trackId);
     const target = index + delta;
     if (index < 0 || target < 0 || target >= ordered.length) return;
-    [ordered[index], ordered[target]] = [ordered[target]!, ordered[index]!];
-    changeManifest({
-      ...manifest,
-      tracks: ordered.map((track, sortOrder) => ({ ...track, sortOrder })),
+    runArrangementCommand({
+      type: "reorderTrack",
+      trackId,
+      targetIndex: target,
     });
   }
 
@@ -440,19 +543,10 @@ export function MidiStudioSurface(props: Props) {
     clipId: string,
     patch: Record<string, number | boolean>,
   ) {
-    changeManifest({
-      ...manifest,
-      tracks: manifest.tracks.map((track) =>
-        track.trackId === trackId
-          ? {
-              ...track,
-              clips: track.clips.map((clip) =>
-                clip.clipId === clipId ? { ...clip, ...patch } : clip,
-              ),
-            }
-          : track,
-      ) as WorkspaceTrackV2[],
-    });
+    runArrangementCommand(
+      { type: "patchClip", trackId, clipId, patch },
+      `${clipId}:${Object.keys(patch).sort().join(",")}`,
+    );
   }
 
   async function togglePlayback() {
@@ -548,6 +642,13 @@ export function MidiStudioSurface(props: Props) {
     };
   }, [editable, status]);
 
+  useEffect(
+    () => () => {
+      if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+    },
+    [],
+  );
+
   useEffect(() => {
     lifecycle.configure({
       requestSave: () => void persist(manifestRef.current),
@@ -557,6 +658,7 @@ export function MidiStudioSurface(props: Props) {
           status === "conflict" ? "conflict" : "pending",
         ),
       dispose: async () => {
+        if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
         runtimeAbort.current?.abort();
         if (playbackTimer.current) clearInterval(playbackTimer.current);
         runtime.current?.dispose();
@@ -583,6 +685,10 @@ export function MidiStudioSurface(props: Props) {
                 className="cta-gradient text-accent-contrast min-h-11 rounded-full px-4 font-semibold"
                 onClick={() => {
                   manifestRef.current = recovery.manifest;
+                  historyRef.current = createArrangementHistory(
+                    recovery.manifest,
+                  );
+                  setHistoryAvailability({ canUndo: false, canRedo: false });
                   generation.current += 1;
                   setManifest(recovery.manifest);
                   setStatus(
@@ -666,6 +772,11 @@ export function MidiStudioSurface(props: Props) {
           onReplaceVersion={(trackId, clipId, versionId) =>
             void replaceVersion(trackId, clipId, versionId)
           }
+          onCommand={runArrangementCommand}
+          canUndo={historyAvailability.canUndo}
+          canRedo={historyAvailability.canRedo}
+          onUndo={undo}
+          onRedo={redo}
           actionRegion={
             <details className="relative">
               <summary className={`${button} list-none gap-2`}>

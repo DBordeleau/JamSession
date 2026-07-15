@@ -3,7 +3,7 @@
 Status: Active  
 Last updated: 2026-07-15
 
-Repository checkpoint: PRs 01–17, OPT-01–OPT-05, MIDI-01–MIDI-07, and STUDIO-01–STUDIO-03 complete; STUDIO-04 is next, followed by STUDIO-05–STUDIO-06 and the Studio-native parity/audio-lock gate before PR 18
+Repository checkpoint: PRs 01–17, OPT-01–OPT-05, MIDI-01–MIDI-07, and STUDIO-01–STUDIO-04 complete; STUDIO-05 is next, followed by STUDIO-06 and the Studio-native parity/audio-lock gate before PR 18
 
 ## Purpose
 
@@ -251,7 +251,7 @@ Status: Paused — PRs 16–17 complete; optimization is complete and MIDI/studi
 
 ## Roadmap program S — Studio-forward workspace
 
-**Status:** Active — STUDIO-01–STUDIO-03 are complete and STUDIO-04 is next; six slices are required before PR 18 and final audio-lock enablement
+**Status:** Active — STUDIO-01–STUDIO-04 are complete and STUDIO-05 is next; six slices are required before PR 18 and final audio-lock enablement
 
 **Outcome:** Jam Session Studio becomes the primary authenticated music-making workspace where users create, open, close, and safely switch one authorized project; arrange audio and MIDI on one timeline; and compose or record MIDI in project context. Projects/workspaces and immutable stem versions remain authority while the editor/audio runtime stays lazy, client-only, and disposable.
 
@@ -278,6 +278,8 @@ Status: Paused — PRs 16–17 complete; optimization is complete and MIDI/studi
 ### STUDIO-04 — Core arrangement interactions
 
 **Outcome:** Pointer and keyboard users can reorder tracks and move, duplicate/copy/paste, trim, loop, delete, and undo/redo clips. Audio split is enabled only after manifest-v2 projections survive save/publish/submit/accept/fork exactly.
+
+**Delivered:** A deterministic validated command/history layer now drives pointer drag, keyboard, snap/no-snap, and exact inspector edits. MIDI clips support source trim, duration, loop, duplicate/copy/paste/delete and selected-clip-only version replacement; audio clips support bounded move/trim/duplicate/split inside their immutable asset track. Semantic edits feed debounced conflict-safe workspace saves and local recovery, while adapter and pgTAP fixtures prove every secondary MIDI/audio clip survives publication, contribution acceptance, and fork projections.
 
 ### STUDIO-05 — Integrated MIDI composition and recording
 
