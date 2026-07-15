@@ -1,6 +1,6 @@
 # System Architecture
 
-Status: Accepted MVP design; implemented through PR 17, OPT-05, MIDI-07, and STUDIO-04 with STUDIO-05 next before PR 18
+Status: Accepted MVP design; implemented through PR 17, OPT-05, MIDI-07, and STUDIO-05 with STUDIO-06 next before PR 18
 
 Audience: engineers and coding agents
 

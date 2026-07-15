@@ -16,7 +16,6 @@ import {
   type MidiRecordingTake,
 } from "../recording";
 
-const RECORDING_BPM = 120;
 const KEY_OFFSETS: Readonly<Record<string, number>> = Object.freeze({
   a: 0,
   w: 1,
@@ -56,6 +55,10 @@ export function useMidiPerformance(input: {
   audition: (pitch: number, velocity: number) => void;
   commitTake: (notes: readonly MidiNoteV1[]) => void;
   announce: (message: string) => void;
+  bpm?: number;
+  beatsPerBar?: number;
+  onTransportStart?: (countInSeconds: number) => void;
+  onTransportStop?: () => void;
 }) {
   const [status, setStatus] = useState<MidiRecordStatus>("idle");
   const [countIn, setCountIn] = useState(true);
@@ -113,6 +116,7 @@ export function useMidiPerformance(input: {
       takeRef.current = null;
       heldKeysRef.current.clear();
       setStatus("idle");
+      inputRef.current.onTransportStop?.();
       if (take) {
         const notes = finishMidiRecording(take, performance.now());
         if (notes.length) inputRef.current.commitTake(notes);
@@ -163,17 +167,20 @@ export function useMidiPerformance(input: {
   const startRecording = useCallback(async () => {
     stopRecording();
     const current = inputRef.current;
-    const secondsPerBeat = 60 / RECORDING_BPM;
-    const countInSeconds = countIn ? 4 * secondsPerBeat : 0;
+    const bpm = current.bpm ?? 120;
+    const beatsPerBar = current.beatsPerBar ?? 4;
+    const secondsPerBeat = 60 / bpm;
+    const countInSeconds = countIn ? beatsPerBar * secondsPerBeat : 0;
     const startTimestampMs = performance.now() + countInSeconds * 1_000;
     takeRef.current = startMidiRecording({
-      bpm: RECORDING_BPM,
+      bpm,
       ppq: MIDI_PPQ,
       durationTicks: current.durationTicks,
       startTimestampMs,
     });
     setPlayheadTick(0);
     setStatus(countIn ? "count-in" : "recording");
+    current.onTransportStart?.(countInSeconds);
 
     try {
       const {
@@ -189,14 +196,14 @@ export function useMidiPerformance(input: {
         const voice = await createPresetVoice("warm-poly", 1);
         metronomeVoiceRef.current = voice;
         const totalBeats = Math.ceil(current.durationTicks / MIDI_PPQ);
-        const countInBeats = countIn ? 4 : 0;
+        const countInBeats = countIn ? beatsPerBar : 0;
         for (let beat = 0; beat < countInBeats + totalBeats; beat += 1) {
           if (!metronome && beat >= countInBeats) break;
           voice.triggerAttackRelease(
-            beat % 4 === 0 ? 84 : 79,
+            beat % beatsPerBar === 0 ? 84 : 79,
             0.04,
             audioNow + 0.05 + beat * secondsPerBeat,
-            beat % 4 === 0 ? 0.75 : 0.45,
+            beat % beatsPerBar === 0 ? 0.75 : 0.45,
           );
         }
       }

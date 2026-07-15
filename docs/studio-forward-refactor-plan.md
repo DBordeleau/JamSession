@@ -2,7 +2,7 @@
 
 Status: Accepted roadmap program; implementation authority is limited to the staged slices below
 Prepared: 2026-07-14  
-Sequence: MIDI-01–MIDI-07 delivered the contracts/runtime/collaboration foundation and reversible admission control; STUDIO-01–STUDIO-04 delivered the canonical shell/routes, safe project lifecycle, unified arranger visualization, and core arrangement mutation, and STUDIO-05–STUDIO-06 deliver Studio-native parity before the audio lock and PR 18
+Sequence: MIDI-01–MIDI-07 delivered the contracts/runtime/collaboration foundation and reversible admission control; STUDIO-01–STUDIO-05 delivered the canonical shell/routes, safe project lifecycle, unified arranger, core arrangement mutation, and integrated MIDI creation/recording, and STUDIO-06 delivers parity before the audio lock and PR 18
 
 ## Executive recommendation
 
@@ -513,6 +513,8 @@ Scope:
 - cover refresh, conflict, offline, failed finalization, route switch, focus loss, stuck-note prevention, contribution-author, and owner flows.
 
 Non-goals: draft IDs in manifests, automatic version creation on every autosave, note-level collaboration merge, audio recording, or simultaneous editing of several MIDI drafts.
+
+Implemented: the shared editor now accepts a narrow Studio host for project tempo/meter, transport audition, draft-state reporting, and explicit finalize behavior while standalone routes retain the same component and default publication path. Studio opens blank/imported or exact-version-derived private drafts from arrangement affordances; draft and workspace autosave/recovery remain independent. `finalize_studio_midi_draft(...)` records replay-bound intent, publishes the acknowledged draft, transforms only the requested new track or selected clip in the authoritative v2 manifest, and reuses canonical workspace projection/save validation in one transaction. Publication is disabled while the integrated draft is open, exit disposal stops transport/listeners and retains eligible recovery, and source admission remains enabled.
 
 ### STUDIO-06 — Parity, hardening, audio-lock enablement, and compatibility handoff
 

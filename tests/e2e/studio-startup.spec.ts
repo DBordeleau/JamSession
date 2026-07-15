@@ -127,6 +127,82 @@ test.describe("studio startup smoke", () => {
     await expect(page).toHaveURL(firstUrl);
   });
 
+  test("composes, records, and atomically replaces one MIDI clip in Studio", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    await ensureStudioActorProfile();
+    await page.goto("/test-auth");
+    await page.getByRole("button", { name: "Sign in test actor" }).click();
+    await expect(page).toHaveURL(/\/settings\/profile$/);
+    await page.goto("/studio");
+    await createProjectInStudio(
+      page,
+      `Integrated MIDI ${randomUUID().slice(0, 8)}`,
+    );
+
+    await page.locator("summary").filter({ hasText: "Actions" }).click();
+    await page.getByRole("button", { name: "Add MIDI track" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Add a MIDI part" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Start blank part" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Perform a take" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Publish immutable revision" }),
+    ).toBeDisabled();
+
+    await page.getByRole("button", { name: "Add note" }).click();
+    await expect(page.getByText("Private draft saved.")).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByLabel("One-bar count-in").uncheck();
+    await page.getByLabel("Metronome").uncheck();
+    await page.getByRole("button", { name: "Record" }).click();
+    await expect(page.getByText(/Recording · tick/)).toBeVisible();
+    await page.keyboard.down("a");
+    await page.waitForTimeout(120);
+    await page.keyboard.up("a");
+    await page.getByRole("button", { name: "Stop recording" }).click();
+    await expect(page.getByText("Private draft saved.")).toBeVisible({
+      timeout: 10_000,
+    });
+    await page
+      .getByRole("button", { name: "Save version and add to arrangement" })
+      .click();
+    await expect(
+      page.getByText(/immutable and was added to the arrangement/),
+    ).toBeVisible({ timeout: 10_000 });
+
+    await page.reload();
+    const clip = page.getByRole("button", {
+      name: /MIDI clip on New MIDI part/,
+    });
+    await expect(clip).toBeVisible();
+    await clip.dblclick();
+    await expect(
+      page.getByRole("heading", { name: "Edit New MIDI part" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Derive exact version" }).click();
+    await page.getByRole("button", { name: "Add note" }).click();
+    await expect(page.getByText("Private draft saved.")).toBeVisible({
+      timeout: 10_000,
+    });
+    await page
+      .getByRole("button", {
+        name: "Save new version and replace clip",
+      })
+      .click();
+    await expect(
+      page.getByText(/immutable and replaced only the selected clip/),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("button", { name: /MIDI clip on New MIDI part/ }),
+    ).toHaveCount(1);
+  });
+
   test("opens an editable published revision in one navigation", async ({
     page,
   }) => {

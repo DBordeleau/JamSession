@@ -64,7 +64,19 @@ import {
 import type { MidiStemDraft } from "./types";
 import { useMidiPerformance } from "./use-midi-performance.client";
 
-const PLAYBACK_BPM = 120;
+export type MidiStemEditorHost = {
+  tempoBpm: number;
+  timeSignature: { numerator: number; denominator: number };
+  onTransportStart: (countInSeconds: number) => void;
+  onTransportStop: () => void;
+  onDraftStatusChange: (status: MidiDraftSaveStatus) => void;
+  finalize: (input: {
+    draftId: string;
+    expectedLockVersion: number;
+    expectedContentSha256: string;
+  }) => Promise<{ ok: boolean; message: string }>;
+  finalizeLabel: string;
+};
 const PITCH_ROW_HEIGHT = 22;
 const PIANO_KEY_WIDTH = 88;
 const MIN_PIXELS_PER_BEAT = 48;
@@ -141,7 +153,13 @@ function contentFingerprint(input: {
   return JSON.stringify(input);
 }
 
-export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
+export function MidiStemEditor({
+  draft,
+  host,
+}: {
+  draft: MidiStemDraft;
+  host?: MidiStemEditorHost;
+}) {
   const [name, setName] = useState(draft.name);
   const [presetId, setPresetId] = useState(draft.defaultPresetId);
   const [history, setHistory] = useState(() =>
@@ -216,7 +234,8 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
 
   useEffect(() => {
     saveStatusRef.current = saveState.status;
-  }, [saveState.status]);
+    host?.onDraftStatusChange(saveState.status);
+  }, [host, saveState.status]);
 
   useEffect(() => {
     const local = readMidiDraftRecovery(draft.ownerId, draft.draftId);
@@ -257,7 +276,8 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
     voiceRef.current?.dispose();
     voiceRef.current = null;
     setPlaying(false);
-  }, []);
+    host?.onTransportStop();
+  }, [host]);
 
   const stopAudition = useCallback(() => {
     auditionRequestRef.current += 1;
@@ -331,6 +351,10 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
     audition: (pitch, velocity) => void auditionNote(pitch, velocity),
     commitTake: commitRecordedTake,
     announce: setNotice,
+    bpm: host?.tempoBpm,
+    beatsPerBar: host?.timeSignature.numerator,
+    onTransportStart: host?.onTransportStart,
+    onTransportStop: host?.onTransportStop,
   });
   const visiblePlayheadTick =
     performance.status === "idle" ? playheadTick : performance.playheadTick;
@@ -1106,7 +1130,8 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
       const voice = await createPresetVoice(presetId, 1);
       voiceRef.current = voice;
       const leadIn = 0.05;
-      const secondsPerTick = 60 / (PLAYBACK_BPM * MIDI_PPQ);
+      host?.onTransportStart(0);
+      const secondsPerTick = 60 / ((host?.tempoBpm ?? 120) * MIDI_PPQ);
       for (const note of history.notes) {
         voice.triggerAttackRelease(
           note.pitch,
@@ -1156,6 +1181,18 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
       status: "publishing",
       message: "Freezing an immutable version…",
     });
+    if (host) {
+      const result = await host.finalize({
+        draftId: draft.draftId,
+        expectedLockVersion: lockVersionRef.current,
+        expectedContentSha256: contentSha256Ref.current,
+      });
+      setPublicationState({
+        status: result.ok ? "published" : "error",
+        message: result.message,
+      });
+      return;
+    }
     const result = await publishMidiStemVersionAction({
       draftId: draft.draftId,
       requestId: crypto.randomUUID(),
@@ -1170,7 +1207,7 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
             ? "The draft changed before publication. Reload its latest save and try again."
             : result.code === "limit"
               ? "Your prototype library has reached 500 immutable versions."
-              : "This version couldn’t be frozen right now.",
+              : "This version could not be frozen right now.",
       });
       return;
     }
@@ -1553,7 +1590,7 @@ export function MidiStemEditor({ draft }: { draft: MidiStemDraft }) {
             <FiDisc aria-hidden />
             {publicationState.status === "publishing"
               ? "Freezing version…"
-              : "Save to My stems"}
+              : (host?.finalizeLabel ?? "Save to My stems")}
           </button>
           <span
             role="status"

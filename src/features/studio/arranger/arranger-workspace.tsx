@@ -75,6 +75,7 @@ type Props = {
     clipId: string,
     versionId: string,
   ) => void;
+  onEditMidiClip: (trackId: string, clipId: string) => void;
   onCommand: (command: ArrangementCommand, group?: string | null) => void;
   canUndo: boolean;
   canRedo: boolean;
@@ -288,6 +289,15 @@ export function ArrangerWorkspace(props: Props) {
             });
             return;
           }
+        }
+        if (
+          selection?.kind === "clip" &&
+          selectedClip?.kind === "midi" &&
+          event.key === "Enter"
+        ) {
+          event.preventDefault();
+          props.onEditMidiClip(selection.trackId, selection.clipId);
+          return;
         }
         if (
           selection?.kind === "clip" &&
@@ -655,6 +665,13 @@ export function ArrangerWorkspace(props: Props) {
                                   clipId: clip.clipId,
                                 })
                               }
+                              onDoubleClick={() => {
+                                if (clip.kind === "midi")
+                                  props.onEditMidiClip(
+                                    track.trackId,
+                                    clip.clipId,
+                                  );
+                              }}
                               onPointerDown={(event) =>
                                 beginClipDrag(
                                   event,
@@ -730,6 +747,9 @@ export function ArrangerWorkspace(props: Props) {
                   selectedClip.clipId,
                   versionId,
                 )
+              }
+              onEdit={() =>
+                props.onEditMidiClip(selectedTrack.trackId, selectedClip.clipId)
               }
               canPaste={clipboard?.sourceTrackId === selectedTrack.trackId}
               onCopy={() =>
@@ -951,6 +971,7 @@ function ClipInspector({
   midiVersions,
   onPatch,
   onReplace,
+  onEdit,
   canPaste,
   onCopy,
   onPaste,
@@ -966,6 +987,7 @@ function ClipInspector({
   midiVersions: readonly MidiStemVersion[];
   onPatch: (patch: Record<string, number | boolean>, group: string) => void;
   onReplace: (versionId: string) => void;
+  onEdit: () => void;
   canPaste: boolean;
   onCopy: () => void;
   onPaste: () => void;
@@ -1031,6 +1053,15 @@ function ClipInspector({
       </p>
       {clip.kind === "midi" ? (
         <>
+          {editable && (
+            <button
+              type="button"
+              className="border-strong min-h-11 w-full rounded-full border px-3 text-sm font-semibold"
+              onClick={onEdit}
+            >
+              Edit MIDI part
+            </button>
+          )}
           <label className="block text-xs font-semibold">
             Exact stem version
             <select

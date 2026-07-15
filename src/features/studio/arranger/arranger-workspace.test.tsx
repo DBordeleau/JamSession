@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { parseWorkspaceManifestV2 } from "../manifest/v2";
 import { ArrangerWorkspace } from "./arranger-workspace";
@@ -95,6 +95,7 @@ describe("ArrangerWorkspace", () => {
         onMoveTrack={vi.fn()}
         onRemoveTrack={vi.fn()}
         onReplaceVersion={vi.fn()}
+        onEditMidiClip={vi.fn()}
         onCommand={vi.fn()}
         canUndo={false}
         canRedo={false}
@@ -119,5 +120,97 @@ describe("ArrangerWorkspace", () => {
     expect(
       screen.getByRole("button", { name: "Move Keys down" }),
     ).toBeDisabled();
+  });
+
+  it("opens the selected MIDI clip from Enter and double-click", () => {
+    const onEditMidiClip = vi.fn();
+    const versionId = uuid(8);
+    const manifest = parseWorkspaceManifestV2({
+      manifestVersion: 2,
+      engine: "jam-session-composite",
+      engineVersion: "jam-session-composite-2_tone-15.1.22",
+      projectId: uuid(1),
+      tempoBpm: 120,
+      timeSignature: { numerator: 4, denominator: 4 },
+      durationTicks: 960,
+      tracks: [
+        {
+          kind: "midi",
+          trackId: uuid(2),
+          name: "Keys",
+          instrumentId: null,
+          presetId: "warm-poly-v1",
+          presetVersion: 1,
+          gainDb: 0,
+          pan: 0,
+          muted: false,
+          soloed: false,
+          sortOrder: 0,
+          clips: [
+            {
+              clipId: uuid(3),
+              midiStemVersionId: versionId,
+              startTick: 0,
+              durationTicks: 480,
+              sourceStartTick: 0,
+              loop: false,
+            },
+          ],
+        },
+      ],
+    });
+    const version = {
+      stemVersionId: versionId,
+      stemId: uuid(9),
+      version: 1,
+      name: "Keys take",
+      noteCount: 0,
+      durationTicks: 480,
+      defaultPresetId: "warm-poly-v1",
+      defaultPresetVersion: 1,
+      parentStemVersionId: null,
+      creatorCreditName: "Ada",
+      createdAt: "2026-07-15T00:00:00.000Z",
+      creatorId: uuid(10),
+      ppq: 480 as const,
+      notes: [],
+      contentSha256: "a".repeat(64),
+    };
+    const view = render(
+      <ArrangerWorkspace
+        manifest={manifest}
+        midiVersions={[version]}
+        trackCredits={[]}
+        audioSummaries={new Map()}
+        editable
+        playing={false}
+        playheadTick={0}
+        onTogglePlayback={vi.fn()}
+        onSeek={vi.fn()}
+        onTrackPatch={vi.fn()}
+        onClipPatch={vi.fn()}
+        onMoveTrack={vi.fn()}
+        onRemoveTrack={vi.fn()}
+        onReplaceVersion={vi.fn()}
+        onEditMidiClip={onEditMidiClip}
+        onCommand={vi.fn()}
+        canUndo={false}
+        canRedo={false}
+        onUndo={vi.fn()}
+        onRedo={vi.fn()}
+        actionRegion={null}
+        statusRegion={null}
+      />,
+    );
+    const scoped = within(view.container);
+    const clip = scoped.getByRole("button", { name: /MIDI clip on Keys/ });
+    fireEvent.click(clip);
+    fireEvent.keyDown(
+      scoped.getByRole("region", { name: "Arrangement workspace" }),
+      { key: "Enter" },
+    );
+    fireEvent.doubleClick(clip);
+    expect(onEditMidiClip).toHaveBeenNthCalledWith(1, uuid(2), uuid(3));
+    expect(onEditMidiClip).toHaveBeenNthCalledWith(2, uuid(2), uuid(3));
   });
 });

@@ -2937,6 +2937,31 @@ export type Database = {
           project_id: string
         }[]
       }
+      finalize_studio_midi_draft: {
+        Args: {
+          p_clip_id: string
+          p_draft_id: string
+          p_expected_content_sha256: string
+          p_expected_draft_lock_version: number
+          p_expected_workspace_lock_version: number
+          p_operation: string
+          p_request_id: string
+          p_start_tick?: number
+          p_track_id: string
+          p_workspace_id: string
+        }
+        Returns: {
+          creator_credit_name: string
+          stem_id: string
+          stem_version_id: string
+          version: number
+          version_created_at: string
+          workspace_lock_version: number
+          workspace_manifest: Json
+          workspace_manifest_sha256: string
+          workspace_updated_at: string
+        }[]
+      }
       finalize_waveform_peaks: {
         Args: {
           p_algorithm_version: string

@@ -49,6 +49,12 @@ import {
   redoArrangement,
   undoArrangement,
 } from "../arranger/history";
+import {
+  IntegratedMidiComposer,
+  type IntegratedMidiTarget,
+} from "../integrated-midi/integrated-midi-composer.client";
+import { finalizeIntegratedMidiDraftAction } from "../integrated-midi/actions";
+import type { MidiDraftSaveStatus } from "@/features/midi/stems/draft-autosave";
 
 type Props = StudioLauncherProps & { manifest: WorkspaceManifestV2 };
 type SaveStatus =
@@ -60,9 +66,8 @@ const input =
   "border-strong bg-canvas min-h-11 rounded-control border px-3 text-sm";
 
 export function MidiStudioSurface(props: Props) {
-  const midiVersions = useMemo(
+  const [midiVersions, setMidiVersions] = useState(
     () => props.midiVersions ?? [],
-    [props.midiVersions],
   );
   const editable =
     props.mode === "workspace"
@@ -91,6 +96,11 @@ export function MidiStudioSurface(props: Props) {
   const [playing, setPlaying] = useState(false);
   const [seekTick, setSeekTick] = useState(0);
   const [rendering, setRendering] = useState(false);
+  const [composerTarget, setComposerTarget] =
+    useState<IntegratedMidiTarget | null>(null);
+  const [draftSaveStatus, setDraftSaveStatus] =
+    useState<MidiDraftSaveStatus>("saved");
+  const [integratedDraftActive, setIntegratedDraftActive] = useState(false);
   const [audioSummaries, setAudioSummaries] = useState<
     ReadonlyMap<string, AudioLaneSummary>
   >(new Map());
@@ -103,6 +113,7 @@ export function MidiStudioSurface(props: Props) {
   const runtime = useRef<BrowserMidiRuntime | null>(null);
   const runtimeAbort = useRef<AbortController | null>(null);
   const playbackTimer = useRef<number | null>(null);
+  const playbackStartTimer = useRef<number | null>(null);
   const autosaveTimer = useRef<number | null>(null);
   const saveInFlight = useRef(false);
   const persistRef = useRef<(next: WorkspaceManifestV2) => Promise<boolean>>(
@@ -110,6 +121,12 @@ export function MidiStudioSurface(props: Props) {
   );
   const generation = useRef(0);
   const acknowledgedGeneration = useRef(0);
+  const finalizeIntentRef = useRef<{
+    draftId: string;
+    requestId: string;
+    trackId: string;
+    clipId: string;
+  } | null>(null);
   const [lifecycle] = useState(
     () =>
       new MutableStudioLifecycle({
@@ -207,6 +224,7 @@ export function MidiStudioSurface(props: Props) {
     }
     return () => {
       controller.abort();
+      if (playbackStartTimer.current) clearTimeout(playbackStartTimer.current);
       if (playbackTimer.current) clearInterval(playbackTimer.current);
       next.dispose();
       if (runtime.current === next) runtime.current = null;
@@ -513,6 +531,162 @@ export function MidiStudioSurface(props: Props) {
     });
   }
 
+  function openMidiClipEditor(trackId: string, clipId: string) {
+    if (!editable) return;
+    const track = manifestRef.current.tracks.find(
+      (candidate) => candidate.trackId === trackId && candidate.kind === "midi",
+    );
+    const clip = track?.clips.find((candidate) => candidate.clipId === clipId);
+    if (!clip || !("midiStemVersionId" in clip)) {
+      setMessage("That exact MIDI clip is not available to edit.");
+      return;
+    }
+    const version = clip ? stemVersions.get(clip.midiStemVersionId) : undefined;
+    if (!clip || !version) {
+      setMessage("That exact MIDI clip is not available to edit.");
+      return;
+    }
+    setComposerTarget({
+      operation: "replace",
+      trackId,
+      clipId,
+      version,
+      startTick: clip.startTick,
+    });
+    setDraftSaveStatus("saved");
+  }
+
+  const stopProjectTransport = useCallback(() => {
+    if (playbackStartTimer.current) {
+      window.clearTimeout(playbackStartTimer.current);
+      playbackStartTimer.current = null;
+    }
+    if (playbackTimer.current) {
+      window.clearInterval(playbackTimer.current);
+      playbackTimer.current = null;
+    }
+    runtime.current?.pause();
+    setPlaying(false);
+  }, []);
+
+  const startProjectTransport = useCallback(
+    (startTick: number, countInSeconds: number) => {
+      stopProjectTransport();
+      setSeekTick(startTick);
+      playbackStartTimer.current = window.setTimeout(() => {
+        playbackStartTimer.current = null;
+        const current = manifestRef.current;
+        const fromSeconds = (startTick * 60) / (current.tempoBpm * MIDI_PPQ);
+        void runtime.current
+          ?.play(fromSeconds)
+          .then(() => setPlaying(true))
+          .catch(() =>
+            setMessage("Project playback could not join the MIDI audition."),
+          );
+      }, countInSeconds * 1_000);
+    },
+    [stopProjectTransport],
+  );
+
+  const finalizeIntegratedDraft = useCallback(
+    async (
+      input: {
+        draftId: string;
+        expectedLockVersion: number;
+        expectedContentSha256: string;
+      },
+      target: IntegratedMidiTarget,
+    ) => {
+      if (!editable || status !== "saved")
+        return {
+          ok: false,
+          message: "Save the arrangement before applying this MIDI version.",
+        };
+      let intent = finalizeIntentRef.current;
+      if (!intent || intent.draftId !== input.draftId) {
+        intent = {
+          draftId: input.draftId,
+          requestId: crypto.randomUUID(),
+          trackId:
+            target.operation === "replace"
+              ? target.trackId
+              : crypto.randomUUID(),
+          clipId:
+            target.operation === "replace"
+              ? target.clipId
+              : crypto.randomUUID(),
+        };
+        finalizeIntentRef.current = intent;
+      }
+      const result = await finalizeIntegratedMidiDraftAction({
+        projectId: props.projectId,
+        draftId: input.draftId,
+        requestId: intent.requestId,
+        expectedDraftLockVersion: input.expectedLockVersion,
+        expectedContentSha256: input.expectedContentSha256,
+        workspaceId: editable.workspaceId,
+        expectedWorkspaceLockVersion: lockVersionRef.current,
+        operation: target.operation,
+        trackId: intent.trackId,
+        clipId: intent.clipId,
+        startTick: target.operation === "add" ? target.startTick : null,
+      });
+      if (!result.ok)
+        return {
+          ok: false,
+          message:
+            result.code === "workspace_conflict"
+              ? "The arrangement changed elsewhere. Reload before applying this version."
+              : result.code === "draft_conflict"
+                ? "The private MIDI draft changed elsewhere. Reload before applying it."
+                : result.code === "target_missing"
+                  ? "The selected clip moved or was removed. Choose it again."
+                  : "The version and arrangement were left unchanged. Retry when ready.",
+        };
+
+      historyRef.current = commitArrangementHistory(
+        historyRef.current,
+        result.manifest,
+        null,
+      );
+      manifestRef.current = result.manifest;
+      setManifest(result.manifest);
+      setMidiVersions((current) => [
+        result.version,
+        ...current.filter(
+          (version) => version.stemVersionId !== result.version.stemVersionId,
+        ),
+      ]);
+      lockVersionRef.current = result.workspaceLockVersion;
+      setLockVersion(result.workspaceLockVersion);
+      generation.current += 1;
+      acknowledgedGeneration.current = generation.current;
+      setStatus("saved");
+      setHistoryAvailability({
+        canUndo: historyRef.current.past.length > 0,
+        canRedo: historyRef.current.future.length > 0,
+      });
+      clearMidiLocalRecovery(editable.viewerId, editable.workspaceId);
+      lifecycle.update({
+        status: "saved",
+        generation: generation.current,
+        acknowledgedGeneration: acknowledgedGeneration.current,
+        recoveryAvailable: false,
+      });
+      finalizeIntentRef.current = null;
+      setComposerTarget(null);
+      setIntegratedDraftActive(false);
+      setDraftSaveStatus("saved");
+      const outcome =
+        target.operation === "replace"
+          ? `Version ${result.version.version} is immutable and replaced only the selected clip.`
+          : `Version ${result.version.version} is immutable and was added to the arrangement.`;
+      setMessage(outcome);
+      return { ok: true, message: outcome };
+    },
+    [editable, lifecycle, props.projectId, status],
+  );
+
   function updateTrack(trackId: string, patch: Partial<WorkspaceTrackV2>) {
     runArrangementCommand(
       { type: "patchTrack", trackId, patch },
@@ -599,7 +773,8 @@ export function MidiStudioSurface(props: Props) {
     if (
       props.mode !== "workspace" ||
       status !== "saved" ||
-      manifest.tracks.length === 0
+      manifest.tracks.length === 0 ||
+      composerTarget !== null
     )
       return;
     setMessage("Publishing immutable revision…");
@@ -642,6 +817,17 @@ export function MidiStudioSurface(props: Props) {
     };
   }, [editable, status]);
 
+  useEffect(() => {
+    if (!integratedDraftActive) return;
+    generation.current += 1;
+    lifecycle.update({
+      status: draftSaveStatus === "conflict" ? "conflict" : "error",
+      generation: generation.current,
+      acknowledgedGeneration: acknowledgedGeneration.current,
+      recoveryAvailable: true,
+    });
+  }, [draftSaveStatus, integratedDraftActive, lifecycle]);
+
   useEffect(
     () => () => {
       if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
@@ -660,6 +846,8 @@ export function MidiStudioSurface(props: Props) {
       dispose: async () => {
         if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
         runtimeAbort.current?.abort();
+        if (playbackStartTimer.current)
+          clearTimeout(playbackStartTimer.current);
         if (playbackTimer.current) clearInterval(playbackTimer.current);
         runtime.current?.dispose();
         runtime.current = null;
@@ -731,12 +919,18 @@ export function MidiStudioSurface(props: Props) {
               Shape the arrangement here, then return to submit its immutable
               snapshot.
             </p>
-            <Link
-              className="text-accent mt-2 inline-block underline"
-              href={`/projects/${props.projectId}/contributions/${props.contributionId}`}
-            >
-              Return to contribution
-            </Link>
+            {composerTarget ? (
+              <p className="text-muted mt-2 text-sm" role="status">
+                Apply or close the MIDI draft before returning to submit.
+              </p>
+            ) : (
+              <Link
+                className="text-accent mt-2 inline-block underline"
+                href={`/projects/${props.projectId}/contributions/${props.contributionId}`}
+              >
+                Return to contribution
+              </Link>
+            )}
           </div>
         )}
         <div>
@@ -772,6 +966,7 @@ export function MidiStudioSurface(props: Props) {
           onReplaceVersion={(trackId, clipId, versionId) =>
             void replaceVersion(trackId, clipId, versionId)
           }
+          onEditMidiClip={openMidiClipEditor}
           onCommand={runArrangementCommand}
           canUndo={historyAvailability.canUndo}
           canRedo={historyAvailability.canRedo}
@@ -785,6 +980,19 @@ export function MidiStudioSurface(props: Props) {
               <div className="border-strong bg-surface rounded-card absolute top-12 right-0 z-50 w-80 space-y-3 border p-4 shadow-xl">
                 {editable && (
                   <div>
+                    <button
+                      className="cta-gradient text-accent-contrast mb-3 min-h-11 w-full rounded-full px-4 text-sm font-semibold"
+                      type="button"
+                      onClick={() => {
+                        setComposerTarget({
+                          operation: "add",
+                          startTick: seekTick,
+                        });
+                        setDraftSaveStatus("saved");
+                      }}
+                    >
+                      Add MIDI track
+                    </button>
                     <label
                       className="text-xs font-semibold"
                       htmlFor="arranger-version"
@@ -890,7 +1098,11 @@ export function MidiStudioSurface(props: Props) {
                 <button
                   className="cta-gradient min-h-11 rounded-full px-4 text-sm font-semibold disabled:opacity-50"
                   type="button"
-                  disabled={status !== "saved" || manifest.tracks.length === 0}
+                  disabled={
+                    status !== "saved" ||
+                    manifest.tracks.length === 0 ||
+                    composerTarget !== null
+                  }
                   onClick={() => void publish()}
                 >
                   Publish immutable revision
@@ -906,7 +1118,9 @@ export function MidiStudioSurface(props: Props) {
               >
                 {message ??
                   (status === "saved"
-                    ? "All changes saved"
+                    ? composerTarget
+                      ? `Arrangement saved · MIDI draft ${draftSaveStatus}`
+                      : "All changes saved"
                     : status === "dirty"
                       ? "Unsaved arrangement changes"
                       : status)}
@@ -914,6 +1128,34 @@ export function MidiStudioSurface(props: Props) {
             </div>
           }
         />
+        {composerTarget && editable && (
+          <IntegratedMidiComposer
+            key={`${composerTarget.operation}:${composerTarget.operation === "replace" ? composerTarget.clipId : composerTarget.startTick}`}
+            target={composerTarget}
+            tempoBpm={manifest.tempoBpm}
+            timeSignature={manifest.timeSignature}
+            onClose={() => {
+              stopProjectTransport();
+              setComposerTarget(null);
+              setIntegratedDraftActive(false);
+              setDraftSaveStatus("saved");
+              finalizeIntentRef.current = null;
+              if (status === "saved")
+                acknowledgedGeneration.current = generation.current;
+              lifecycle.update({
+                status,
+                generation: generation.current,
+                acknowledgedGeneration: acknowledgedGeneration.current,
+                recoveryAvailable: status !== "saved",
+              });
+            }}
+            onTransportStart={startProjectTransport}
+            onTransportStop={stopProjectTransport}
+            onFinalize={finalizeIntegratedDraft}
+            onDraftStatusChange={setDraftSaveStatus}
+            onDraftOpened={() => setIntegratedDraftActive(true)}
+          />
+        )}
       </section>
     );
 
@@ -969,12 +1211,18 @@ export function MidiStudioSurface(props: Props) {
             Replace exact stem versions here, then return to the contribution to
             submit an immutable snapshot.
           </p>
-          <Link
-            className="text-accent mt-2 inline-block underline"
-            href={`/projects/${props.projectId}/contributions/${props.contributionId}`}
-          >
-            Return to contribution
-          </Link>
+          {composerTarget ? (
+            <p className="text-muted mt-2 text-sm" role="status">
+              Apply or close the MIDI draft before returning to submit.
+            </p>
+          ) : (
+            <Link
+              className="text-accent mt-2 inline-block underline"
+              href={`/projects/${props.projectId}/contributions/${props.contributionId}`}
+            >
+              Return to contribution
+            </Link>
+          )}
         </div>
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">

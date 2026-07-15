@@ -207,6 +207,33 @@ export async function saveMidiWorkspace(input: {
   } as unknown as Database["public"]["Functions"]["save_midi_workspace"]["Args"]);
 }
 
+export async function finalizeStudioMidiDraft(input: {
+  draftId: string;
+  requestId: string;
+  expectedDraftLockVersion: number;
+  expectedContentSha256: string;
+  workspaceId: string;
+  expectedWorkspaceLockVersion: number;
+  operation: "add" | "replace";
+  trackId: string;
+  clipId: string;
+  startTick: number | null;
+}) {
+  const db = await createSupabaseServerClient();
+  return db.rpc("finalize_studio_midi_draft", {
+    p_draft_id: input.draftId,
+    p_request_id: input.requestId,
+    p_expected_draft_lock_version: input.expectedDraftLockVersion,
+    p_expected_content_sha256: input.expectedContentSha256,
+    p_workspace_id: input.workspaceId,
+    p_expected_workspace_lock_version: input.expectedWorkspaceLockVersion,
+    p_operation: input.operation,
+    p_track_id: input.trackId,
+    p_clip_id: input.clipId,
+    ...(input.startTick !== null ? { p_start_tick: input.startTick } : {}),
+  });
+}
+
 export async function publishWorkspaceRevision(input: {
   workspaceId: string;
   requestId: string;

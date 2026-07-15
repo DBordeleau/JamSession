@@ -3,7 +3,7 @@
 Status: Active  
 Last updated: 2026-07-15
 
-Repository checkpoint: PRs 01–17, OPT-01–OPT-05, MIDI-01–MIDI-07, and STUDIO-01–STUDIO-04 complete; STUDIO-05 is next, followed by STUDIO-06 and the Studio-native parity/audio-lock gate before PR 18
+Repository checkpoint: PRs 01–17, OPT-01–OPT-05, MIDI-01–MIDI-07, and STUDIO-01–STUDIO-05 complete; STUDIO-06 and the Studio-native parity/audio-lock gate are next before PR 18
 
 ## Purpose
 
@@ -251,7 +251,7 @@ Status: Paused — PRs 16–17 complete; optimization is complete and MIDI/studi
 
 ## Roadmap program S — Studio-forward workspace
 
-**Status:** Active — STUDIO-01–STUDIO-04 are complete and STUDIO-05 is next; six slices are required before PR 18 and final audio-lock enablement
+**Status:** Active — STUDIO-01–STUDIO-05 are complete and STUDIO-06 is next; six slices are required before PR 18 and final audio-lock enablement
 
 **Outcome:** Jam Session Studio becomes the primary authenticated music-making workspace where users create, open, close, and safely switch one authorized project; arrange audio and MIDI on one timeline; and compose or record MIDI in project context. Projects/workspaces and immutable stem versions remain authority while the editor/audio runtime stays lazy, client-only, and disposable.
 
@@ -284,6 +284,8 @@ Status: Paused — PRs 16–17 complete; optimization is complete and MIDI/studi
 ### STUDIO-05 — Integrated MIDI composition and recording
 
 **Outcome:** Users open the shared piano roll inside Studio, create or derive a private stem draft, draw or record against project transport, then explicitly freeze a new immutable version and atomically add or replace the selected arrangement clip. My stems and standalone editor routes remain supported alternate/library surfaces.
+
+**Delivered:** The shared piano-roll/recorder now opens in project context from Add MIDI track, clip Enter/double-click, and the inspector. Blank, local `.mid`, and exact-version-derived drafts retain separate autosave/recovery while project tempo, meter, transport, count-in, metronome, pointer/QWERTY, and gesture-gated Web MIDI remain available. One replay-safe database command freezes the acknowledged draft and applies either a new track/clip or one selected replacement in the workspace transaction; stale locks, changed retries, unrelated actors, and failed projections roll back without orphan versions. Publish stays disabled while an integrated draft is open, source admission remains enabled, and standalone My stems remains supported.
 
 ### STUDIO-06 — Parity, hardening, and audio-lock enablement
 
