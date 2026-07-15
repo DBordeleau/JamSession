@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FiDownload, FiFolderPlus, FiMoreHorizontal } from "react-icons/fi";
 import type { StudioLauncherProps } from "../components/studio-launcher.client";
-import { useStudioLifecycleRegistration } from "../components/studio-shell.client";
+import {
+  useStudioFileActions,
+  useStudioLifecycleRegistration,
+} from "../components/studio-shell.client";
 import {
   MIDI_PPQ,
   parseWorkspaceManifestV2,
@@ -66,6 +69,17 @@ const input =
   "border-strong bg-canvas min-h-11 rounded-control border px-3 text-sm";
 
 export function MidiStudioSurface(props: Props) {
+  const actionsMenuRef = useRef<HTMLDetailsElement>(null);
+  const studioFileActions = useMemo(
+    () => ({
+      openExport: () => {
+        actionsMenuRef.current?.setAttribute("open", "");
+        actionsMenuRef.current?.querySelector<HTMLElement>("summary")?.focus();
+      },
+    }),
+    [],
+  );
+  useStudioFileActions(studioFileActions);
   const [midiVersions, setMidiVersions] = useState(
     () => props.midiVersions ?? [],
   );
@@ -920,7 +934,7 @@ export function MidiStudioSurface(props: Props) {
       },
     });
   });
-  useStudioLifecycleRegistration(lifecycle);
+  useStudioLifecycleRegistration(lifecycle, { editable: Boolean(editable) });
 
   if (manifest.manifestVersion === 2)
     return (
@@ -1040,7 +1054,7 @@ export function MidiStudioSurface(props: Props) {
           onUndo={undo}
           onRedo={redo}
           actionRegion={
-            <details className="relative">
+            <details ref={actionsMenuRef} className="relative">
               <summary className={`${button} list-none gap-2`}>
                 <FiMoreHorizontal /> Actions
               </summary>

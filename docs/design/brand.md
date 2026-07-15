@@ -243,6 +243,9 @@ home. The Google button is a white pill with the 4-colour Google mark.
 [`ArrangerWorkspace`](../../src/features/studio/arranger/arranger-workspace.tsx):
 coral audio summaries and gold MIDI notes share dark plum lanes, with fixed compact
 channel strips, exact-value inspection, and react-icon transport/zoom/follow actions.
+The project-independent `/studio` state uses the same lane, ruler, inspector, and
+status vocabulary as a visibly blank workstation; project lifecycle actions live in
+a compact File menu and never imply that the blank arrangement is persisted.
 Legacy manifest-v1 waveforms remain canvas-rendered, so their colours still come from
 the `studioTheme` engine configuration in
 [`studio-surface.tsx`](../../src/features/studio/waveform-playlist-adapter/studio-surface.tsx).

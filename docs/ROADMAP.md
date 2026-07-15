@@ -301,11 +301,13 @@ Status: Paused — PRs 16–17 complete; optimization is complete and MIDI/studi
 
 ## Roadmap program U — Studio and MIDI usability
 
-**Status:** Active — UX-01 is next
+**Status:** Active — UX-01 and UX-02 complete; UX-03 is next
 
 **Outcome:** Iterate on the merged Studio with musician feedback before inviting users: playback remains synchronized through live mixer changes, project and track workflows follow familiar DAW conventions, MIDI keys respond like an instrument, and clips/notes can be arranged spatially without changing manifest-v2 or immutable collaboration semantics.
 
 **Slices:** `UX-01` transport, live mixer, drag, and continuous timeline correctness; `UX-02` DAW shell and blank Studio; `UX-03` inline track creation and track-as-container workflow; `UX-04` piano feel, labels, initial viewport, active-note feedback, and pointer glissando; `UX-05` marquee selection and block editing.
+
+**Delivered through UX-02:** Playback now follows one browser-audio clock through live mixer changes, continuous seeking, and clip drag completion. `/studio` now renders a runtime-free blank workstation with transport, ruler, channel lanes, inspector, and status chrome; its compact File menu reuses authorized New/Open, lifecycle-aware Save/Close, and selected-session download/export entry points without creating an implicit project or draft.
 
 **Implementation authority:** The detailed slice plan is intentionally local at `local/implementation-plans/023-studio-midi-usability-pass.md`. Tracked architecture, design, evidence, and this roadmap are updated as each behavior lands. Signal is an MIT-licensed interaction reference pinned in the plan and existing third-party notice; Jam Session retains its own state, persistence, authorization, collaboration, styling, and browser-runtime boundaries.
 

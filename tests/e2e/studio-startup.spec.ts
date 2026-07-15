@@ -67,14 +67,28 @@ test.describe("studio startup smoke", () => {
 
     await expect(page).toHaveURL(/\/studio$/);
     await expect(
-      page.getByRole("heading", { name: "Open the music you want to shape." }),
+      page.getByRole("region", { name: "Blank arrangement workspace" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "New project" }).first(),
+      page.getByRole("heading", { name: "No project open" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Open project" }).first(),
-    ).toBeVisible();
+      page.getByRole("button", { name: "Play arrangement" }),
+    ).toBeDisabled();
+    await page
+      .getByRole("navigation", { name: "Studio" })
+      .getByText("File", { exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "New project" }),
+    ).toBeEnabled();
+    await expect(
+      page.getByRole("button", { name: "Open project" }),
+    ).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Save" })).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "Close project" }),
+    ).toBeDisabled();
     expect(privateSourceRequests).toEqual([]);
     expect(
       await page.evaluate(
@@ -113,10 +127,7 @@ test.describe("studio startup smoke", () => {
     await expect(page.getByText("All changes saved")).toBeVisible();
 
     await createProjectInStudio(page, secondTitle);
-    await page
-      .getByRole("navigation", { name: "Studio" })
-      .getByRole("button", { name: "Open project" })
-      .click();
+    await openProjectBrowserInStudio(page);
     const firstProject = page
       .getByRole("listitem")
       .filter({ hasText: firstTitle });
@@ -127,10 +138,7 @@ test.describe("studio startup smoke", () => {
     await expect(page).toHaveURL(firstUrl);
 
     for (const title of [secondTitle, firstTitle, secondTitle, firstTitle]) {
-      await page
-        .getByRole("navigation", { name: "Studio" })
-        .getByRole("button", { name: "Open project" })
-        .click();
+      await openProjectBrowserInStudio(page);
       await page
         .getByRole("listitem")
         .filter({ hasText: title })
@@ -341,10 +349,7 @@ test.describe("studio startup smoke", () => {
     await expect(page).toHaveURL(`/studio/${fixture.projectId}`);
     await expect(page.getByText("Private draft from revision 1")).toBeVisible();
 
-    await page
-      .getByRole("navigation", { name: "Studio" })
-      .getByRole("button", { name: "Open project" })
-      .click();
+    await openProjectBrowserInStudio(page);
     await page
       .getByRole("listitem")
       .filter({ hasText: switchTitle })
@@ -368,10 +373,7 @@ test.describe("studio startup smoke", () => {
     const trackLabel = page.getByLabel("Fixture stem label");
     await trackLabel.fill("Saved browser stem");
     await trackLabel.press("Tab");
-    await page
-      .getByRole("navigation", { name: "Studio" })
-      .getByRole("button", { name: "Open project" })
-      .click();
+    await openProjectBrowserInStudio(page);
     await page
       .getByRole("listitem")
       .filter({ hasText: switchTitle })
@@ -409,10 +411,7 @@ test.describe("studio startup smoke", () => {
     await expect(
       page.getByRole("alert").filter({ hasText: "changed in another tab" }),
     ).toBeVisible({ timeout: 30_000 });
-    await page
-      .getByRole("navigation", { name: "Studio" })
-      .getByRole("button", { name: "Open project" })
-      .click();
+    await openProjectBrowserInStudio(page);
     await page
       .getByRole("listitem")
       .filter({ hasText: switchTitle })
@@ -433,8 +432,9 @@ async function createProjectInStudio(
 ) {
   await page
     .getByRole("navigation", { name: "Studio" })
-    .getByRole("button", { name: "New project" })
+    .getByText("File", { exact: true })
     .click();
+  await page.getByRole("button", { name: "New project" }).click();
   const dialog = page.getByRole("dialog", { name: "Create a project" });
   await dialog.getByLabel("Title").fill(title);
   await dialog.getByLabel("License").selectOption("cc-by-4.0");
@@ -442,6 +442,16 @@ async function createProjectInStudio(
     .getByRole("button", { name: "Create project and open Studio" })
     .click();
   await expect(page).toHaveURL(/\/studio\/[0-9a-f-]+$/);
+}
+
+async function openProjectBrowserInStudio(
+  page: import("@playwright/test").Page,
+) {
+  await page
+    .getByRole("navigation", { name: "Studio" })
+    .getByText("File", { exact: true })
+    .click();
+  await page.getByRole("button", { name: "Open project" }).click();
 }
 
 async function ensureStudioActorProfile() {
