@@ -1,7 +1,8 @@
 # Jam Session — Brand & Visual Design
 
 Status: Adopted 2026-07-13 with the landing redesign; extended across the app
-(header, sign-in, dashboard, projects, profile, studio) 2026-07-14.
+(header, sign-in, dashboard, projects, profile, studio) 2026-07-14; product
+positioning updated for the MIDI-only pivot 2026-07-16.
 
 Audience: designers, engineers, and coding agents working on any user-facing
 surface.
@@ -16,19 +17,21 @@ context.
 
 ## 1. Positioning & voice
 
-Jam Session is a collaborative music platform. Our identity is built for
-**musicians, producers, and artists** — not for engineers.
+Jam Session is a playful public MIDI workshop. Our identity is built for
+**bedroom producers, casual musicians, and learners** — not for engineers.
 
 We are inspired by Git and open-source, and the underlying product genuinely is
 versioned and fork-based. But that is **plumbing, not the pitch.** On
-outward-facing surfaces we lead with the human outcome: making music with the
-right people and getting credited for it.
+outward-facing surfaces we lead with the human outcome: making an idea quickly,
+remixing what inspires you, trying a creative constraint, and receiving durable
+credit when others build on your work.
 
 **Say this**
 
-- "Your song isn't done — it's waiting for the right people."
-- "Build it together, in the browser."
-- "Everyone who shaped it, named — for good."
+- "Start with a pattern. Take it somewhere new."
+- "Make a beat in the browser."
+- "Remix it, trace it, credit it."
+- "Try today's constraint."
 - Warm, direct, artist-to-artist. Active voice. A control says what it does
   ("Create something", "Open the studio").
 
@@ -36,6 +39,7 @@ right people and getting credited for it.
 
 - "Git for music", "commits", "pull requests", "merge", "repositories" as the
   headline framing. These are fine in engineering docs, never in product copy.
+- Promises of uploaded stems, recording audio, or professional DAW replacement.
 - Cold, technical, or feature-list-first messaging that speaks to tooling rather
   than to the creative payoff.
 
@@ -204,7 +208,7 @@ landing it is auth-aware (`AuthAwareLink`): signed-out → `/sign-in`, signed-in
 **Secondary CTA** — pill, `border-strong`, transparent fill, hover to accent border
 and accent text.
 
-**Floating CTA** — [`FloatingCta`](<../../src/app/(public)/_components/floating-cta.client.tsx>):
+**Floating CTA** — `FloatingCta` in `src/app/(public)/_components/floating-cta.client.tsx`:
 a persistent, blurred, bottom-right dock so the sign-up action follows the reader.
 Collapses to a full-width bottom bar under 600px. Slides in ~700ms after load.
 
@@ -239,10 +243,11 @@ presents sign-in as a focused modal over a blurred backdrop: a warm scale/fade
 entrance and a fade-out on close (Escape, backdrop, or the icon button) that routes
 home. The Google button is a white pill with the 4-colour Google mark.
 
-**Studio surface** — manifest-v2 sessions use the shared
+**Studio surface** — the current transitional manifest-v2 sessions use the shared
 [`ArrangerWorkspace`](../../src/features/studio/arranger/arranger-workspace.tsx):
-coral audio summaries and gold MIDI notes share dark plum lanes, with fixed compact
-channel strips, exact-value inspection, and react-icon transport/zoom/follow actions.
+gold MIDI notes sit in dark plum lanes with fixed compact channel strips,
+exact-value inspection, and react-icon transport/zoom/follow actions. Coral audio
+summaries may remain only until the MIDI-only pivot removes that compatibility path.
 The studio is a deliberate **full-bleed exception** to the 76rem `Container` in §6:
 `/studio` routes render edge-to-edge with tight gutters, drop the marketing footer
 (via [`ConditionalFooter`](../../src/components/layout/conditional-footer.client.tsx)),

@@ -1,28 +1,27 @@
 # Jam Session
 
-Jam Session is an asynchronous music-collaboration platform inspired by Git and open-source development. Musicians create projects from reusable MIDI stems and compatible legacy audio, preserve immutable revision history, propose contributions with durable attribution, and create copy-on-write forks with navigable lineage.
+Jam Session is a public MIDI creation, remix, reuse, and constraint-challenge platform for bedroom producers, casual musicians, and learners. Musicians build arrangements from reusable MIDI patterns, preserve immutable revision history, propose contributions with durable attribution, and fork projects with navigable lineage.
 
-> **Current status:** PRs 01–17, the five-slice $0 audio-delivery optimization, MIDI-01–MIDI-07, STUDIO-01–STUDIO-06, and UX-01–UX-05 are complete in the repository, and the Studio usability milestone pulse is accepted. The hosted database capability was read-only checked on 2026-07-15 and source admission remains enabled. PR 18 is next; deployment, hosted application parity, and any separately authorized admission lock are deferred until after PR 19 as part of PR 20 release rehearsal.
+> **Current status:** the product is pivoting to a MIDI-only MVP on the `midi-only-pivot` integration branch. PIVOT-00 freezes the target contract; PIVOT-01 (domain v3 and semantic diff), PIVOT-02 (instrument catalog/runtime), and PIVOT-03 (database foundation) form the next parallel wave. The existing application still contains legacy-audio code and commands until later pivot slices remove them. PR 19, PR 20, source-admission deployment, and the audio-egress plan are no longer the next delivery path.
 
 ## Target MVP scope
 
-- Create, record, and edit reusable MIDI stems inside Studio, with My stems and standalone routes retained for library/alternate access.
-- Arrange and mix MIDI plus compatible legacy audio on one shared browser timeline.
-- Preserve authorized existing audio while disabling new source admission only after the Studio-native MIDI parity gate.
+- Create, record, edit, arrange, and mix reusable MIDI patterns in the browser Studio.
+- Publish immutable arrangement versions with human-readable semantic MIDI diffs.
 - Submit a contribution for the project owner to review.
 - Accept or reject contributions without rewriting project history.
-- Fork a project while preserving its source and contributor credits.
-- Discover public projects by musical metadata.
+- Fork and reuse public MIDI while preserving creator lineage and CC BY 4.0 attribution.
+- Discover public projects and prepare the domain foundation for constraint challenges and a reusable MIDI library.
 
-The [product requirements](docs/PRD.md) describe the intended experience, the tracked [MVP roadmap](docs/ROADMAP.md) shows what is complete and what comes next, the [technical-design index](docs/technical-design/README.md) explains how it is built, the [studio-forward plan](docs/studio-forward-refactor-plan.md) fixes the future Studio contracts and slice boundaries, and the [brand and visual-design guide](docs/design/brand.md) defines the product voice and presentation for user-facing surfaces.
+The [product requirements](docs/PRD.md) describe the intended experience, the tracked [MVP roadmap](docs/ROADMAP.md) shows what is complete and what comes next, the [MIDI-only pivot contract](docs/technical-design/midi-only-pivot-contract.md) freezes the target vocabulary and parallel ownership, the [technical-design index](docs/technical-design/README.md) explains how it is built, and the [brand and visual-design guide](docs/design/brand.md) defines the product voice and presentation for user-facing surfaces. The [studio-forward plan](docs/studio-forward-refactor-plan.md) remains a historical record of the refactor that produced the current Studio.
 
 ## Technology
 
 - [Next.js](https://nextjs.org/) App Router and TypeScript
 - [Tailwind CSS](https://tailwindcss.com/) for styling
 - [Motion for React](https://motion.dev/docs/react) (formerly Framer Motion) for purposeful interaction animation
-- [Supabase](https://supabase.com/) for Postgres, invite-only Google Auth, and private Storage
-- [Waveform Playlist](https://github.com/naomiaro/waveform-playlist) behind a production client-only adapter for synchronized playback
+- [Supabase](https://supabase.com/) for Postgres, invite-only Google Auth, and private avatar Storage
+- [Tone.js](https://tonejs.github.io/) behind a client-only MIDI runtime and versioned bundled synthesis presets
 - [Vitest](https://vitest.dev/) and React Testing Library for unit/component tests
 - [Playwright](https://playwright.dev/) for browser tests
 - Vercel for eventual deployment
@@ -140,6 +139,8 @@ npm run supabase:stop
 The configured hosted Supabase project is the normal interactive-development backend. Invitations and hosted migrations must be applied to the same project named by `NEXT_PUBLIC_SUPABASE_URL`; inserting into or migrating local Postgres does not change the hosted application.
 
 ## Common commands
+
+The table reflects the executable repository during the staged pivot. Audio/upload commands remain listed until PIVOT-07 through PIVOT-09 remove their implementations; they are compatibility checks, not authority to add new audio behavior.
 
 Run commands from the repository root:
 

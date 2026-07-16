@@ -1,8 +1,10 @@
 # System Architecture
 
-Status: Accepted MVP design; repository implemented through UX-05; hosted database capability recorded enabled; application deployment and any lock transition remain PR 20 work after PR 19
+Status: Pre-pivot implementation architecture; MIDI-only target is accepted in ADR-010–ADR-014 and [`midi-only-pivot-contract.md`](midi-only-pivot-contract.md)
 
 Audience: engineers and coding agents
+
+> **Pivot notice (2026-07-16):** This document accurately describes the composite MIDI/audio code still present at PIVOT-00. It is not the target architecture for new work. PIVOT-01–PIVOT-10 replace the composite/Waveform/source-audio paths with a client-only MIDI runtime, relational patterns/arrangements, avatar-only Storage, and a fresh hosted backend. PIVOT-09 will rewrite this document after the staged cutover; until then, follow the replacement PRD, roadmap, ADR-010–ADR-014, and MIDI-only pivot contract when they conflict with sections below.
 
 ## Context
 

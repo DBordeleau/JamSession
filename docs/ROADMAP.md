@@ -1,9 +1,9 @@
 # Jam Session MVP Roadmap
 
-Status: Active  
-Last updated: 2026-07-15
+Status: Active — MIDI-only pivot in progress
+Last updated: 2026-07-16
 
-Repository checkpoint: PRs 01–17, OPT-01–OPT-05, MIDI-01–MIDI-07, STUDIO-01–STUDIO-06, and UX-01–UX-05 complete; the Studio usability pulse is accepted, the hosted database capability is recorded enabled, and PR 18 is next
+Repository checkpoint: PRs 01–18, OPT-01–OPT-05, MIDI-01–MIDI-07, STUDIO-01–STUDIO-06, UX-01–UX-05, and the Studio-design refinement are merged; PIVOT-00 product/architecture lock is current, and PIVOT-01–PIVOT-03 form the first parallel implementation wave
 
 ## Purpose
 
@@ -13,7 +13,38 @@ Use this document to choose and scope the next product slice. Use the [PRD](PRD.
 
 Implementation status here refers to the merged repository. It does not prove that a migration, Edge Function, environment variable, or application build has been deployed to a hosted environment. Deployment evidence belongs in the relevant technical evidence/runbook.
 
-## Current checkpoint
+## Current checkpoint — MIDI-only pivot
+
+The [replacement PRD](PRD.md) changes Jam Session from a collaboration-first MIDI/legacy-audio prototype into a public MIDI creation, remix, reuse, and constraint-challenge product for bedroom producers, casual musicians, and learners.
+
+Accepted pivot decisions are ADR-010 through ADR-014:
+
+- retain this repository, Studio, identity, project, collaboration, moderation, design, and test foundations;
+- remove uploaded source audio and every compatibility/infrastructure path supporting it;
+- adopt manifest v3, reusable immutable MIDI patterns/notes, and shared immutable arrangement versions;
+- use one versioned sample-free synthesized instrument catalog;
+- require CC BY 4.0 for initial public reusable MIDI; and
+- rebaseline migrations and rehearse against a fresh hosted Supabase project without retaining existing application data.
+
+The exact target contract is [`technical-design/midi-only-pivot-contract.md`](technical-design/midi-only-pivot-contract.md). The removal baseline is [`technical-design/evidence/pivot-00-audio-removal-inventory.md`](technical-design/evidence/pivot-00-audio-removal-inventory.md).
+
+### Pivot delivery sequence
+
+| Wave  | Slices                             | Execution                  | Outcome                                                                  |
+| ----- | ---------------------------------- | -------------------------- | ------------------------------------------------------------------------ |
+| Lock  | `PIVOT-00`                         | Sequential/current         | Product, ADRs, shared names, ownership, and removal inventory are frozen |
+| 1     | `PIVOT-01`, `PIVOT-02`, `PIVOT-03` | Parallel after PIVOT-00    | Manifest/domain/diff, instruments, and database foundation               |
+| 2     | `PIVOT-04`, `PIVOT-05`, `PIVOT-06` | Parallel after Wave 1 gate | Studio, collaboration, and public reads switch to MIDI-only v3           |
+| 3     | `PIVOT-07`, `PIVOT-08`             | Parallel after Wave 2 gate | Application and Supabase audio compatibility are removed                 |
+| Final | `PIVOT-09`, `PIVOT-10`             | Sequential                 | Clean migration/docs/test baseline, then fresh hosted rehearsal          |
+
+Parallel workers branch from the exact green integration commit named by the previous wave and target `midi-only-pivot`, not `master`. The detailed local plan `local/implementation-plans/027-midi-only-product-pivot.md` assigns exclusive file ownership and verification gates; it is intentionally untracked.
+
+No implementation slice may mutate hosted Supabase. PIVOT-10 is a separately approved single-operator task. The old hosted project remains untouched until the new environment is accepted and its deletion is separately authorized.
+
+PR 19/PR 20 and the egress optimization follow-up are paused and superseded as next work. Historical PR/OPT/MIDI/STUDIO/UX sections below document how the current repository was built; they are not current implementation instructions.
+
+## Pre-pivot implemented baseline
 
 Jam Session has completed the product foundation, browser workspace, collaboration graph, public discovery, profiles, dashboard, navigation, and $0 audio-optimization slices.
 
@@ -40,7 +71,7 @@ The completed interruption programs before PR 18 are:
 2. **`STUDIO-01`–`STUDIO-06` — Studio-native creation and arrangement:** repository complete. Hosted application parity and any separately authorized source-admission transition are deferred to PR 20 because deployment follows PR 19.
 3. **`UX-01`–`UX-05` — Studio and MIDI usability:** complete with its milestone pulse accepted. This bounded pass repairs transport/mixer correctness, establishes a familiar DAW shell and inline track workflow, improves piano interaction, and adds spatial block editing without changing immutable history or manifest compatibility.
 
-With the UX pass complete and the hosted database capability read-only confirmed enabled on 2026-07-15, **PR 18 — Moderation, retention, quotas, and storage operations** resumes with legacy audio, derived peaks, and MIDI relational history included in its reference and capacity model. The application remains undeployed through PR 18 and PR 19; PR 20 owns staged deployment, hosted application parity, and any separately authorized source-admission transition. Any separately approved audio preview must be included only if it lands before PR 18 re-anchors. PRs 19–20 remain final hardening and release gates, not buckets for known feature debt.
+PR 18 and the Studio-design refinement are complete. Their reusable moderation, recovery, Studio, and authorization foundations carry into the pivot. Their audio capacity, retention, source-admission, and compatibility behavior is historical and will be removed only after Wave 2 consumers switch.
 
 ### Progress at a glance
 
@@ -56,6 +87,7 @@ With the UX pass complete and the hosted database capability read-only confirmed
 | U     | Studio and MIDI usability      | UX-01–UX-05     | Repository complete | Studio transport, workflow, piano interaction, and block editing are musician-ready        |
 | E     | Discovery and community safety | 16–18           | Complete            | Discovery, profiles, manual moderation, recovery, and safe storage operations are complete |
 | F     | MVP hardening and release      | 19–20           | Pending             | Measured hardening and a rehearsed invited-user deployment                                 |
+| P     | MIDI-only product pivot        | PIVOT-00–10     | PIVOT-00 current    | Clean MIDI creation/versioning/reuse foundation and fresh hosted rehearsal                 |
 
 ## Delivery principles
 
@@ -63,17 +95,38 @@ Every roadmap PR is a reviewable vertical slice with one observable user or oper
 
 Across all slices:
 
-- Postgres is authoritative for domain relationships and authorization; Storage holds bytes.
+- Postgres is authoritative for domain relationships and authorization; target musical data is relational/JSONB MIDI rather than Storage media.
 - Published revisions and submitted contribution versions are immutable.
-- Source audio stays private and is authorized before short-lived signed access.
-- Browser audio/editor dependencies stay inside the documented client-only studio adapter.
-- Large bytes upload/download directly through Storage, not through Vercel Functions.
+- Tone.js and browser audio APIs stay inside the documented client-only MIDI runtime.
+- Profile avatars retain their private-original/public-derived Storage boundary; the target product has no musical file upload.
 - Public projections expose only deliberately safe fields and never Auth email.
 - RLS and service/data boundaries enforce authorization; navigation and hidden controls do not.
 - New lists and queues are bounded and indexed; use keyset pagination where depth can grow.
 - Cleanup is reference-aware and hold-aware so surviving revisions, contributions, and forks cannot break.
 - User-facing work follows the tracked brand guide and shared component patterns.
 - Verification is proportional: focused checks while iterating, then each applicable broad merge gate once.
+
+## Phase P — MIDI-only product pivot
+
+Status: PIVOT-00 current
+
+### PIVOT-00 — Product and architecture lock
+
+**Outcome:** The replacement PRD, ADR-010–ADR-014, frozen MIDI-only contract, tracked removal inventory, contributor status, and parallel-wave ownership agree before implementation begins.
+
+### Wave 1 — Parallel foundations
+
+- **PIVOT-01:** Manifest v3, pattern/arrangement domain types, canonicalization, hashing, and semantic diff engine.
+- **PIVOT-02:** Approximately 20–24 versioned sample-free synthesized presets and deterministic import/runtime mapping.
+- **PIVOT-03:** Transitional unified arrangement/pattern/note SQL, commands, RLS, pgTAP, repositories, and generated types.
+
+All three begin only after PIVOT-00 merges and branch from the same exact integration commit. The Wave 1 integration task merges contracts, instruments, then database foundation; runs combined application/database gates once; and publishes the exact Wave 2 baseline.
+
+### Later pivot waves
+
+Wave 2 cuts Studio, collaboration, and public reads over to v3 in parallel. Wave 3 removes application and Supabase audio compatibility in parallel. PIVOT-09 then replaces the migration/document/test history with a clean MIDI-only current baseline, and PIVOT-10 rehearses one fresh hosted environment.
+
+The pivot finishes before semantic visual-diff UI, public MIDI pattern library, or challenge implementation begins. Those PRD pillars receive separate detailed plans after the foundation is clean.
 
 ## Phase A — Backend and product foundation
 

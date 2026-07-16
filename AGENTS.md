@@ -4,9 +4,9 @@ This file is the operating contract for coding agents working in this repository
 
 ## Project mission
 
-Jam Session is an asynchronous music-collaboration platform inspired by Git and GitHub. Users create versioned MIDI arrangements and compatible legacy-audio projects, edit them in browser workspaces, submit contributions for review, and fork projects while preserving history and attribution.
+Jam Session is a public MIDI creation, remix, reuse, and constraint-challenge platform for bedroom producers, casual musicians, and learners. Users create versioned MIDI arrangements, edit them in browser workspaces, submit contributions, fork projects, and preserve pattern/revision lineage and attribution.
 
-The MVP is a Next.js application backed by Supabase Auth, Postgres, and Storage, with its composite MIDI/audio runtime isolated behind a browser-only integration boundary. It will eventually deploy to Vercel.
+The target MVP is a Next.js application backed by Supabase Auth/Postgres and avatar-only Storage, with a client-only Tone.js MIDI runtime. The current repository still contains pre-pivot audio compatibility until PIVOT-04–PIVOT-09 remove it. It will eventually deploy to Vercel against a fresh Supabase project.
 
 ## Read before changing code
 
@@ -22,13 +22,14 @@ Load only the documents relevant to the task, but always use them as the source 
 8. Brand, product voice, and visual design for user-facing work: [`docs/design/brand.md`](docs/design/brand.md)
 9. Contributor setup and repository map: [`README.md`](README.md)
 10. Contribution workflow: [`CONTRIBUTING.md`](CONTRIBUTING.md)
-11. Studio-forward sequencing and accepted workspace contracts: [`docs/studio-forward-refactor-plan.md`](docs/studio-forward-refactor-plan.md)
+11. MIDI-only pivot contract and parallel ownership: [`docs/technical-design/midi-only-pivot-contract.md`](docs/technical-design/midi-only-pivot-contract.md)
+12. Historical Studio-forward sequencing and accepted current-workspace contracts: [`docs/studio-forward-refactor-plan.md`](docs/studio-forward-refactor-plan.md)
 
 If code, task instructions, and these documents disagree, stop and surface the conflict. A user instruction in the active task takes precedence, but update the relevant documentation when it intentionally changes an established decision.
 
 ## Current project state
 
-PRs 01–18, OPT-01–OPT-05, MIDI-01–MIDI-07, STUDIO-01–STUDIO-06, and UX-01–UX-05 are implemented in the repository, and the Studio usability milestone pulse is complete. Studio is the primary MIDI creation/recording/arrangement surface, with canonical routes, safe serial switching, a unified audio/MIDI arranger, deterministic mutation/history, integrated piano-roll recording, a runtime-free blank DAW shell, inline track/clip workflows, responsive piano interaction, marquee/block editing, immutable collaboration flows, and tested compatibility for standalone MIDI and legacy audio. PR 18 adds private manual moderation, holds, recoverable deletion, actual-object capacity reconciliation, and a dry-run-first reference-safe retention operator. The hosted database capability was read-only checked on 2026-07-15 and source admission is enabled. The application will not be deployed until after PR 19, so hosted application parity and any separately authorized source-admission lock belong to PR 20 release rehearsal. PR 19 is next. User upload history intentionally excludes internal workspace snapshots. npm is the sole package manager and Node.js 24 LTS is required.
+PRs 01–18, OPT-01–OPT-05, MIDI-01–MIDI-07, STUDIO-01–STUDIO-06, UX-01–UX-05, and the Studio-design refinement are implemented. Their identity, Studio, project, collaboration, discovery, moderation, deletion, brand, and testing foundations are retained. The replacement PRD and ADR-010–ADR-014 supersede the legacy-audio target. PIVOT-00 is the current documentation/contract lock; PIVOT-01 (domain v3/diff), PIVOT-02 (instrument catalog/runtime), and PIVOT-03 (database foundation) are the next parallel wave after PIVOT-00 merges. PR 19, PR 20, and the egress follow-up are paused/superseded as next work. The current code/schema still contain audio compatibility until later pivot slices remove it. No existing hosted application data must be retained, no pivot worker may mutate hosted Supabase, and PIVOT-10 owns a separately approved fresh-project rehearsal. npm is the sole package manager and Node.js 24 LTS is required.
 
 Before implementing a task:
 
@@ -36,6 +37,18 @@ Before implementing a task:
 - Use `npm` and preserve `package-lock.json`; do not introduce another package manager or lockfile.
 - Use Node.js 24. The engine check intentionally rejects other major versions.
 - Do not claim tests, lint, type checking, migrations, or builds passed without running the corresponding command.
+- During a parallel pivot wave, branch from the exact green integration commit, target `midi-only-pivot`, and edit only the area assigned to that slice in the local pivot plan. Report a shared-contract need instead of changing another active worker's owned files.
+
+### MIDI-only pivot authority
+
+- PIVOT-01 exclusively owns manifest-v3, shared pattern/arrangement domain types, canonicalization, hashing, and semantic-diff TypeScript during Wave 1.
+- PIVOT-02 exclusively owns preset definitions, Tone.js voices/scheduling/local render, and dependency changes during Wave 1.
+- PIVOT-03 exclusively owns migrations, SQL/RLS/commands, pgTAP, repositories required to expose the new model, and generated database types during Wave 1.
+- Use the target nouns `MIDI pattern`, `pattern version`, `arrangement version`, `track`, and `clip`. “Stem” is historical/temporary compatibility vocabulary.
+- Do not add new audio compatibility or preserve audio merely because the old schema/runtime still exists.
+- Do not delete old audio consumers in Wave 1; PIVOT-04–PIVOT-06 switch consumers before PIVOT-07/PIVOT-08 remove compatibility.
+- Public reusable MIDI uses CC BY 4.0 and immutable creator/source lineage; challenge/library product implementation remains deferred beyond the pivot foundation.
+- Presets are bundled/versioned synthesis only. Do not add samples, soundfonts, remote audio, or user-supplied synth graphs.
 
 ## Authoritative commands
 
@@ -85,15 +98,15 @@ Before diagnosing Auth, RPC, RLS, Storage, or missing-data behavior, identify th
 
 ## Non-negotiable architecture rules
 
-- Keep Waveform Playlist, Tone.js, and browser audio APIs inside `src/features/studio/waveform-playlist-adapter` or its documented successor.
+- Keep Tone.js and browser audio APIs inside the documented browser-only MIDI runtime boundary. The existing Waveform Playlist adapter is transitional and must not gain new consumers before PIVOT-07 removes it.
 - The studio is client-only and lazy-loaded. Editor/audio packages must not be imported by Server Components, server actions, route handlers, proxy, or shared server modules.
-- Persist a validated, versioned Jam Session manifest as the MVP workspace authority; do not persist live editor objects or decoded audio.
+- Persist validated manifest-v3 snapshots alongside normalized authoritative arrangement/pattern rows; do not persist live editor objects or rendered audio.
 - Published project revisions and submitted contribution versions are immutable.
 - Autosave updates a private workspace draft using optimistic concurrency; it does not mutate published history.
-- Accepting a contribution creates a new project revision in one transaction. Do not implement automatic merging of divergent audio arrangements for MVP.
-- Forks are copy-on-write references to immutable assets. Do not duplicate source audio merely because a project is forked.
+- Accepting a contribution creates a new project revision in one transaction. Do not implement automatic musical merging for MVP.
+- Forks and reuse are copy-on-write references to immutable pattern and arrangement versions.
 - Postgres is the authority for domain relationships and authorization. Storage holds bytes, not business state.
-- Audio, snapshots, and derived files use server-generated asset IDs and private buckets. Do not make a bucket public as an authorization shortcut.
+- Profile avatars are the target product's only Storage media. Keep private originals and sanitized public derivatives behind their existing authorization boundary.
 - All application-facing tables in exposed schemas have RLS enabled and policy tests. The service-role key is server-only and exceptional, not the normal application data path.
 - Email remains in Supabase Auth and must not be copied into publicly selectable profile data.
 - Provider metadata is untrusted for public identity; new Auth users begin with incomplete profiles that are not publicly visible.
@@ -159,8 +172,8 @@ Prefer a working vertical slice over speculative abstraction. Do not silently re
 ## Database and migration rules
 
 - Schema changes require a forward-only SQL migration and affected RLS/integration tests in the same change.
-- Never change an already-applied migration to alter production behavior; create a new migration.
-- Use expand/migrate/contract for destructive or incompatible changes.
+- Never change an already-applied migration to alter current behavior; PIVOT-03 must use forward transitional migrations. PIVOT-09 is the sole slice authorized to replace the historical chain with a clean baseline because no hosted application data or migration history must be retained.
+- Use expand/migrate/contract for destructive or incompatible changes unless the accepted clean-baseline pivot contract explicitly removes that need.
 - Index foreign keys used for relationship checks and indexes required by measured query patterns. Avoid speculative indexing.
 - Use constraints for durable invariants and transactions/database functions for multi-row state transitions.
 - Security-definer functions must set a safe `search_path`, authorize `auth.uid()`, and expose only the minimum required execute permission.
@@ -170,17 +183,14 @@ Prefer a working vertical slice over speculative abstraction. Do not silently re
 
 For every RLS-sensitive feature, test at least: anonymous user, resource author, unrelated authenticated user, project owner/reviewer, and suspended user where applicable.
 
-## Storage and audio rules
+## Storage and MIDI runtime rules
 
-- Accepted MVP source formats are WAV, FLAC, and MP3. Verify file signature and decoded media metadata; never trust filename or client MIME alone.
-- Current limits are 45 MiB and 10 minutes per audio file, 12 stems and 250 MiB per project, 200 MiB per user, and an 850 MiB global soft stop.
-- Upload large files directly and resumably to Supabase Storage; do not proxy audio bytes through a Vercel Function.
-- Source assets are immutable. Replacing audio creates a new asset ID.
-- User-facing upload history lists only `source_audio`; workspace snapshots and other internal/derived asset kinds must not appear as uploads.
-- Quotas count uniquely stored source assets, not revision or fork references.
-- Signed URLs are short-lived and must never be logged.
-- Asset deletion is reference-aware and follows the documented retention/legal-hold rules.
-- Changes to Waveform Playlist/Tone.js versions or manifest schemas require deterministic round-trip fixture tests for every supported persisted version.
+- Do not add musical-file uploads, source-audio assets, samples, soundfonts, server-stored previews, or server-rendered audio.
+- MIDI import is parsed and validated as structured data; MIDI export and synthesized audio render remain browser-local downloads.
+- Presets are bundled, deterministic, versioned Tone.js synthesis definitions. Published arrangements pin exact preset versions.
+- Profile-avatar originals remain private and derivatives sanitized; signed URLs and object paths must never be logged.
+- Existing audio/source/peak/verification/quota code is transitional. Preserve it only until its assigned PIVOT-07/PIVOT-08 removal, and do not expand it.
+- Changes to Tone.js versions, preset definitions, or manifest schemas require deterministic round-trip/runtime fixtures for every supported persisted version.
 
 ## Security, privacy, and moderation
 
@@ -198,15 +208,15 @@ Tests should prove behavior, not implementation details:
 
 - Unit tests for deterministic domain logic, manifest mapping/versioning, validation, and state machines.
 - Local-Supabase integration tests for RLS, transactions, constraints, concurrency, and retention/reference behavior.
-- Browser tests for critical user journeys: authentication/onboarding, upload, synchronized playback, save/reload, contribution review, acceptance, and fork lineage.
-- Contract fixtures for Jam Session manifests and their Waveform Playlist adapter mapping.
+- Browser tests for critical user journeys: authentication/onboarding, MIDI creation/import, synchronized playback, save/reload, publication, contribution review, acceptance, and fork lineage.
+- Contract fixtures for manifest-v3 normalized round trips and the browser-only MIDI runtime mapping.
 
-Mock external boundaries only when the real local dependency is impractical. Do not mock Postgres/RLS in tests intended to establish authorization correctness. Audio behavior requiring perception or browser capability should include a documented manual check alongside automated structural assertions.
+Mock external boundaries only when the real local dependency is impractical. Do not mock Postgres/RLS in tests intended to establish authorization correctness. Synthesized playback behavior requiring perception or browser capability should include a documented manual check alongside automated structural assertions.
 
 ## Dependency and licensing discipline
 
 - Add a dependency only when the platform or existing stack cannot reasonably provide the capability.
-- Pin Waveform Playlist and direct Tone.js packages exactly until compatibility policy is established; upgrades are deliberate tasks with fixture validation.
+- Pin direct Tone.js packages exactly; upgrades are deliberate tasks with preset and persisted-fixture validation. Waveform Playlist remains pinned only until PIVOT-07 removes it.
 - Preserve third-party notices and attribution. Do not copy upstream demo media or assets without verified redistribution terms.
 - OpenDAW is post-MVP and must not be introduced without a superseding ADR, integration plan, persisted-format compatibility plan, and licensing review.
 - Do not replace lockfiles, package managers, linting, formatting, or test frameworks incidentally.
@@ -238,7 +248,7 @@ Ask for direction before proceeding when a task requires:
 
 - A product decision not answered by the PRD/design documents.
 - A destructive migration or irreversible deletion outside established retention policy.
-- Weaker RLS, public source-audio access, service-role use in normal requests, or a new external data processor.
+- Weaker RLS, public private-media access, service-role use in normal requests, or a new external data processor.
 - A change to immutable history, fork lineage, contribution acceptance semantics, or persisted manifest compatibility.
 - Introducing OpenDAW or another browser editor outside the accepted adapter/ADR boundary.
 - A materially different stack, package manager, hosting provider, database, or authentication provider.

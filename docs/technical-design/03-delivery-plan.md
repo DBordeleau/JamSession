@@ -1,6 +1,8 @@
 # Delivery Plan and Engineering Contract
 
-Status: Accepted; repository implemented and pulse-checked through PR 18, OPT-05, MIDI-07, STUDIO-06, and UX-05; hosted database capability recorded enabled; PR 19 hardening is next and deployment/parity remains PR 20
+Status: Pre-pivot delivery history plus accepted MIDI-only pivot handoff; PIVOT-00 current and Wave 1 next
+
+> **Pivot notice (2026-07-16):** PR 19/PR 20 and the source-audio release sequence below are superseded as next work. Historical milestone evidence remains valid for the code that was delivered. Current execution is PIVOT-00–PIVOT-10 from the tracked roadmap and MIDI-only contract. PIVOT-01, PIVOT-02, and PIVOT-03 may run in parallel only after PIVOT-00 merges; no implementation worker may mutate hosted Supabase.
 
 ## Delivery strategy
 

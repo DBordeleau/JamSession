@@ -1,8 +1,10 @@
 # Data Model and Supabase Design
 
-Status: Accepted MVP design; repository implemented through UX-05; hosted database capability recorded enabled; PR 18 is next and hosted application deployment/lock transition remain PR 20 work
+Status: Pre-pivot implemented schema reference; MIDI-only target is accepted in ADR-010–ADR-014 and [`midi-only-pivot-contract.md`](midi-only-pivot-contract.md)
 
 Database: Supabase Postgres
+
+> **Pivot notice (2026-07-16):** Tables and relationships below describe the schema currently implemented at PIVOT-00, including audio compatibility that will be removed. PIVOT-03 adds the transitional MIDI-only arrangement/pattern model; PIVOT-08 removes audio infrastructure; PIVOT-09 replaces the migration/data-model baseline. No existing application data must be migrated. New schema work must follow the MIDI-only contract rather than treating the audio/asset model below as future authority.
 
 ## Modeling principles
 

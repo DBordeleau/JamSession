@@ -1,10 +1,10 @@
 # Jam Session Technical Design
 
-Status: Accepted MVP design; repository implemented and pulse-checked through PR 17, OPT-05, MIDI-07, STUDIO-06, and UX-05; hosted database capability recorded enabled and PR 18 is next; application deployment/parity remains PR 20
+Status: MIDI-only pivot target accepted; PIVOT-00 current; pre-pivot implementation retained temporarily until staged cutover
 
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
-Companions: [`PRD.md`](../PRD.md) for product intent, [`ROADMAP.md`](../ROADMAP.md) for delivery status/sequence, [`studio-forward-refactor-plan.md`](../studio-forward-refactor-plan.md) for accepted Studio contracts/slices, and [`design/brand.md`](../design/brand.md) for user-facing voice and visual design
+Companions: [`PRD.md`](../PRD.md) for product intent, [`ROADMAP.md`](../ROADMAP.md) for delivery status/sequence, [`midi-only-pivot-contract.md`](midi-only-pivot-contract.md) for the accepted target domain, [`studio-forward-refactor-plan.md`](../studio-forward-refactor-plan.md) for historical/current Studio behavior, and [`design/brand.md`](../design/brand.md) for user-facing presentation
 
 ## Purpose
 
@@ -18,9 +18,24 @@ For any user-facing surface, treat the brand guide as the presentation contract 
 | [02-data-model.md](02-data-model.md)                                  | PostgreSQL/Supabase schema, invariants, storage layout and RLS                                      |
 | [03-delivery-plan.md](03-delivery-plan.md)                            | Milestones, vertical slices, testing, observability and agent execution rules                       |
 | [decisions/README.md](decisions/README.md)                            | Architectural decisions that must remain stable across implementation tasks                         |
+| [midi-only-pivot-contract.md](midi-only-pivot-contract.md)            | Frozen manifest-v3, pattern, arrangement, attribution, instrument, and extension-point contract     |
 | [studio-forward-refactor-plan.md](../studio-forward-refactor-plan.md) | Canonical Studio routes, session contract, manifest-v2 clip implications, and staged refactor scope |
 
+## Current authority during the pivot
+
+The replacement PRD and ADR-010 through ADR-014 supersede the former MIDI-plus-legacy-audio target. The current code/schema still implement that former target until PIVOT-04–PIVOT-09 remove it safely.
+
+- PIVOT-01 owns manifest-v3/domain/diff TypeScript.
+- PIVOT-02 owns the versioned sample-free instrument catalog/runtime.
+- PIVOT-03 owns transitional SQL/RLS/commands/pgTAP/generated types.
+- All Wave 1 workers branch from the exact PIVOT-00 merge commit and target `midi-only-pivot`.
+- No pivot implementation task mutates hosted Supabase; PIVOT-10 owns a separately approved fresh-project rehearsal.
+
+The exact target is [`midi-only-pivot-contract.md`](midi-only-pivot-contract.md); the complete removal baseline is [`evidence/pivot-00-audio-removal-inventory.md`](evidence/pivot-00-audio-removal-inventory.md). PR 19, PR 20, and the egress follow-up are no longer next work.
+
 ## Current implementation pulse
+
+The bullets in this section describe the pre-pivot code that still exists, not the accepted final product. They remain useful evidence for deciding what can be retained or must be removed.
 
 The following vertical slices are implemented and are the baseline for future work:
 
@@ -51,11 +66,13 @@ Profiles and private-work navigation are implemented through PR 17, the five-sli
 
 ## Executive recommendation
 
-Use a Next.js App Router application deployed to Vercel, Supabase for Auth/Postgres/Storage, Tailwind CSS for styling, and Motion for intentional interaction animation. Evolve the MVP browser studio into a Jam Session-owned composite client-only adapter: pinned Tone.js provides MIDI scheduling/synthesis, while pinned Waveform Playlist packages preserve existing audio compatibility.
+Use Next.js App Router deployed to Vercel, Supabase Auth/Postgres plus avatar-only Storage, Tailwind, Motion, and a Jam Session-owned client-only Tone.js MIDI runtime. Retain the proven Studio shell and collaboration boundaries while removing Waveform Playlist and uploaded-audio infrastructure after MIDI-only v3 consumers are complete.
 
-This is a good fit because most of Jam Session is a server-rendered social and project-management application, while MIDI/audio editing is a distinct browser-only workload. Deterministic bundled synthesis makes new MIDI projects inexpensive to store and transfer; Waveform Playlist retains the stem timeline, synchronized playback, mixer controls, and export primitives required by existing audio history. Neither runtime becomes persistence authority.
+This is a good fit because most of Jam Session is a server-rendered public/community and project-management application while MIDI editing/synthesis is a distinct browser-only workload. Deterministic bundled synthesis keeps musical state compact and makes semantic diffs/challenge validation/public reuse possible. Live editor/runtime objects never become persistence authority.
 
 ## Product decisions added to make the PRD implementable
+
+Items below record the pre-pivot design unless ADR-010–ADR-014 or the MIDI-only contract supersede them. New implementation must use the superseding target.
 
 The PRD is directionally strong. The following interpretations are normative for the MVP:
 
