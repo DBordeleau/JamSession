@@ -45,7 +45,7 @@ export function StudioSkeleton() {
             </div>
             <div className="p-4">
               <div
-                className="bg-surface-soft h-28 rounded-control"
+                className="bg-surface-soft rounded-control h-28"
                 style={{ marginLeft: `${index * 9}%`, width: "34%" }}
               />
             </div>

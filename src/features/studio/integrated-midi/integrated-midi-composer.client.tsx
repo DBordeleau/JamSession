@@ -71,15 +71,19 @@ export function IntegratedMidiComposer({
       timeSignature,
       onTransportStart: (countInSeconds: number) =>
         onTransportStart(target.startTick, countInSeconds),
+      onPlaybackTransportStart: (
+        editorStartTick: number,
+        countInSeconds: number,
+      ) => onTransportStart(target.startTick + editorStartTick, countInSeconds),
       onTransportStop,
       onDraftStatusChange,
       finalize: (input: FinalizeInput) => onFinalize(input, target),
       finalizeLabel:
-        target.operation === "replace"
-          ? "Save new version and replace clip"
-          : "Save version and add to arrangement",
+        target.operation === "replace" ? "Save and replace" : "Save and add",
+      onClose,
     }),
     [
+      onClose,
       onDraftStatusChange,
       onFinalize,
       onTransportStart,
@@ -156,7 +160,11 @@ export function IntegratedMidiComposer({
     const timeout = window.setTimeout(() => {
       if (startedRef.current) return;
       startedRef.current = true;
-      if (target.operation === "add" && target.entry === "import" && target.file)
+      if (
+        target.operation === "add" &&
+        target.entry === "import" &&
+        target.file
+      )
         void importFile(target.file);
       else void createDraft();
     }, 0);
@@ -168,50 +176,45 @@ export function IntegratedMidiComposer({
       className="rounded-card border-accent bg-surface flex min-h-0 flex-1 flex-col gap-3 border p-4 sm:px-6 sm:py-4"
       aria-labelledby="integrated-midi-heading"
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-baseline gap-3">
-          <p className="text-accent shrink-0 font-mono text-[10px] tracking-widest uppercase max-sm:hidden">
-            MIDI editor
-          </p>
-          <h2
-            id="integrated-midi-heading"
-            className="truncate text-lg font-semibold"
-          >
-            {target.operation === "replace"
-              ? `Edit ${target.version.name}`
-              : "Add a MIDI part"}
-          </h2>
-          <span className="text-muted shrink-0 text-xs max-md:hidden">
-            {tempoBpm} BPM · {timeSignature.numerator}/
-            {timeSignature.denominator}
-          </span>
-        </div>
-        <button
-          type="button"
-          className="border-strong hover:border-accent hover:text-accent min-h-9 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors"
-          onClick={onClose}
-        >
-          Close MIDI editor
-        </button>
-      </div>
+      {/* The loaded editor renders its own single-line header (identity, sound,
+          tempo, save, close), so only the pre-draft state needs chrome here. */}
+      <h2 id="integrated-midi-heading" className="sr-only">
+        {target.operation === "replace"
+          ? `Edit ${target.version.name}`
+          : "Add a MIDI part"}
+      </h2>
       {draft ? (
         <MidiStemEditor draft={draft} host={host} />
       ) : (
-        <div
-          className="border-subtle bg-surface-soft rounded-control border p-6 text-center"
-          role="status"
-        >
-          <p className="font-semibold">
-            {target.operation === "add" && target.entry === "import"
-              ? "Validating MIDI and preparing a private draft…"
-              : target.operation === "replace"
-                ? "Deriving an editable copy of this exact version…"
-                : "Preparing the private piano-roll draft…"}
-          </p>
-          <p className="text-muted mt-1 text-sm">
-            Raw MIDI bytes stay outside the arrangement manifest.
-          </p>
-        </div>
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-accent shrink-0 font-mono text-[10px] tracking-widest uppercase">
+              MIDI editor
+            </p>
+            <button
+              type="button"
+              className="border-strong hover:border-accent hover:text-accent min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors"
+              onClick={onClose}
+            >
+              Close MIDI editor
+            </button>
+          </div>
+          <div
+            className="border-subtle bg-surface-soft rounded-control border p-6 text-center"
+            role="status"
+          >
+            <p className="font-semibold">
+              {target.operation === "add" && target.entry === "import"
+                ? "Validating MIDI and preparing a private draft…"
+                : target.operation === "replace"
+                  ? "Deriving an editable copy of this exact version…"
+                  : "Preparing the private piano-roll draft…"}
+            </p>
+            <p className="text-muted mt-1 text-sm">
+              Raw MIDI bytes stay outside the arrangement manifest.
+            </p>
+          </div>
+        </>
       )}
       {message && (
         <p role="status" className="text-muted text-sm">

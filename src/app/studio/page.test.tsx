@@ -24,9 +24,7 @@ describe("blank Studio start state", () => {
     expect(
       screen.getByText("This blank arrangement is not saved."),
     ).toBeVisible();
-    expect(
-      screen.getByRole("complementary", { name: "Inspector" }),
-    ).toBeVisible();
+    expect(screen.getByLabelText("Arrangement ruler")).toBeVisible();
   });
 
   it("keeps the empty route outside the editor and browser-audio graph", () => {

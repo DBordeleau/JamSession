@@ -614,10 +614,10 @@ export function MidiStudioSurface(props: Props) {
     if (!stageRect.width || !stageRect.height) return "50% 38%";
     const rect = element.getBoundingClientRect();
     const clamp = (value: number) => Math.max(0, Math.min(100, value));
-    const x = ((rect.left + rect.width / 2 - stageRect.left) / stageRect.width) *
-      100;
-    const y = ((rect.top + rect.height / 2 - stageRect.top) / stageRect.height) *
-      100;
+    const x =
+      ((rect.left + rect.width / 2 - stageRect.left) / stageRect.width) * 100;
+    const y =
+      ((rect.top + rect.height / 2 - stageRect.top) / stageRect.height) * 100;
     return `${clamp(x)}% ${clamp(y)}%`;
   }
 
@@ -1063,17 +1063,17 @@ export function MidiStudioSurface(props: Props) {
             )}
           </div>
         )}
-        <div
-          ref={stageRef}
-          className="relative flex min-h-0 flex-1 flex-col"
-        >
+        <div ref={stageRef} className="relative flex min-h-0 flex-1 flex-col">
           <motion.div
             className="flex min-h-0 flex-1 flex-col"
             animate={{
               opacity: composerTarget ? 0 : 1,
               scale: reduce ? 1 : composerTarget ? 0.97 : 1,
             }}
-            transition={{ duration: reduce ? 0 : 0.32, ease: [0.2, 0.8, 0.2, 1] }}
+            transition={{
+              duration: reduce ? 0 : 0.32,
+              ease: [0.2, 0.8, 0.2, 1],
+            }}
             style={{
               transformOrigin: editorOrigin,
               pointerEvents: composerTarget ? "none" : "auto",
@@ -1083,263 +1083,266 @@ export function MidiStudioSurface(props: Props) {
             <ArrangerWorkspace
               manifest={manifest}
               midiVersions={midiVersions}
-          trackCredits={props.tracks}
-          audioSummaries={audioSummaries}
-          editable={Boolean(editable)}
-          playing={playing}
-          playheadTick={seekTick}
-          onTogglePlayback={() => void togglePlayback()}
-          onSeek={(tick) => {
-            runtime.current?.pause();
-            if (playbackTimer.current)
-              cancelAnimationFrame(playbackTimer.current);
-            playbackTimer.current = null;
-            setPlaying(false);
-            setSeekTick(tick);
-          }}
-          onTrackPatch={updateTrack}
-          onClipPatch={updateClip}
-          onMoveTrack={moveTrack}
-          onRemoveTrack={removeTrack}
-          onReplaceVersion={(trackId, clipId, versionId) =>
-            void replaceVersion(trackId, clipId, versionId)
-          }
-          onEditMidiClip={openMidiClipEditor}
-          onCommand={runArrangementCommand}
-          pendingMidiLane={pendingMidiLane}
-          onAddMidiLane={() => {
-            setPendingMidiLane({
-              trackId: crypto.randomUUID(),
-              name: `MIDI track ${manifest.tracks.filter(({ kind }) => kind === "midi").length + 1}`,
-            });
-            setMessage(null);
-          }}
-          onPendingMidiLaneNameChange={(name) =>
-            setPendingMidiLane((current) =>
-              current ? { ...current, name } : current,
-            )
-          }
-          onOpenPendingPianoRoll={() => {
-            if (!pendingMidiLane?.name.trim()) return;
-            setEditorOrigin("50% 32%");
-            setComposerTarget({
-              operation: "add",
-              startTick: seekTick,
-              trackId: pendingMidiLane.trackId,
-              name: pendingMidiLane.name.trim(),
-              entry: "blank",
-            });
-            setDraftSaveStatus("saved");
-          }}
-          onImportPendingMidi={(file) => {
-            if (!pendingMidiLane?.name.trim()) return;
-            setEditorOrigin("50% 32%");
-            setComposerTarget({
-              operation: "add",
-              startTick: seekTick,
-              trackId: pendingMidiLane.trackId,
-              name: pendingMidiLane.name.trim(),
-              entry: "import",
-              file,
-            });
-            setDraftSaveStatus("saved");
-          }}
-          onClosePendingMidiLane={() => {
-            stopProjectTransport();
-            setPendingMidiLane(null);
-            setComposerTarget(null);
-            setIntegratedDraftActive(false);
-            finalizeIntentRef.current = null;
-          }}
-          finalizedClip={finalizedClip}
-          canUndo={historyAvailability.canUndo}
-          canRedo={historyAvailability.canRedo}
-          onUndo={undo}
-          onRedo={redo}
-          actionRegion={
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                className={toolbarButton}
-                title="Export a standard MIDI file"
-                disabled={!manifest.tracks.length}
-                onClick={() =>
-                  download(
-                    exportMidiProject(
-                      manifest,
-                      stemVersions,
-                      props.projectTitle,
-                    ),
-                    "mid",
-                  )
-                }
-              >
-                <FiDownload aria-hidden /> .mid
-              </button>
-              <button
-                type="button"
-                className={toolbarButton}
-                title="Render and download a WAV mix locally"
-                disabled={!manifest.tracks.length || rendering}
-                onClick={() =>
-                  void (async () => {
-                    setRendering(true);
-                    try {
-                      download(
-                        await renderMidiProjectWav(
-                          manifest,
-                          stemVersions,
-                          await loadAudioSources(
-                            props,
-                            manifest,
-                            new AbortController().signal,
-                          ),
-                        ),
-                        "wav",
-                      );
-                    } catch {
-                      setMessage(
-                        "The local synth mix could not be rendered in this browser.",
-                      );
-                    } finally {
-                      setRendering(false);
-                    }
-                  })()
-                }
-              >
-                <FiDownload aria-hidden /> {rendering ? "Rendering…" : "WAV"}
-              </button>
-              {editable && (
-                <div className="relative" data-import-menu>
+              trackCredits={props.tracks}
+              audioSummaries={audioSummaries}
+              editable={Boolean(editable)}
+              playing={playing}
+              playheadTick={seekTick}
+              onTogglePlayback={() => void togglePlayback()}
+              onSeek={(tick) => {
+                runtime.current?.pause();
+                if (playbackTimer.current)
+                  cancelAnimationFrame(playbackTimer.current);
+                playbackTimer.current = null;
+                setPlaying(false);
+                setSeekTick(tick);
+              }}
+              onTrackPatch={updateTrack}
+              onClipPatch={updateClip}
+              onMoveTrack={moveTrack}
+              onRemoveTrack={removeTrack}
+              onReplaceVersion={(trackId, clipId, versionId) =>
+                void replaceVersion(trackId, clipId, versionId)
+              }
+              onEditMidiClip={openMidiClipEditor}
+              onCommand={runArrangementCommand}
+              pendingMidiLane={pendingMidiLane}
+              onAddMidiLane={() => {
+                setPendingMidiLane({
+                  trackId: crypto.randomUUID(),
+                  name: `MIDI track ${manifest.tracks.filter(({ kind }) => kind === "midi").length + 1}`,
+                });
+                setMessage(null);
+              }}
+              onPendingMidiLaneNameChange={(name) =>
+                setPendingMidiLane((current) =>
+                  current ? { ...current, name } : current,
+                )
+              }
+              onOpenPendingPianoRoll={() => {
+                if (!pendingMidiLane?.name.trim()) return;
+                setEditorOrigin("50% 32%");
+                setComposerTarget({
+                  operation: "add",
+                  startTick: seekTick,
+                  trackId: pendingMidiLane.trackId,
+                  name: pendingMidiLane.name.trim(),
+                  entry: "blank",
+                });
+                setDraftSaveStatus("saved");
+              }}
+              onImportPendingMidi={(file) => {
+                if (!pendingMidiLane?.name.trim()) return;
+                setEditorOrigin("50% 32%");
+                setComposerTarget({
+                  operation: "add",
+                  startTick: seekTick,
+                  trackId: pendingMidiLane.trackId,
+                  name: pendingMidiLane.name.trim(),
+                  entry: "import",
+                  file,
+                });
+                setDraftSaveStatus("saved");
+              }}
+              onClosePendingMidiLane={() => {
+                stopProjectTransport();
+                setPendingMidiLane(null);
+                setComposerTarget(null);
+                setIntegratedDraftActive(false);
+                finalizeIntentRef.current = null;
+              }}
+              finalizedClip={finalizedClip}
+              canUndo={historyAvailability.canUndo}
+              canRedo={historyAvailability.canRedo}
+              onUndo={undo}
+              onRedo={redo}
+              actionRegion={
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     className={toolbarButton}
-                    aria-haspopup="menu"
-                    aria-expanded={importMenuOpen}
-                    title="Import a stem version from My stems"
-                    onClick={() => setImportMenuOpen((open) => !open)}
+                    title="Export a standard MIDI file"
+                    disabled={!manifest.tracks.length}
+                    onClick={() =>
+                      download(
+                        exportMidiProject(
+                          manifest,
+                          stemVersions,
+                          props.projectTitle,
+                        ),
+                        "mid",
+                      )
+                    }
                   >
-                    <FiFolderPlus aria-hidden /> Library
-                    <FiChevronDown
-                      aria-hidden
-                      className={`transition-transform ${importMenuOpen ? "rotate-180" : ""}`}
-                    />
+                    <FiDownload aria-hidden /> .mid
                   </button>
-                  <AnimatePresence>
-                    {importMenuOpen && (
-                      <motion.div
-                        role="menu"
-                        aria-label="Stem library"
-                        initial={
-                          reduce
-                            ? { opacity: 0 }
-                            : { opacity: 0, y: -6, scale: 0.98 }
+                  <button
+                    type="button"
+                    className={toolbarButton}
+                    title="Render and download a WAV mix locally"
+                    disabled={!manifest.tracks.length || rendering}
+                    onClick={() =>
+                      void (async () => {
+                        setRendering(true);
+                        try {
+                          download(
+                            await renderMidiProjectWav(
+                              manifest,
+                              stemVersions,
+                              await loadAudioSources(
+                                props,
+                                manifest,
+                                new AbortController().signal,
+                              ),
+                            ),
+                            "wav",
+                          );
+                        } catch {
+                          setMessage(
+                            "The local synth mix could not be rendered in this browser.",
+                          );
+                        } finally {
+                          setRendering(false);
                         }
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={
-                          reduce
-                            ? { opacity: 0 }
-                            : { opacity: 0, y: -6, scale: 0.98 }
-                        }
-                        transition={{
-                          duration: reduce ? 0 : 0.16,
-                          ease: [0.2, 0.8, 0.2, 1],
-                        }}
-                        className="border-strong bg-surface rounded-card absolute top-11 right-0 z-50 w-80 max-w-[calc(100vw-2rem)] origin-top-right space-y-3 border p-4 shadow-xl"
+                      })()
+                    }
+                  >
+                    <FiDownload aria-hidden />{" "}
+                    {rendering ? "Rendering…" : "WAV"}
+                  </button>
+                  {editable && (
+                    <div className="relative" data-import-menu>
+                      <button
+                        type="button"
+                        className={toolbarButton}
+                        aria-haspopup="menu"
+                        aria-expanded={importMenuOpen}
+                        title="Import a stem version from My stems"
+                        onClick={() => setImportMenuOpen((open) => !open)}
                       >
-                        <label
-                          className="block text-xs font-semibold"
-                          htmlFor="arranger-version"
-                        >
-                          Immutable version from My stems
-                          <select
-                            id="arranger-version"
-                            className={`${input} mt-1 w-full`}
-                            value={selectedVersionId}
-                            onChange={(event) =>
-                              setSelectedVersionId(event.target.value)
+                        <FiFolderPlus aria-hidden /> Library
+                        <FiChevronDown
+                          aria-hidden
+                          className={`transition-transform ${importMenuOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                      <AnimatePresence>
+                        {importMenuOpen && (
+                          <motion.div
+                            role="menu"
+                            aria-label="Stem library"
+                            initial={
+                              reduce
+                                ? { opacity: 0 }
+                                : { opacity: 0, y: -6, scale: 0.98 }
                             }
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={
+                              reduce
+                                ? { opacity: 0 }
+                                : { opacity: 0, y: -6, scale: 0.98 }
+                            }
+                            transition={{
+                              duration: reduce ? 0 : 0.16,
+                              ease: [0.2, 0.8, 0.2, 1],
+                            }}
+                            className="border-strong bg-surface rounded-card absolute top-11 right-0 z-50 w-80 max-w-[calc(100vw-2rem)] origin-top-right space-y-3 border p-4 shadow-xl"
                           >
-                            {midiVersions.map((version) => (
-                              <option
-                                key={version.stemVersionId}
-                                value={version.stemVersionId}
+                            <label
+                              className="block text-xs font-semibold"
+                              htmlFor="arranger-version"
+                            >
+                              Immutable version from My stems
+                              <select
+                                id="arranger-version"
+                                className={`${input} mt-1 w-full`}
+                                value={selectedVersionId}
+                                onChange={(event) =>
+                                  setSelectedVersionId(event.target.value)
+                                }
                               >
-                                {version.name} · v{version.version} ·{" "}
-                                {version.creatorCreditName}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <button
-                          className={`${button} w-full gap-2`}
-                          type="button"
-                          onClick={() => {
-                            void importVersion();
-                            setImportMenuOpen(false);
-                          }}
-                          disabled={!selectedVersionId || status === "saving"}
-                        >
-                          <FiFolderPlus /> Import exact version
-                        </button>
-                        <Link
-                          className={`${button} w-full gap-2`}
-                          href="/stems"
-                        >
-                          <FiMusic /> Open My stems
-                        </Link>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                                {midiVersions.map((version) => (
+                                  <option
+                                    key={version.stemVersionId}
+                                    value={version.stemVersionId}
+                                  >
+                                    {version.name} · v{version.version} ·{" "}
+                                    {version.creatorCreditName}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <button
+                              className={`${button} w-full gap-2`}
+                              type="button"
+                              onClick={() => {
+                                void importVersion();
+                                setImportMenuOpen(false);
+                              }}
+                              disabled={
+                                !selectedVersionId || status === "saving"
+                              }
+                            >
+                              <FiFolderPlus /> Import exact version
+                            </button>
+                            <Link
+                              className={`${button} w-full gap-2`}
+                              href="/stems"
+                            >
+                              <FiMusic /> Open My stems
+                            </Link>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          }
-          statusRegion={
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              {editable && (
-                <button
-                  className={button}
-                  type="button"
-                  disabled={status !== "dirty"}
-                  onClick={() => void persist()}
-                >
-                  {status === "saving" ? "Saving…" : "Save arrangement"}
-                </button>
-              )}
-              {props.mode === "workspace" && (
-                <button
-                  className="cta-gradient min-h-11 rounded-full px-4 text-sm font-semibold disabled:opacity-50"
-                  type="button"
-                  disabled={
-                    status !== "saved" ||
-                    manifest.tracks.length === 0 ||
-                    composerTarget !== null
-                  }
-                  onClick={() => void publish()}
-                >
-                  Publish immutable revision
-                </button>
-              )}
-              <span
-                className={
-                  status === "conflict" || status === "error"
-                    ? "text-danger text-xs"
-                    : "text-muted text-xs"
-                }
-                role="status"
-              >
-                {message ??
-                  (status === "saved"
-                    ? composerTarget
-                      ? `Arrangement saved · MIDI draft ${draftSaveStatus}`
-                      : "All changes saved"
-                    : status === "dirty"
-                      ? "Unsaved arrangement changes"
-                      : status)}
-              </span>
-            </div>
-          }
+              }
+              statusRegion={
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {editable && (
+                    <button
+                      className={button}
+                      type="button"
+                      disabled={status !== "dirty"}
+                      onClick={() => void persist()}
+                    >
+                      {status === "saving" ? "Saving…" : "Save arrangement"}
+                    </button>
+                  )}
+                  {props.mode === "workspace" && (
+                    <button
+                      className="cta-gradient min-h-11 rounded-full px-4 text-sm font-semibold disabled:opacity-50"
+                      type="button"
+                      disabled={
+                        status !== "saved" ||
+                        manifest.tracks.length === 0 ||
+                        composerTarget !== null
+                      }
+                      onClick={() => void publish()}
+                    >
+                      Publish immutable revision
+                    </button>
+                  )}
+                  <span
+                    className={
+                      status === "conflict" || status === "error"
+                        ? "text-danger text-xs"
+                        : "text-muted text-xs"
+                    }
+                    role="status"
+                  >
+                    {message ??
+                      (status === "saved"
+                        ? composerTarget
+                          ? `Arrangement saved · MIDI draft ${draftSaveStatus}`
+                          : "All changes saved"
+                        : status === "dirty"
+                          ? "Unsaved arrangement changes"
+                          : status)}
+                  </span>
+                </div>
+              }
             />
           </motion.div>
           <AnimatePresence>

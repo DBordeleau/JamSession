@@ -125,9 +125,10 @@ export function ArrangerWorkspace(props: Props) {
   const [follow, setFollow] = useState(true);
   const [snapTicks, setSnapTicks] = useState<number | null>(120);
   const [clipboard, setClipboard] = useState<ArrangementClipboard | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(
-    null,
-  );
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [clipDrag, setClipDrag] = useState<{
     trackId: string;
     clipId: string;
@@ -201,7 +202,9 @@ export function ArrangerWorkspace(props: Props) {
     const viewport = scrollRef.current;
     const close = () => setContextMenu(null);
     const onPointerDown = (event: PointerEvent) => {
-      if (!(event.target as Element | null)?.closest("[data-clip-context-menu]"))
+      if (
+        !(event.target as Element | null)?.closest("[data-clip-context-menu]")
+      )
         setContextMenu(null);
     };
     const onKeyDown = (event: KeyboardEvent) => {
@@ -1143,7 +1146,6 @@ export function ArrangerWorkspace(props: Props) {
             />
           </div>
         </div>
-
       </div>
       {typeof document !== "undefined" &&
         createPortal(
