@@ -3,19 +3,16 @@ import { notFound } from "next/navigation";
 import { Container } from "@/components/layout/container";
 import { requireViewer } from "@/features/auth/guards";
 import { contributionIdSchema } from "@/features/contributions/schema";
-import { ReviewComparison } from "@/features/contributions/review-comparison.client";
+import { ReviewComparison } from "@/features/contributions/review-comparison";
 import { ReviewContributionForm } from "@/features/contributions/review-contribution-form.client";
 import { SubmissionPanel } from "@/features/contributions/submission-panel.client";
 import { WithdrawContributionForm } from "@/features/contributions/withdraw-contribution-form";
 import { ContributionDeletionForm } from "@/features/moderation/contribution-deletion-form";
 import { projectIdSchema } from "@/features/projects/schema";
-import type { VersionedWorkspaceManifest } from "@/features/studio/manifest/schema";
 import {
+  getContributionArrangementComparison,
   getContributionForViewer,
-  getContributionVersionPlayback,
 } from "@/server/repositories/contributions";
-import { getRevisionPlayback } from "@/server/repositories/revisions";
-import { getMidiStemVersionsByIds } from "@/server/repositories/midi-stems";
 import { getActiveWorkspace } from "@/server/repositories/workspaces";
 
 const labels = {
@@ -85,27 +82,14 @@ export default async function ContributionDetailPage({
   const currentVersion = contribution.versions.find(
     (version) => version.id === contribution.currentVersionId,
   );
-  const [submittedPlayback, currentPlayback] =
-    isOwner && currentVersion && contribution.currentProjectRevisionId
-      ? await Promise.all([
-          getContributionVersionPlayback({
-            projectId,
-            contributionId,
-            versionId: currentVersion.id,
-          }),
-          getRevisionPlayback({
-            projectId,
-            revisionId: contribution.currentProjectRevisionId,
-          }),
-        ])
-      : [null, null];
-  const midiVersions =
-    submittedPlayback && currentPlayback
-      ? await getMidiStemVersionsByIds([
-          ...collectMidiStemVersionIds(submittedPlayback.manifest),
-          ...collectMidiStemVersionIds(currentPlayback.manifest),
-        ])
-      : [];
+  const comparison =
+    isOwner && currentVersion
+      ? await getContributionArrangementComparison({
+          projectId,
+          contributionId,
+          versionId: currentVersion.id,
+        })
+      : null;
   const stale =
     contribution.currentProjectRevisionId !== contribution.baseRevisionId;
   return (
@@ -151,48 +135,9 @@ export default async function ContributionDetailPage({
               </dd>
             </div>
           </dl>
-          {isOwner &&
-            submittedPlayback &&
-            currentPlayback &&
-            currentVersion && (
-              <ReviewComparison
-                submitted={{
-                  mode: "contributionVersion",
-                  viewerId: viewer.id,
-                  projectId,
-                  projectTitle: contribution.projectTitle,
-                  contributionId,
-                  versionId: currentVersion.id,
-                  versionNumber: currentVersion.versionNumber,
-                  manifest: submittedPlayback.manifest,
-                  durationMs: submittedPlayback.durationMs,
-                  tracks: submittedPlayback.tracks.map((track) => ({
-                    trackId: track.trackId,
-                    kind: track.kind,
-                    instrumentName: track.instrumentName,
-                    creditName: track.creditName,
-                  })),
-                  midiVersions,
-                }}
-                current={{
-                  mode: "revision",
-                  viewerId: viewer.id,
-                  projectId,
-                  projectTitle: contribution.projectTitle,
-                  revisionId: currentPlayback.revisionId,
-                  revisionNumber: currentPlayback.revisionNumber,
-                  manifest: currentPlayback.manifest,
-                  durationMs: currentPlayback.durationMs,
-                  tracks: currentPlayback.tracks.map((track) => ({
-                    trackId: track.trackId,
-                    kind: track.kind,
-                    instrumentName: track.instrumentName,
-                    creditName: track.creditName,
-                  })),
-                  midiVersions,
-                }}
-              />
-            )}
+          {isOwner && comparison && (
+            <ReviewComparison comparison={comparison} />
+          )}
           {isAuthor && linkedWorkspace && editable && (
             <Link
               className="bg-accent rounded-control mt-6 inline-flex min-h-11 items-center px-5 font-semibold text-slate-950"
@@ -324,14 +269,4 @@ export default async function ContributionDetailPage({
       </Container>
     </main>
   );
-}
-
-function collectMidiStemVersionIds(manifest: VersionedWorkspaceManifest) {
-  return manifest.manifestVersion === 2
-    ? manifest.tracks.flatMap((track) =>
-        track.kind === "midi"
-          ? track.clips.map((clip) => clip.midiStemVersionId)
-          : [],
-      )
-    : [];
 }

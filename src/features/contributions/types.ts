@@ -1,4 +1,5 @@
 import type { Database } from "@/lib/supabase/database.types";
+import type { MidiSemanticDiffV1 } from "@/features/midi/semantic-diff-v1";
 
 export type ContributionStatus =
   Database["public"]["Enums"]["contribution_status"];
@@ -9,12 +10,31 @@ export type ContributionReviewReason =
 
 export type ContributionVersionSummary = {
   id: string;
+  arrangementVersionId: string;
   versionNumber: number;
   baseRevisionId: string;
   durationMs: number;
   trackCount: number;
   attestationVersion: string;
   createdAt: string;
+};
+
+export type PatternCreatorAttribution = {
+  midiPatternVersionId: string;
+  midiPatternId: string;
+  creatorId: string;
+  creatorCreditName: string;
+  parentMidiPatternVersionId: string | null;
+  sourceMidiPatternVersionId: string | null;
+  reuseLicenseCode: string | null;
+  reuseLicenseUrl: string | null;
+};
+
+export type ContributionArrangementComparison = {
+  baseArrangementVersionId: string;
+  submittedArrangementVersionId: string;
+  semanticDiff: MidiSemanticDiffV1;
+  patternAttributions: PatternCreatorAttribution[];
 };
 
 export type ContributionListItem = {
