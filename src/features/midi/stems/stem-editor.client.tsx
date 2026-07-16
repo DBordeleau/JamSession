@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, useReducedMotion } from "motion/react";
 import {
   useCallback,
   useEffect,
@@ -9,17 +10,19 @@ import {
   useState,
 } from "react";
 import {
-  FiCopy,
+  FiChevronDown,
   FiDisc,
   FiEdit3,
   FiCornerUpLeft,
   FiCornerUpRight,
+  FiFastForward,
   FiHelpCircle,
   FiMousePointer,
+  FiMusic,
   FiPlay,
-  FiPlus,
-  FiSave,
   FiRadio,
+  FiRewind,
+  FiSkipBack,
   FiSquare,
   FiTrash2,
   FiZap,
@@ -82,6 +85,10 @@ export type MidiStemEditorHost = {
   tempoBpm: number;
   timeSignature: { numerator: number; denominator: number };
   onTransportStart: (countInSeconds: number) => void;
+  onPlaybackTransportStart: (
+    editorStartTick: number,
+    countInSeconds: number,
+  ) => void;
   onTransportStop: () => void;
   onDraftStatusChange: (status: MidiDraftSaveStatus) => void;
   finalize: (input: {
@@ -90,6 +97,7 @@ export type MidiStemEditorHost = {
     expectedContentSha256: string;
   }) => Promise<{ ok: boolean; message: string }>;
   finalizeLabel: string;
+  onClose: () => void;
 };
 const MIN_PIXELS_PER_BEAT = 48;
 const MAX_PIXELS_PER_BEAT = 160;
@@ -99,6 +107,18 @@ const RESIZE_HANDLE_WIDTH = 10;
 
 const inputClass =
   "focus:border-accent border-strong bg-surface mt-2 min-h-11 w-full rounded-control border px-3 py-2 transition-colors";
+// Compact variants for the single-line editor header. Kept separate from
+// `inputClass` so the margin/padding utilities never collide.
+const fieldClass =
+  "focus:border-accent border-strong bg-surface min-h-10 w-full rounded-control border px-3 text-sm transition-colors";
+const selectFieldClass =
+  "focus:border-accent border-strong bg-surface min-h-10 w-full rounded-control border py-1.5 pr-3 pl-9 text-sm font-semibold transition-colors";
+const transportButton =
+  "border-strong text-muted hover:border-accent hover:text-accent grid h-9 w-9 shrink-0 place-items-center rounded-full border transition-colors disabled:opacity-40";
+// Hold-to-scrub: a tap steps one bar, holding past the delay sweeps the
+// playhead at a steady musical rate.
+const SEEK_HOLD_DELAY_MS = 300;
+const SEEK_HOLD_BEATS_PER_SECOND = 6;
 const secondaryButton =
   "border-strong hover:border-accent inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold disabled:opacity-45";
 
@@ -151,6 +171,11 @@ type AuditionVoice = {
   voice: PresetVoice;
 };
 
+function formatStemPosition(tick: number, beatsPerBar: number) {
+  const beatIndex = Math.floor(Math.max(0, tick) / MIDI_PPQ);
+  return `${Math.floor(beatIndex / beatsPerBar) + 1}.${(beatIndex % beatsPerBar) + 1}`;
+}
+
 function resizeHandleWidth(noteWidth: number) {
   return Math.min(RESIZE_HANDLE_WIDTH, Math.max(4, noteWidth / 3));
 }
@@ -197,6 +222,13 @@ export function MidiStemEditor({
     scrollTop: 0,
   });
   const [showShortcuts, setShowShortcuts] = useState(false);
+  // Inside Studio the piano roll is the star, so the exact-value panel starts
+  // collapsed; the standalone editor has room to show it up front.
+  const [notesOpen, setNotesOpen] = useState(!host);
+  // Collapsing the recorder hands almost the whole container to the piano roll
+  // for people composing with the mouse only.
+  const [performOpen, setPerformOpen] = useState(true);
+  const reduce = useReducedMotion();
   const [notice, setNotice] = useState("");
   const [recovery, setRecovery] = useState<MidiDraftRecovery | null>(null);
   const [saveState, dispatchSave] = useReducer(
@@ -236,6 +268,11 @@ export function MidiStemEditor({
   const auditionRequestRef = useRef(0);
   const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playheadTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const seekHoldRef = useRef<{
+    timeout: ReturnType<typeof setTimeout> | null;
+    frame: number | null;
+    repeated: boolean;
+  }>({ timeout: null, frame: null, repeated: false });
 
   const notes = previewNotes ?? history.notes;
   const preset = resolveSynthPreset(presetId, 1);
@@ -389,6 +426,8 @@ export function MidiStemEditor({
   });
   const visiblePlayheadTick =
     performance.status === "idle" ? playheadTick : performance.playheadTick;
+  const beatsPerBar = host?.timeSignature.numerator ?? 4;
+  const barTicks = MIDI_PPQ * beatsPerBar;
   const performancePitches = useMemo(() => {
     const base = (performance.octave + 1) * 12;
     return Array.from({ length: 13 }, (_, offset) => base + offset).filter(
@@ -413,6 +452,13 @@ export function MidiStemEditor({
 
   useEffect(() => stopPlayback, [stopPlayback]);
   useEffect(() => stopAudition, [stopAudition]);
+  useEffect(() => {
+    const hold = seekHoldRef.current;
+    return () => {
+      if (hold.timeout) clearTimeout(hold.timeout);
+      if (hold.frame !== null) cancelAnimationFrame(hold.frame);
+    };
+  }, []);
 
   const commitCommand = useCallback(
     (
@@ -1300,51 +1346,6 @@ export function MidiStemEditor({
     performance.previewNote(note.pitch, note.velocity);
   }
 
-  function addStarterPattern() {
-    if (history.notes.length > MAX_MIDI_NOTES_PER_STEM - 4) {
-      setNotice("There is not enough room for the four-note starter pattern.");
-      return;
-    }
-    const pitches =
-      preset.family === "drums"
-        ? [36, 42, 38, 42]
-        : [
-            preset.minNote + 12,
-            preset.minNote + 16,
-            preset.minNote + 19,
-            preset.minNote + 24,
-          ];
-    const start = history.notes.length
-      ? Math.max(
-          ...history.notes.map((note) => note.startTick + note.durationTicks),
-        )
-      : 0;
-    const starter = pitches.map((pitch, index): MidiNoteV1 => ({
-      noteId: crypto.randomUUID(),
-      pitch: Math.min(preset.maxNote, pitch),
-      velocity: index % 2 === 0 ? 100 : 84,
-      startTick: start + index * MIDI_PPQ,
-      durationTicks: preset.family === "drums" ? 120 : MIDI_PPQ,
-    }));
-    if (
-      starter.some(
-        (note) => note.startTick + note.durationTicks > draft.durationTicks,
-      )
-    ) {
-      setNotice("There is not enough room at the end for a starter pattern.");
-      return;
-    }
-    setHistory((current) =>
-      replaceMidiEditorNotes(
-        current,
-        canonicalizeMidiNotes([...current.notes, ...starter]),
-      ),
-    );
-    setSelectedIds(new Set(starter.map(({ noteId }) => noteId)));
-    setNotice("Four-note starter pattern added.");
-    markEdited();
-  }
-
   function deleteSelection() {
     if (!selectedIds.size) return;
     commitCommand(
@@ -1555,6 +1556,66 @@ export function MidiStemEditor({
     if (performance.keyUp(event.key)) event.preventDefault();
   }
 
+  // Moving the playhead always stops transport first so audio never keeps
+  // running against a position it is no longer scheduled from.
+  function seekTo(tick: number) {
+    stopPlayback();
+    stopAudition();
+    setPlayheadTick(
+      Math.max(0, Math.min(draft.durationTicks, Math.round(tick))),
+    );
+  }
+
+  function stopSeekHold() {
+    const hold = seekHoldRef.current;
+    if (hold.timeout) clearTimeout(hold.timeout);
+    if (hold.frame !== null) cancelAnimationFrame(hold.frame);
+    hold.timeout = null;
+    hold.frame = null;
+  }
+
+  // A tap steps one bar (handled by the click); holding past the delay scrubs
+  // continuously at a time-based rate so it stays smooth on any frame rate.
+  function beginSeekHold(direction: -1 | 1) {
+    stopSeekHold();
+    stopPlayback();
+    stopAudition();
+    const hold = seekHoldRef.current;
+    hold.repeated = false;
+    hold.timeout = setTimeout(() => {
+      hold.repeated = true;
+      let previous = globalThis.performance.now();
+      const advance = () => {
+        const now = globalThis.performance.now();
+        const seconds = (now - previous) / 1_000;
+        previous = now;
+        setPlayheadTick((current) =>
+          Math.max(
+            0,
+            Math.min(
+              draft.durationTicks,
+              current +
+                direction * seconds * MIDI_PPQ * SEEK_HOLD_BEATS_PER_SECOND,
+            ),
+          ),
+        );
+        hold.frame = requestAnimationFrame(advance);
+      };
+      hold.frame = requestAnimationFrame(advance);
+    }, SEEK_HOLD_DELAY_MS);
+  }
+
+  // Suppress the trailing click that follows a hold, so releasing does not add
+  // an extra bar jump on top of the scrub.
+  function stepSeekBar(direction: -1 | 1) {
+    const hold = seekHoldRef.current;
+    if (hold.repeated) {
+      hold.repeated = false;
+      return;
+    }
+    seekTo(visiblePlayheadTick + direction * barTicks);
+  }
+
   async function play() {
     if (!history.notes.length) {
       setNotice("Add a note before pressing play.");
@@ -1563,8 +1624,13 @@ export function MidiStemEditor({
     stopAudition();
     performance.stopRecording();
     stopPlayback();
+    // Start where the playhead sits so the transport controls are meaningful.
+    const fromTick = Math.max(
+      0,
+      Math.min(draft.durationTicks, Math.round(playheadTick)),
+    );
     setPlaying(true);
-    setPlayheadTick(0);
+    setPlayheadTick(fromTick);
     try {
       const { createPresetVoice, resumeMidiAudioContext } =
         await import("../browser-engine/preset-voice.client");
@@ -1572,13 +1638,18 @@ export function MidiStemEditor({
       const voice = await createPresetVoice(presetId, 1);
       voiceRef.current = voice;
       const leadIn = 0.05;
-      host?.onTransportStart(0);
+      host?.onPlaybackTransportStart(fromTick, 0);
       const secondsPerTick = 60 / ((host?.tempoBpm ?? 120) * MIDI_PPQ);
       for (const note of history.notes) {
+        const startOffset = note.startTick - fromTick;
+        // Notes already finished are skipped; one still sounding starts now for
+        // whatever remains of it.
+        const remainingTicks = note.durationTicks + Math.min(0, startOffset);
+        if (remainingTicks <= 0) continue;
         voice.triggerAttackRelease(
           note.pitch,
-          note.durationTicks * secondsPerTick,
-          contextTime + leadIn + note.startTick * secondsPerTick,
+          remainingTicks * secondsPerTick,
+          contextTime + leadIn + Math.max(0, startOffset) * secondsPerTick,
           note.velocity / 127,
         );
       }
@@ -1589,9 +1660,10 @@ export function MidiStemEditor({
             draft.durationTicks,
             Math.max(
               0,
-              (globalThis.performance.now() - startedAt) /
-                1_000 /
-                secondsPerTick,
+              fromTick +
+                (globalThis.performance.now() - startedAt) /
+                  1_000 /
+                  secondsPerTick,
             ),
           ),
         );
@@ -1601,7 +1673,8 @@ export function MidiStemEditor({
       );
       stopTimerRef.current = setTimeout(
         stopPlayback,
-        (leadIn + endTick * secondsPerTick + 1.5) * 1_000,
+        (leadIn + Math.max(0, endTick - fromTick) * secondsPerTick + 1.5) *
+          1_000,
       );
     } catch {
       stopPlayback();
@@ -1698,11 +1771,17 @@ export function MidiStemEditor({
 
   return (
     <section
-      className="mt-8"
+      className={host ? "flex min-h-0 flex-1 flex-col" : "mt-8"}
       onKeyDown={handleEditorKeyDown}
       onKeyUp={handleEditorKeyUp}
     >
-      <div className="rounded-card border-subtle bg-surface shadow-raised border p-4 sm:p-6">
+      <div
+        className={
+          host
+            ? "flex min-h-0 flex-1 flex-col"
+            : "rounded-card border-subtle bg-surface shadow-raised border p-4 sm:p-6"
+        }
+      >
         {recovery && (
           <div className="border-accent-2 bg-surface-soft rounded-control mb-5 border p-4">
             <p className="font-semibold">
@@ -1741,11 +1820,17 @@ export function MidiStemEditor({
             </div>
           </div>
         )}
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <label className="font-semibold">
-            Stem name
+        <div className="order-1 flex flex-wrap items-center gap-x-3 gap-y-2">
+          {host && (
+            <p className="text-accent shrink-0 font-mono text-[10px] tracking-widest uppercase max-lg:hidden">
+              MIDI editor
+            </p>
+          )}
+          <label className="min-w-0 flex-1 sm:max-w-56">
+            <span className="sr-only">Stem name</span>
             <input
-              className={inputClass}
+              className={fieldClass}
+              placeholder="Stem name"
               value={name}
               maxLength={120}
               onChange={(event) => {
@@ -1754,44 +1839,83 @@ export function MidiStemEditor({
               }}
             />
           </label>
-          <label className="font-semibold">
-            Sound
-            <select
-              className={inputClass}
-              value={presetId}
-              onChange={(event) => {
-                const nextPreset = resolveSynthPreset(event.target.value, 1);
-                if (
-                  history.notes.some(
-                    (note) =>
-                      note.pitch < nextPreset.minNote ||
-                      note.pitch > nextPreset.maxNote,
-                  )
-                ) {
-                  setNotice(
-                    `${nextPreset.name} cannot play every current note. Move or delete out-of-range notes first.`,
-                  );
-                  return;
-                }
-                stopPlayback();
-                stopAudition();
-                performance.stopRecording();
-                setPresetId(nextPreset.presetId);
-                setHistory(createMidiEditorHistory(history.notes));
-                markEdited();
-              }}
-            >
-              {SYNTH_PRESETS_V1.map((item) => (
-                <option key={item.presetId} value={item.presetId}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+          <label className="shrink-0">
+            <span className="sr-only">Sound</span>
+            <span className="relative block">
+              <FiMusic
+                aria-hidden
+                className="text-accent pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-base"
+              />
+              <select
+                className={`${selectFieldClass} sm:w-56`}
+                title={preset.description}
+                value={presetId}
+                onChange={(event) => {
+                  const nextPreset = resolveSynthPreset(event.target.value, 1);
+                  if (
+                    history.notes.some(
+                      (note) =>
+                        note.pitch < nextPreset.minNote ||
+                        note.pitch > nextPreset.maxNote,
+                    )
+                  ) {
+                    setNotice(
+                      `${nextPreset.name} cannot play every current note. Move or delete out-of-range notes first.`,
+                    );
+                    return;
+                  }
+                  stopPlayback();
+                  stopAudition();
+                  performance.stopRecording();
+                  setPresetId(nextPreset.presetId);
+                  setHistory(createMidiEditorHistory(history.notes));
+                  markEdited();
+                }}
+              >
+                {SYNTH_PRESETS_V1.map((item) => (
+                  <option key={item.presetId} value={item.presetId}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </span>
           </label>
+          {host && (
+            <span className="text-muted shrink-0 font-mono text-xs max-lg:hidden">
+              {host.tempoBpm} BPM · {host.timeSignature.numerator}/
+              {host.timeSignature.denominator}
+            </span>
+          )}
+
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void publishVersion()}
+              disabled={
+                publicationState.status === "publishing" ||
+                saveState.status !== "saved" ||
+                !name.trim()
+              }
+              className={secondaryButton}
+            >
+              <FiDisc aria-hidden />
+              {publicationState.status === "publishing"
+                ? "Saving…"
+                : (host?.finalizeLabel ?? "Save to My stems")}
+            </button>
+            {host && (
+              <button
+                type="button"
+                className="border-strong hover:border-accent hover:text-accent min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors"
+                onClick={host.onClose}
+              >
+                Close MIDI editor
+              </button>
+            )}
+          </div>
         </div>
-        <p className="text-muted mt-3 text-sm">{preset.description}</p>
         {preset.drumMap && (
-          <p className="text-muted mt-2 text-sm">
+          <p className="text-muted order-1 mt-2 text-center text-xs">
             Kit map:{" "}
             {Object.entries(preset.drumMap)
               .map(([pitch, label]) => `${pitch} ${label}`)
@@ -1800,19 +1924,29 @@ export function MidiStemEditor({
         )}
 
         <section
-          className="border-subtle bg-surface-soft rounded-control mt-5 border p-4"
+          className="border-subtle bg-surface-soft rounded-control order-4 mx-auto mt-4 w-fit max-w-full border p-4"
           aria-labelledby="performance-heading"
         >
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h2 id="performance-heading" className="text-lg font-semibold">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <button
+              type="button"
+              aria-expanded={performOpen}
+              title={
+                performOpen
+                  ? "Collapse the recorder and give the space to the piano roll"
+                  : "Expand the recorder"
+              }
+              onClick={() => setPerformOpen((open) => !open)}
+              className="hover:text-accent -m-1 flex items-center gap-2 rounded p-1 transition-colors"
+            >
+              <FiChevronDown
+                aria-hidden
+                className={`text-muted transition-transform ${performOpen ? "" : "-rotate-90"} motion-reduce:transition-none`}
+              />
+              <h2 id="performance-heading" className="text-base font-semibold">
                 Perform a take
               </h2>
-              <p className="text-muted mt-1 text-sm">
-                Use the piano, A–K QWERTY keys, or optional hardware MIDI. Raw
-                timing stays untouched until you choose Quantize.
-              </p>
-            </div>
+            </button>
             <p
               role="status"
               aria-live="assertive"
@@ -1830,252 +1964,197 @@ export function MidiStemEditor({
             </p>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-end gap-3">
-            <label className="text-sm font-semibold">
-              QWERTY octave
-              <select
-                className="border-strong bg-surface rounded-control ml-2 min-h-11 border px-3"
-                value={performance.octave}
-                onChange={(event) =>
-                  performance.setOctave(Number(event.target.value))
-                }
-              >
-                {[1, 2, 3, 4, 5, 6, 7].map((octave) => (
-                  <option key={octave} value={octave}>
-                    C{octave}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-sm font-semibold">
-              Default velocity
-              <input
-                type="number"
-                min={1}
-                max={127}
-                className="border-strong bg-surface rounded-control ml-2 min-h-11 w-20 border px-3"
-                value={performance.defaultVelocity}
-                onChange={(event) =>
-                  performance.setDefaultVelocity(
-                    Math.max(1, Math.min(127, event.target.valueAsNumber || 1)),
-                  )
-                }
-              />
-            </label>
-            <label className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold">
-              <input
-                type="checkbox"
-                checked={performance.countIn}
-                onChange={(event) =>
-                  performance.setCountIn(event.target.checked)
-                }
-                disabled={performance.status !== "idle"}
-              />
-              One-bar count-in
-            </label>
-            <label className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold">
-              <input
-                type="checkbox"
-                checked={performance.metronome}
-                onChange={(event) =>
-                  performance.setMetronome(event.target.checked)
-                }
-                disabled={performance.status !== "idle"}
-              />
-              Metronome
-            </label>
-          </div>
-
-          <div
-            ref={performanceKeyboardRef}
-            className="mt-4 flex max-w-full gap-1 overflow-x-auto pb-2"
-            aria-label="On-screen piano"
-            onPointerDown={startPerformanceKeyGesture}
-            onPointerMove={movePerformanceKeyGesture}
-            onPointerUp={finishPerformanceKeyGesture}
-            onPointerCancel={finishPerformanceKeyGesture}
-            onPointerLeave={finishPerformanceKeyGesture}
+          {/* Stays mounted (so the card keeps a stable width) and is made inert
+              while collapsed so its controls leave the tab order. */}
+          <motion.div
+            className="overflow-hidden"
+            initial={false}
+            animate={{
+              height: performOpen ? "auto" : 0,
+              opacity: performOpen ? 1 : 0,
+            }}
+            transition={{
+              duration: reduce ? 0 : 0.28,
+              ease: [0.2, 0.8, 0.2, 1],
+            }}
+            inert={!performOpen}
           >
-            {performancePitches.map((pitch) => {
-              const active = performance.activePitches.has(pitch);
-              return (
-                <button
-                  key={pitch}
-                  type="button"
-                  className={`focus-visible:ring-accent min-h-20 min-w-12 rounded-b-md border px-2 text-xs font-semibold transition-[background-color,color,box-shadow,transform] duration-100 focus-visible:ring-2 motion-reduce:transform-none motion-reduce:transition-none ${
-                    active
-                      ? "border-accent-2 bg-accent-2 text-accent-contrast -translate-y-0.5 shadow-[0_0_16px_var(--color-accent-2)]"
-                      : isBlackPianoKey(pitch)
-                        ? "border-strong bg-canvas text-ink"
-                        : "border-subtle bg-ink text-canvas"
-                  }`}
-                  aria-label={`Play ${midiPitchName(pitch)}, MIDI note ${pitch}`}
-                  aria-pressed={active}
-                  onPointerEnter={() => enterPerformanceKey(pitch)}
-                  data-performance-pitch={pitch}
-                >
-                  {preset.drumMap?.[String(pitch)] ?? midiPitchName(pitch)}
-                </button>
-              );
-            })}
-          </div>
-          <p className="sr-only" aria-live="polite">
-            {performance.activePitches.size
-              ? `Playing ${[...performance.activePitches]
-                  .sort((left, right) => left - right)
-                  .map(midiPitchName)
-                  .join(", ")}`
-              : "No piano notes held"}
-          </p>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {performance.status === "idle" ? (
-              <button
-                type="button"
-                className="cta-gradient text-accent-contrast inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-60"
-                disabled={
-                  playing ||
-                  history.notes.length >= MAX_MIDI_NOTES_PER_STEM ||
-                  saveState.status === "conflict"
-                }
-                onClick={() => {
-                  stopPlayback();
-                  stopAudition();
-                  void performance.startRecording();
-                }}
-              >
-                <FiDisc aria-hidden /> Record
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="border-danger text-danger inline-flex min-h-11 items-center gap-2 rounded-full border px-5 text-sm font-semibold"
-                onClick={() =>
-                  performance.stopRecording(
-                    "Take stopped. Open notes were closed safely.",
-                  )
-                }
-              >
-                <FiSquare aria-hidden /> Stop recording
-              </button>
-            )}
-            {performance.webMidiStatus === "unavailable" ? (
-              <span className="text-muted text-sm">
-                Hardware MIDI unavailable here · piano and QWERTY remain ready
-              </span>
-            ) : performance.webMidiStatus === "connected" ? (
-              <span className="text-muted inline-flex items-center gap-2 text-sm">
-                <FiRadio aria-hidden /> {performance.hardwareInputCount}{" "}
-                hardware input{performance.hardwareInputCount === 1 ? "" : "s"}{" "}
-                connected
-              </span>
-            ) : (
-              <button
-                type="button"
-                className={secondaryButton}
-                disabled={performance.webMidiStatus === "requesting"}
-                onClick={() => void performance.requestWebMidi()}
-              >
-                <FiRadio aria-hidden />
-                {performance.webMidiStatus === "requesting"
-                  ? "Requesting MIDI…"
-                  : performance.webMidiStatus === "denied"
-                    ? "Retry hardware MIDI"
-                    : "Connect hardware MIDI"}
-              </button>
-            )}
-          </div>
-          {performance.webMidiStatus === "denied" && (
-            <p className="text-muted mt-2 text-sm">
-              Permission was denied or no usable input was available. Nothing
-              about the device was saved; continue with the piano or QWERTY.
+            <p className="text-muted mt-1 text-sm">
+              Use the piano, A–K QWERTY keys, or optional hardware MIDI. Raw
+              timing stays untouched until you choose Quantize.
             </p>
-          )}
+
+            <div className="mt-4 flex flex-wrap items-end justify-center gap-3">
+              <label className="text-sm font-semibold">
+                QWERTY octave
+                <select
+                  className="border-strong bg-surface rounded-control ml-2 min-h-11 border px-3"
+                  value={performance.octave}
+                  onChange={(event) =>
+                    performance.setOctave(Number(event.target.value))
+                  }
+                >
+                  {[1, 2, 3, 4, 5, 6, 7].map((octave) => (
+                    <option key={octave} value={octave}>
+                      C{octave}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm font-semibold">
+                Default velocity
+                <input
+                  type="number"
+                  min={1}
+                  max={127}
+                  className="border-strong bg-surface rounded-control ml-2 min-h-11 w-20 border px-3"
+                  value={performance.defaultVelocity}
+                  onChange={(event) =>
+                    performance.setDefaultVelocity(
+                      Math.max(
+                        1,
+                        Math.min(127, event.target.valueAsNumber || 1),
+                      ),
+                    )
+                  }
+                />
+              </label>
+              <label className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  checked={performance.countIn}
+                  onChange={(event) =>
+                    performance.setCountIn(event.target.checked)
+                  }
+                  disabled={performance.status !== "idle"}
+                />
+                One-bar count-in
+              </label>
+              <label className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  checked={performance.metronome}
+                  onChange={(event) =>
+                    performance.setMetronome(event.target.checked)
+                  }
+                  disabled={performance.status !== "idle"}
+                />
+                Metronome
+              </label>
+            </div>
+
+            <div
+              ref={performanceKeyboardRef}
+              className="mt-4 flex max-w-full justify-center gap-1 overflow-x-auto pb-2"
+              aria-label="On-screen piano"
+              onPointerDown={startPerformanceKeyGesture}
+              onPointerMove={movePerformanceKeyGesture}
+              onPointerUp={finishPerformanceKeyGesture}
+              onPointerCancel={finishPerformanceKeyGesture}
+              onPointerLeave={finishPerformanceKeyGesture}
+            >
+              {performancePitches.map((pitch) => {
+                const active = performance.activePitches.has(pitch);
+                return (
+                  <button
+                    key={pitch}
+                    type="button"
+                    className={`focus-visible:ring-accent min-h-20 min-w-12 rounded-b-md border px-2 text-xs font-semibold transition-[background-color,color,box-shadow,transform] duration-100 focus-visible:ring-2 motion-reduce:transform-none motion-reduce:transition-none ${
+                      active
+                        ? "border-accent-2 bg-accent-2 text-accent-contrast -translate-y-0.5 shadow-[0_0_16px_var(--color-accent-2)]"
+                        : isBlackPianoKey(pitch)
+                          ? "border-strong bg-canvas text-ink"
+                          : "border-subtle bg-ink text-canvas"
+                    }`}
+                    aria-label={`Play ${midiPitchName(pitch)}, MIDI note ${pitch}`}
+                    aria-pressed={active}
+                    onPointerEnter={() => enterPerformanceKey(pitch)}
+                    data-performance-pitch={pitch}
+                  >
+                    {preset.drumMap?.[String(pitch)] ?? midiPitchName(pitch)}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="sr-only" aria-live="polite">
+              {performance.activePitches.size
+                ? `Playing ${[...performance.activePitches]
+                    .sort((left, right) => left - right)
+                    .map(midiPitchName)
+                    .join(", ")}`
+                : "No piano notes held"}
+            </p>
+
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              {performance.status === "idle" ? (
+                <button
+                  type="button"
+                  className="cta-gradient text-accent-contrast inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-60"
+                  disabled={
+                    playing ||
+                    history.notes.length >= MAX_MIDI_NOTES_PER_STEM ||
+                    saveState.status === "conflict"
+                  }
+                  onClick={() => {
+                    stopPlayback();
+                    stopAudition();
+                    void performance.startRecording();
+                  }}
+                >
+                  <FiDisc aria-hidden /> Record
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="border-danger text-danger inline-flex min-h-11 items-center gap-2 rounded-full border px-5 text-sm font-semibold"
+                  onClick={() =>
+                    performance.stopRecording(
+                      "Take stopped. Open notes were closed safely.",
+                    )
+                  }
+                >
+                  <FiSquare aria-hidden /> Stop recording
+                </button>
+              )}
+              {performance.webMidiStatus === "unavailable" ? (
+                <span className="text-muted text-sm">
+                  Hardware MIDI unavailable here · piano and QWERTY remain ready
+                </span>
+              ) : performance.webMidiStatus === "connected" ? (
+                <span className="text-muted inline-flex items-center gap-2 text-sm">
+                  <FiRadio aria-hidden /> {performance.hardwareInputCount}{" "}
+                  hardware input
+                  {performance.hardwareInputCount === 1 ? "" : "s"} connected
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className={secondaryButton}
+                  disabled={performance.webMidiStatus === "requesting"}
+                  onClick={() => void performance.requestWebMidi()}
+                >
+                  <FiRadio aria-hidden />
+                  {performance.webMidiStatus === "requesting"
+                    ? "Requesting MIDI…"
+                    : performance.webMidiStatus === "denied"
+                      ? "Retry hardware MIDI"
+                      : "Connect hardware MIDI"}
+                </button>
+              )}
+            </div>
+            {performance.webMidiStatus === "denied" && (
+              <p className="text-muted mt-2 text-sm">
+                Permission was denied or no usable input was available. Nothing
+                about the device was saved; continue with the piano or QWERTY.
+              </p>
+            )}
+          </motion.div>
         </section>
 
-        <div className="border-subtle mt-5 flex flex-wrap items-center gap-2 border-y py-4">
-          <button
-            type="button"
-            onClick={() => void play()}
-            disabled={playing}
-            className="cta-gradient text-accent-contrast inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-60"
-          >
-            <FiPlay aria-hidden /> {playing ? "Playing…" : "Play stem"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              stopPlayback();
-              stopAudition();
-              performance.releaseActive();
-            }}
-            disabled={!playing}
-            className={secondaryButton}
-          >
-            <FiSquare aria-hidden /> Stop
-          </button>
-          <button
-            type="button"
-            onClick={() => void performSave()}
-            disabled={
-              saveState.status === "saved" ||
-              saveState.status === "saving" ||
-              saveState.status === "conflict" ||
-              !name.trim()
-            }
-            className={secondaryButton}
-          >
-            <FiSave aria-hidden />
-            {saveState.status === "saving" ? "Saving…" : "Save now"}
-          </button>
-          <button
-            type="button"
-            onClick={() => void publishVersion()}
-            disabled={
-              publicationState.status === "publishing" ||
-              saveState.status !== "saved" ||
-              !name.trim()
-            }
-            className={secondaryButton}
-          >
-            <FiDisc aria-hidden />
-            {publicationState.status === "publishing"
-              ? "Freezing version…"
-              : (host?.finalizeLabel ?? "Save to My stems")}
-          </button>
-          <span
-            role="status"
-            className={`ml-auto text-sm ${
-              saveState.status === "error" || saveState.status === "conflict"
-                ? "text-danger"
-                : "text-muted"
-            }`}
-          >
-            {saveState.message}
-          </span>
-          {(saveState.status === "offline" || saveState.status === "error") && (
-            <button
-              type="button"
-              className="text-accent text-sm font-semibold underline"
-              onClick={() => void performSave()}
-            >
-              Retry
-            </button>
-          )}
-          {saveState.status === "conflict" && (
-            <button
-              type="button"
-              className="text-accent text-sm font-semibold underline"
-              onClick={() => window.location.reload()}
-            >
-              Reload draft
-            </button>
-          )}
-        </div>
         {publicationState.message && (
           <p
             role="status"
-            className={`mt-2 text-sm ${
+            className={`order-2 mt-2 text-center text-sm ${
               publicationState.status === "error"
                 ? "text-danger"
                 : publicationState.status === "published"
@@ -2087,148 +2166,230 @@ export function MidiStemEditor({
           </p>
         )}
 
-        <div className="mt-5 flex flex-wrap items-end gap-2">
-          <div
-            className="border-strong inline-flex rounded-full border p-1"
-            role="group"
-            aria-label="Piano-roll tool"
-          >
+        <div className="border-subtle order-2 mt-2 grid items-center gap-3 border-y py-2 lg:grid-cols-[1fr_auto_1fr]">
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              className="border-strong inline-flex rounded-full border p-1"
+              role="group"
+              aria-label="Piano-roll tool"
+            >
+              <button
+                type="button"
+                className={`inline-flex min-h-9 items-center gap-2 rounded-full px-3 text-sm font-semibold ${editorTool === "pencil" ? "bg-accent text-canvas" : "text-muted hover:text-ink"}`}
+                aria-pressed={editorTool === "pencil"}
+                aria-keyshortcuts="P"
+                onClick={() => {
+                  setEditorTool("pencil");
+                  setNotice(
+                    "Pencil tool active. Double-click empty space to add a note.",
+                  );
+                }}
+              >
+                <FiEdit3 aria-hidden /> Pencil
+              </button>
+              <button
+                type="button"
+                className={`inline-flex min-h-9 items-center gap-2 rounded-full px-3 text-sm font-semibold ${editorTool === "select" ? "bg-accent text-canvas" : "text-muted hover:text-ink"}`}
+                aria-pressed={editorTool === "select"}
+                aria-keyshortcuts="V"
+                onClick={() => {
+                  setEditorTool("select");
+                  setNotice(
+                    "Select tool active. Drag empty space around a phrase.",
+                  );
+                }}
+              >
+                <FiMousePointer aria-hidden /> Select
+              </button>
+            </div>
             <button
               type="button"
-              className={`inline-flex min-h-9 items-center gap-2 rounded-full px-3 text-sm font-semibold ${editorTool === "pencil" ? "bg-accent text-canvas" : "text-muted hover:text-ink"}`}
-              aria-pressed={editorTool === "pencil"}
-              aria-keyshortcuts="P"
-              onClick={() => {
-                setEditorTool("pencil");
-                setNotice(
-                  "Pencil tool active. Double-click empty space to add a note.",
-                );
-              }}
+              className={secondaryButton}
+              onClick={undo}
+              disabled={!history.past.length}
             >
-              <FiEdit3 aria-hidden /> Pencil
+              <FiCornerUpLeft aria-hidden /> Undo
             </button>
             <button
               type="button"
-              className={`inline-flex min-h-9 items-center gap-2 rounded-full px-3 text-sm font-semibold ${editorTool === "select" ? "bg-accent text-canvas" : "text-muted hover:text-ink"}`}
-              aria-pressed={editorTool === "select"}
-              aria-keyshortcuts="V"
-              onClick={() => {
-                setEditorTool("select");
-                setNotice(
-                  "Select tool active. Drag empty space around a phrase.",
-                );
-              }}
+              className={secondaryButton}
+              onClick={redo}
+              disabled={!history.future.length}
             >
-              <FiMousePointer aria-hidden /> Select
+              <FiCornerUpRight aria-hidden /> Redo
             </button>
-          </div>
-          <button
-            type="button"
-            className={secondaryButton}
-            onClick={undo}
-            disabled={!history.past.length}
-          >
-            <FiCornerUpLeft aria-hidden /> Undo
-          </button>
-          <button
-            type="button"
-            className={secondaryButton}
-            onClick={redo}
-            disabled={!history.future.length}
-          >
-            <FiCornerUpRight aria-hidden /> Redo
-          </button>
-          <button
-            type="button"
-            className={secondaryButton}
-            onClick={() => addNoteAt()}
-          >
-            <FiPlus aria-hidden /> Add note
-          </button>
-          <button
-            type="button"
-            className={secondaryButton}
-            onClick={addStarterPattern}
-          >
-            <FiPlus aria-hidden /> Add starter pattern
-          </button>
-          <button
-            type="button"
-            className={secondaryButton}
-            onClick={duplicateSelection}
-            disabled={!selectedIds.size}
-          >
-            <FiCopy aria-hidden /> Duplicate
-          </button>
-          <button
-            type="button"
-            className={secondaryButton}
-            onClick={deleteSelection}
-            disabled={!selectedIds.size}
-          >
-            <FiTrash2 aria-hidden /> Delete
-          </button>
-          <label className="text-sm font-semibold">
-            Grid
-            <select
-              className="border-strong bg-surface rounded-control ml-2 min-h-11 border px-3"
-              value={quantization}
-              onChange={(event) =>
-                setQuantization(event.target.value as Quantization)
+            <button
+              type="button"
+              className={secondaryButton}
+              onClick={deleteSelection}
+              disabled={!selectedIds.size}
+            >
+              <FiTrash2 aria-hidden /> Delete
+            </button>
+            <label className="text-sm font-semibold">
+              Grid
+              <select
+                className="border-strong bg-surface rounded-control ml-2 min-h-11 border px-3"
+                value={quantization}
+                onChange={(event) =>
+                  setQuantization(event.target.value as Quantization)
+                }
+              >
+                {Object.keys(QUANTIZATION_TICKS).map((division) => (
+                  <option key={division}>{division}</option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className={secondaryButton}
+              onClick={quantizeSelection}
+              disabled={!selectedIds.size}
+            >
+              <FiZap aria-hidden /> Quantize
+            </button>
+            <button
+              type="button"
+              className={secondaryButton}
+              aria-label="Zoom out timeline"
+              title="Zoom out timeline"
+              disabled={pixelsPerBeat <= MIN_PIXELS_PER_BEAT}
+              onClick={() =>
+                setPixelsPerBeat((value) =>
+                  Math.max(MIN_PIXELS_PER_BEAT, value - 16),
+                )
               }
             >
-              {Object.keys(QUANTIZATION_TICKS).map((division) => (
-                <option key={division}>{division}</option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            className={secondaryButton}
-            onClick={quantizeSelection}
-            disabled={!selectedIds.size}
+              <FiZoomOut aria-hidden />
+            </button>
+            <button
+              type="button"
+              className={secondaryButton}
+              aria-label="Zoom in timeline"
+              title="Zoom in timeline"
+              disabled={pixelsPerBeat >= MAX_PIXELS_PER_BEAT}
+              onClick={() =>
+                setPixelsPerBeat((value) =>
+                  Math.min(MAX_PIXELS_PER_BEAT, value + 16),
+                )
+              }
+            >
+              <FiZoomIn aria-hidden />
+            </button>
+            <button
+              type="button"
+              className={secondaryButton}
+              onClick={() => setShowShortcuts((value) => !value)}
+            >
+              <FiHelpCircle aria-hidden /> Shortcuts
+            </button>
+          </div>
+
+          <div
+            className="flex items-center gap-1.5 justify-self-center"
+            aria-label="Transport"
           >
-            <FiZap aria-hidden /> Quantize
-          </button>
-          <button
-            type="button"
-            className={secondaryButton}
-            aria-label="Zoom out timeline"
-            title="Zoom out timeline"
-            disabled={pixelsPerBeat <= MIN_PIXELS_PER_BEAT}
-            onClick={() =>
-              setPixelsPerBeat((value) =>
-                Math.max(MIN_PIXELS_PER_BEAT, value - 16),
-              )
-            }
-          >
-            <FiZoomOut aria-hidden />
-          </button>
-          <button
-            type="button"
-            className={secondaryButton}
-            aria-label="Zoom in timeline"
-            title="Zoom in timeline"
-            disabled={pixelsPerBeat >= MAX_PIXELS_PER_BEAT}
-            onClick={() =>
-              setPixelsPerBeat((value) =>
-                Math.min(MAX_PIXELS_PER_BEAT, value + 16),
-              )
-            }
-          >
-            <FiZoomIn aria-hidden />
-          </button>
-          <button
-            type="button"
-            className={secondaryButton}
-            onClick={() => setShowShortcuts((value) => !value)}
-          >
-            <FiHelpCircle aria-hidden /> Shortcuts
-          </button>
+            <button
+              type="button"
+              className={transportButton}
+              aria-label="Move playhead to start"
+              title="Move playhead to start"
+              disabled={visiblePlayheadTick <= 0}
+              onClick={() => seekTo(0)}
+            >
+              <FiSkipBack />
+            </button>
+            <button
+              type="button"
+              className={transportButton}
+              aria-label="Move playhead back one bar. Hold to rewind."
+              title="Back one bar · hold to rewind"
+              onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                event.currentTarget.setPointerCapture(event.pointerId);
+                beginSeekHold(-1);
+              }}
+              onPointerUp={stopSeekHold}
+              onPointerCancel={stopSeekHold}
+              onLostPointerCapture={stopSeekHold}
+              onClick={() => stepSeekBar(-1)}
+            >
+              <FiRewind />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (playing) {
+                  stopPlayback();
+                  stopAudition();
+                  performance.releaseActive();
+                } else void play();
+              }}
+              className="cta-gradient text-accent-contrast inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold"
+            >
+              {playing ? <FiSquare aria-hidden /> : <FiPlay aria-hidden />}
+              {playing ? "Stop" : "Play stem"}
+            </button>
+            <button
+              type="button"
+              className={transportButton}
+              aria-label="Move playhead forward one bar. Hold to fast-forward."
+              title="Forward one bar · hold to fast-forward"
+              onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                event.currentTarget.setPointerCapture(event.pointerId);
+                beginSeekHold(1);
+              }}
+              onPointerUp={stopSeekHold}
+              onPointerCancel={stopSeekHold}
+              onLostPointerCapture={stopSeekHold}
+              onClick={() => stepSeekBar(1)}
+            >
+              <FiFastForward />
+            </button>
+            <p
+              className="text-muted min-w-16 text-center font-mono text-xs"
+              aria-live="off"
+            >
+              {formatStemPosition(visiblePlayheadTick, beatsPerBar)}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-2 justify-self-end">
+            <span
+              role="status"
+              className={`text-xs ${
+                saveState.status === "error" || saveState.status === "conflict"
+                  ? "text-danger"
+                  : "text-muted"
+              }`}
+            >
+              {saveState.message}
+            </span>
+            {(saveState.status === "offline" ||
+              saveState.status === "error") && (
+              <button
+                type="button"
+                className="text-accent text-xs font-semibold underline"
+                onClick={() => void performSave()}
+              >
+                Retry
+              </button>
+            )}
+            {saveState.status === "conflict" && (
+              <button
+                type="button"
+                className="text-accent text-xs font-semibold underline"
+                onClick={() => window.location.reload()}
+              >
+                Reload draft
+              </button>
+            )}
+          </div>
         </div>
 
         {showShortcuts && (
-          <div className="border-subtle bg-surface-soft rounded-control mt-3 border p-4 text-sm">
+          <div className="border-subtle bg-surface-soft rounded-control order-2 mt-3 border p-4 text-sm">
             <p className="font-semibold">Piano-roll keyboard controls</p>
             <p className="text-muted mt-1">
               Arrows move selected notes; Shift + Left/Right resizes; Delete
@@ -2242,16 +2403,16 @@ export function MidiStemEditor({
           </div>
         )}
 
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-xl font-semibold">Piano roll</h2>
-            <p className="text-muted mt-1 text-sm">
+        <div className="order-3 mt-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <p className="text-muted font-mono text-[10px] tracking-widest uppercase">
+            Piano roll
+            <span className="ml-3 tracking-normal normal-case">
               {history.notes.length.toLocaleString()} of 2,048 notes ·{" "}
               {selectedIds.size} selected · {Math.ceil(payloadBytes / 1024)} KiB
               draft payload
-            </p>
-          </div>
-          <p className="text-muted inline-flex items-center gap-2 text-sm">
+            </span>
+          </p>
+          <p className="text-muted inline-flex items-center gap-2 text-xs">
             <FiMousePointer aria-hidden />
             {editorTool === "select"
               ? "Drag empty space to select a phrase; drag the selection to move it."
@@ -2261,7 +2422,7 @@ export function MidiStemEditor({
 
         <div
           ref={rollRef}
-          className="border-strong bg-canvas rounded-control mt-3 h-[28rem] max-h-[70vh] overflow-auto border"
+          className={`border-strong bg-canvas rounded-control order-3 mt-2 overflow-auto border ${host ? "min-h-0 flex-1" : "h-[28rem] max-h-[70vh]"}`}
           onScroll={(event) => {
             const { scrollLeft, scrollTop } = event.currentTarget;
             setViewport((current) => ({
@@ -2301,130 +2462,147 @@ export function MidiStemEditor({
           </div>
         </div>
 
-        <p aria-live="polite" className="text-muted mt-3 min-h-5 text-sm">
+        <p
+          aria-live="polite"
+          className="text-muted order-3 mt-2 min-h-5 text-center text-xs"
+        >
           {notice ||
             "Every grid action has an equivalent in the note inspector or keyboard shortcuts."}
         </p>
-      </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)]">
-        <section
-          className="rounded-card border-subtle bg-surface border p-5"
-          aria-labelledby="note-list-heading"
+        <details
+          className="border-subtle rounded-control order-5 mt-4 border"
+          open={notesOpen}
+          onToggle={(event) => setNotesOpen(event.currentTarget.open)}
         >
-          <h2 id="note-list-heading" className="text-lg font-semibold">
-            Note list
-          </h2>
-          <p className="text-muted mt-2 text-sm">
-            Select one or several notes. This list mirrors the visual grid.
-          </p>
-          <select
-            multiple
-            size={10}
-            className="border-strong bg-surface-soft rounded-control mt-4 w-full border p-2 font-mono text-sm"
-            aria-label="Notes in stem"
-            value={[...selectedIds]}
-            onChange={(event) => setSelectedIds(selectedValues(event))}
-          >
-            {history.notes.map((note, index) => (
-              <option key={note.noteId} value={note.noteId}>
-                {index + 1}. {midiPitchName(note.pitch)} · tick {note.startTick}{" "}
-                · {note.durationTicks} long · velocity {note.velocity}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className={`${secondaryButton} mt-3 w-full`}
-            onClick={() =>
-              setSelectedIds(new Set(history.notes.map(({ noteId }) => noteId)))
-            }
-            disabled={!history.notes.length}
-          >
-            Select all notes
-          </button>
-        </section>
-
-        <section
-          className="rounded-card border-subtle bg-surface border p-5"
-          aria-labelledby="note-inspector-heading"
-        >
-          <h2 id="note-inspector-heading" className="text-lg font-semibold">
-            Note inspector
-          </h2>
-          {!selectedNote ? (
-            <div className="border-strong bg-surface-soft rounded-control mt-4 border border-dashed p-6 text-center">
-              <p className="font-semibold">
-                {selectedIds.size > 1
-                  ? `${selectedIds.size} notes selected`
-                  : "No note selected"}
-              </p>
+          <summary className="hover:text-accent min-h-11 cursor-pointer list-none px-4 py-3 text-sm font-semibold transition-colors">
+            Note list &amp; inspector — exact values and keyboard selection
+          </summary>
+          <div className="grid gap-6 px-4 pb-4 lg:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)]">
+            <section
+              className="rounded-card border-subtle bg-surface border p-5"
+              aria-labelledby="note-list-heading"
+            >
+              <h2 id="note-list-heading" className="text-lg font-semibold">
+                Note list
+              </h2>
               <p className="text-muted mt-2 text-sm">
-                {selectedIds.size > 1
-                  ? "Use velocity, quantize, duplicate, move, or delete controls on the selection. Choose one note for exact fields."
-                  : "Choose a note in the list or on the piano roll to edit exact values."}
+                Select one or several notes. This list mirrors the visual grid.
               </p>
-              {selectedIds.size > 1 && (
-                <label className="mt-4 block text-left text-sm font-semibold">
-                  Velocity for selection
-                  <input
-                    className={inputClass}
-                    type="number"
+              <select
+                multiple
+                size={10}
+                className="border-strong bg-surface-soft rounded-control mt-4 w-full border p-2 font-mono text-sm"
+                aria-label="Notes in stem"
+                value={[...selectedIds]}
+                onChange={(event) => setSelectedIds(selectedValues(event))}
+              >
+                {history.notes.map((note, index) => (
+                  <option key={note.noteId} value={note.noteId}>
+                    {index + 1}. {midiPitchName(note.pitch)} · tick{" "}
+                    {note.startTick} · {note.durationTicks} long · velocity{" "}
+                    {note.velocity}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className={`${secondaryButton} mt-3 w-full`}
+                onClick={() =>
+                  setSelectedIds(
+                    new Set(history.notes.map(({ noteId }) => noteId)),
+                  )
+                }
+                disabled={!history.notes.length}
+              >
+                Select all notes
+              </button>
+            </section>
+
+            <section
+              className="rounded-card border-subtle bg-surface border p-5"
+              aria-labelledby="note-inspector-heading"
+            >
+              <h2 id="note-inspector-heading" className="text-lg font-semibold">
+                Note inspector
+              </h2>
+              {!selectedNote ? (
+                <div className="border-strong bg-surface-soft rounded-control mt-4 border border-dashed p-6 text-center">
+                  <p className="font-semibold">
+                    {selectedIds.size > 1
+                      ? `${selectedIds.size} notes selected`
+                      : "No note selected"}
+                  </p>
+                  <p className="text-muted mt-2 text-sm">
+                    {selectedIds.size > 1
+                      ? "Use velocity, quantize, duplicate, move, or delete controls on the selection. Choose one note for exact fields."
+                      : "Choose a note in the list or on the piano roll to edit exact values."}
+                  </p>
+                  {selectedIds.size > 1 && (
+                    <label className="mt-4 block text-left text-sm font-semibold">
+                      Velocity for selection
+                      <input
+                        className={inputClass}
+                        type="number"
+                        min={1}
+                        max={127}
+                        defaultValue={96}
+                        onBlur={(event) =>
+                          commitCommand(
+                            {
+                              type: "setVelocity",
+                              noteIds: [...selectedIds],
+                              velocity: event.currentTarget.valueAsNumber,
+                            },
+                            "Selection velocity updated from the inspector.",
+                          )
+                        }
+                      />
+                    </label>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <InspectorField
+                    key={`pitch-${selectedNote.noteId}-${selectedNote.pitch}`}
+                    label="MIDI pitch"
+                    detail={midiPitchName(selectedNote.pitch)}
+                    min={preset.minNote}
+                    max={preset.maxNote}
+                    value={selectedNote.pitch}
+                    onCommit={(value) => updateSelectedNote("pitch", value)}
+                  />
+                  <InspectorField
+                    key={`start-${selectedNote.noteId}-${selectedNote.startTick}`}
+                    label="Start tick"
+                    min={0}
+                    max={draft.durationTicks - selectedNote.durationTicks}
+                    value={selectedNote.startTick}
+                    onCommit={(value) => updateSelectedNote("startTick", value)}
+                  />
+                  <InspectorField
+                    key={`duration-${selectedNote.noteId}-${selectedNote.durationTicks}`}
+                    label="Duration ticks"
                     min={1}
-                    max={127}
-                    defaultValue={96}
-                    onBlur={(event) =>
-                      commitCommand(
-                        {
-                          type: "setVelocity",
-                          noteIds: [...selectedIds],
-                          velocity: event.currentTarget.valueAsNumber,
-                        },
-                        "Selection velocity updated from the inspector.",
-                      )
+                    max={draft.durationTicks - selectedNote.startTick}
+                    value={selectedNote.durationTicks}
+                    onCommit={(value) =>
+                      updateSelectedNote("durationTicks", value)
                     }
                   />
-                </label>
+                  <InspectorField
+                    key={`velocity-${selectedNote.noteId}-${selectedNote.velocity}`}
+                    label="Velocity"
+                    min={1}
+                    max={127}
+                    value={selectedNote.velocity}
+                    onCommit={(value) => updateSelectedNote("velocity", value)}
+                  />
+                </div>
               )}
-            </div>
-          ) : (
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <InspectorField
-                key={`pitch-${selectedNote.noteId}-${selectedNote.pitch}`}
-                label="MIDI pitch"
-                detail={midiPitchName(selectedNote.pitch)}
-                min={preset.minNote}
-                max={preset.maxNote}
-                value={selectedNote.pitch}
-                onCommit={(value) => updateSelectedNote("pitch", value)}
-              />
-              <InspectorField
-                key={`start-${selectedNote.noteId}-${selectedNote.startTick}`}
-                label="Start tick"
-                min={0}
-                max={draft.durationTicks - selectedNote.durationTicks}
-                value={selectedNote.startTick}
-                onCommit={(value) => updateSelectedNote("startTick", value)}
-              />
-              <InspectorField
-                key={`duration-${selectedNote.noteId}-${selectedNote.durationTicks}`}
-                label="Duration ticks"
-                min={1}
-                max={draft.durationTicks - selectedNote.startTick}
-                value={selectedNote.durationTicks}
-                onCommit={(value) => updateSelectedNote("durationTicks", value)}
-              />
-              <InspectorField
-                key={`velocity-${selectedNote.noteId}-${selectedNote.velocity}`}
-                label="Velocity"
-                min={1}
-                max={127}
-                value={selectedNote.velocity}
-                onCommit={(value) => updateSelectedNote("velocity", value)}
-              />
-            </div>
-          )}
-        </section>
+            </section>
+          </div>
+        </details>
       </div>
     </section>
   );
