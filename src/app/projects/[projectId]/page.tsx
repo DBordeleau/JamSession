@@ -410,12 +410,18 @@ export default async function ProjectPage({
                   This project’s license does not permit derivative forks.
                 </p>
               )}
-              <a
-                className="border-strong hover:border-accent mt-6 inline-flex min-h-11 items-center rounded-full border px-5 font-semibold"
-                href={`/api/projects/${project.id}/revisions/${current.id}/downloads/midi`}
-              >
-                Export MIDI + attribution
-              </a>
+              {project.license.code === "cc-by-4.0" ? (
+                <a
+                  className="border-strong hover:border-accent mt-6 inline-flex min-h-11 items-center rounded-full border px-5 font-semibold"
+                  href={`/api/projects/${project.id}/revisions/${current.id}/downloads/midi`}
+                >
+                  Export MIDI + attribution
+                </a>
+              ) : (
+                <p className="text-muted mt-4 text-sm">
+                  Licensed MIDI export is available for CC BY 4.0 projects.
+                </p>
+              )}
             </section>
           ) : project.ownerId === viewer.id ? (
             <section className="rounded-card border-strong mt-8 border border-dashed p-8 text-center">

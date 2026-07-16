@@ -7,6 +7,12 @@ import { schedulePublicMidiRevision } from "./schedule";
 type ZipEntry = { name: string; bytes: Uint8Array };
 
 export function createLicensedMidiExport(revision: PublicMidiRevision) {
+  if (
+    revision.license.code !== "cc-by-4.0" ||
+    revision.license.url !== MIDI_V3_REUSE_LICENSE.url
+  ) {
+    throw new Error("public_midi_export_requires_cc_by_4_0");
+  }
   const patterns = new Map(
     revision.patternVersions.map((pattern) => [
       pattern.midiPatternVersionId,
@@ -77,8 +83,10 @@ export function createLicensedMidiExport(revision: PublicMidiRevision) {
         left.midiPatternVersionId.localeCompare(right.midiPatternVersionId),
       ),
     license: {
-      name: "Creative Commons Attribution 4.0 International",
-      ...MIDI_V3_REUSE_LICENSE,
+      code: revision.license.code,
+      name: revision.license.name,
+      version: MIDI_V3_REUSE_LICENSE.version,
+      url: revision.license.url,
     },
   };
   const encoder = new TextEncoder();

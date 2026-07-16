@@ -133,13 +133,20 @@ export function PublicProjectPage({
                   Start contribution
                 </Link>
               )}
-              <a
-                className="border-strong hover:border-accent inline-flex min-h-11 items-center rounded-full border px-5 font-semibold"
-                href={`/api/projects/${project.projectId}/revisions/${project.currentRevisionId}/downloads/midi`}
-              >
-                Export MIDI + attribution
-              </a>
+              {project.license.code === "cc-by-4.0" && (
+                <a
+                  className="border-strong hover:border-accent inline-flex min-h-11 items-center rounded-full border px-5 font-semibold"
+                  href={`/api/projects/${project.projectId}/revisions/${project.currentRevisionId}/downloads/midi`}
+                >
+                  Export MIDI + attribution
+                </a>
+              )}
             </div>
+            {project.license.code !== "cc-by-4.0" && (
+              <p className="text-muted mt-4 text-sm">
+                Licensed MIDI export is available for CC BY 4.0 projects.
+              </p>
+            )}
             {!canCollaborate && (
               <p className="text-muted mt-4 text-sm">
                 You’ll be asked to sign in before creating a fork or

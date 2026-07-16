@@ -14,6 +14,11 @@ describe("licensed public MIDI export", () => {
       revisionId: "30000000-0000-4000-8000-000000000050",
       revisionNumber: 2,
       projectTitle: "Night Pattern",
+      license: {
+        code: "cc-by-4.0",
+        name: "Creative Commons Attribution 4.0 International",
+        url: MIDI_V3_REUSE_LICENSE.url,
+      },
       manifest: V3_MANIFEST_BEFORE,
       patternVersions: [
         {
@@ -38,5 +43,24 @@ describe("licensed public MIDI export", () => {
       creatorCreditName: "Loop Maker",
       midiPatternVersionId: V3_PATTERN_VERSION_1.midiPatternVersionId,
     });
+  });
+
+  it("refuses to label a differently licensed project as CC BY 4.0", () => {
+    expect(() =>
+      createLicensedMidiExport({
+        projectId: V3_IDS.project,
+        revisionId: "30000000-0000-4000-8000-000000000050",
+        revisionNumber: 2,
+        projectTitle: "Reserved Pattern",
+        license: {
+          code: "all-rights-reserved",
+          name: "All rights reserved",
+          url: "https://example.com/all-rights-reserved",
+        },
+        manifest: V3_MANIFEST_BEFORE,
+        patternVersions: [V3_PATTERN_VERSION_1],
+        attributions: [{ kind: "publisher", creditName: "Loop Maker" }],
+      }),
+    ).toThrow("public_midi_export_requires_cc_by_4_0");
   });
 });

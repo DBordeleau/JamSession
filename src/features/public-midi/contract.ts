@@ -8,6 +8,13 @@ export const publicMidiRevisionSchema = z
     revisionId: z.uuid(),
     revisionNumber: z.number().int().positive(),
     projectTitle: z.string().trim().min(1).max(120),
+    license: z
+      .object({
+        code: z.string().trim().min(1).max(40),
+        name: z.string().trim().min(1).max(100),
+        url: z.url(),
+      })
+      .strict(),
     manifest: arrangementManifestV3Schema,
     patternVersions: z.array(midiPatternVersionV3Schema).max(512),
     attributions: z

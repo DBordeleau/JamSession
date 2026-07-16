@@ -23,7 +23,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const MAX_PUBLIC_HISTORY_REVISIONS = 8;
 const MAX_PUBLIC_HISTORY_NOTES =
-  MAX_PUBLIC_HISTORY_REVISIONS * MIDI_V3_MAX_RESOLVED_NOTES;
+  (MAX_PUBLIC_HISTORY_REVISIONS + 1) * MIDI_V3_MAX_RESOLVED_NOTES;
 
 type Db = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type PatternRow = Database["public"]["Tables"]["midi_pattern_versions"]["Row"];
@@ -185,7 +185,7 @@ export async function getPublicMidiRevision(input: {
   const { data: revision, error } = await db
     .from("project_revisions")
     .select(
-      "id,project_id,revision_number,arrangement_version_id,projects!project_revisions_project_id_fkey(title),revision_attributions(kind,credit_name)",
+      "id,project_id,revision_number,arrangement_version_id,revision_attributions(kind,credit_name)",
     )
     .eq("project_id", input.projectId)
     .eq("id", input.revisionId)
@@ -193,14 +193,24 @@ export async function getPublicMidiRevision(input: {
     .maybeSingle();
   if (error) throw new Error("public_midi_revision_unavailable");
   if (!revision?.arrangement_version_id) return null;
-  const { data: arrangement, error: arrangementError } = await db
-    .from("arrangement_versions")
-    .select("manifest")
-    .eq("project_id", input.projectId)
-    .eq("id", revision.arrangement_version_id)
-    .maybeSingle();
-  if (arrangementError) throw new Error("public_midi_revision_unavailable");
-  if (!arrangement) return null;
+  const [arrangementResult, projectResult] = await Promise.all([
+    db
+      .from("arrangement_versions")
+      .select("manifest")
+      .eq("project_id", input.projectId)
+      .eq("id", revision.arrangement_version_id)
+      .maybeSingle(),
+    db
+      .from("public_project_catalog")
+      .select("title,license_code,license_name,license_url")
+      .eq("project_id", input.projectId)
+      .maybeSingle(),
+  ]);
+  if (arrangementResult.error || projectResult.error)
+    throw new Error("public_midi_revision_unavailable");
+  if (!arrangementResult.data || !projectResult.data) return null;
+  const arrangement = arrangementResult.data;
+  const project = projectResult.data;
   const manifest = parseArrangementManifestV3(arrangement.manifest);
   const patternIds = manifest.tracks.flatMap((track) =>
     track.clips.map((clip) => clip.midiPatternVersionId),
@@ -214,7 +224,12 @@ export async function getPublicMidiRevision(input: {
     projectId: revision.project_id,
     revisionId: revision.id,
     revisionNumber: revision.revision_number,
-    projectTitle: revision.projects.title,
+    projectTitle: project.title,
+    license: {
+      code: project.license_code,
+      name: project.license_name,
+      url: project.license_url,
+    },
     manifest,
     patternVersions,
     attributions: revision.revision_attributions.map((attribution) => ({
@@ -263,8 +278,9 @@ export async function getPublicRevisionHistory(
     .eq("project_id", projectId)
     .eq("manifest_version", 3)
     .order("revision_number", { ascending: false })
-    .limit(MAX_PUBLIC_HISTORY_REVISIONS);
+    .limit(MAX_PUBLIC_HISTORY_REVISIONS + 1);
   if (error) throw new Error("public_revision_history_unavailable");
+  const visibleRevisions = revisions.slice(0, MAX_PUBLIC_HISTORY_REVISIONS);
   const arrangementIds = revisions.flatMap((revision) =>
     revision.arrangement_version_id ? [revision.arrangement_version_id] : [],
   );
@@ -273,7 +289,7 @@ export async function getPublicRevisionHistory(
     .from("arrangement_versions")
     .select("id,manifest")
     .in("id", arrangementIds)
-    .limit(MAX_PUBLIC_HISTORY_REVISIONS);
+    .limit(MAX_PUBLIC_HISTORY_REVISIONS + 1);
   if (arrangementError) throw new Error("public_revision_history_unavailable");
   const manifestByArrangement = new Map(
     arrangements.map((row) => [
@@ -297,7 +313,7 @@ export async function getPublicRevisionHistory(
   const revisionById = new Map(
     revisions.map((revision) => [revision.id, revision]),
   );
-  return revisions.map((revision) => {
+  return visibleRevisions.map((revision) => {
     const manifest = manifestByArrangement.get(
       revision.arrangement_version_id!,
     );

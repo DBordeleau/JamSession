@@ -28,6 +28,12 @@ export async function GET(
         { status: 404 },
       );
     }
+    if (revision.license.code !== "cc-by-4.0") {
+      return NextResponse.json(
+        { error: { code: "midi_export_not_licensed" } },
+        { status: 403 },
+      );
+    }
     const exported = createLicensedMidiExport(revision);
     return new NextResponse(new Blob([exported.bytes]), {
       headers: {
