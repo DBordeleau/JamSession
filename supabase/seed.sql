@@ -82,6 +82,23 @@ insert into private.midi_synth_presets(preset_id,version,min_note,max_note,engin
   ('muted-pluck',1,36,108,'jam-session-midi-3_tone-15.1.22_presets-1'),('bright-pluck',1,36,108,'jam-session-midi-3_tone-15.1.22_presets-1'),
   ('bell',1,48,108,'jam-session-midi-3_tone-15.1.22_presets-1'),('mallet',1,36,108,'jam-session-midi-3_tone-15.1.22_presets-1');
 
+insert into public.midi_library_presets(preset_id,version,family_code,display_name,sort_order) values
+  ('drum-machine',1,'drums-percussion','Drum machine',1),
+  ('electro-kit',1,'drums-percussion','Electro kit',2),
+  ('lofi-kit',1,'drums-percussion','Lo-fi kit',3),
+  ('percussion-rack',1,'drums-percussion','Percussion rack',4),
+  ('sub-bass',1,'basses','Sub bass',5),('analog-bass',1,'basses','Analog bass',6),
+  ('fm-bass',1,'basses','FM bass',7),('pluck-bass',1,'basses','Pluck bass',8),
+  ('warm-keys',1,'keys','Warm keys',9),('electric-keys',1,'keys','Electric keys',10),
+  ('organ',1,'keys','Organ',11),('glass-keys',1,'keys','Glass keys',12),
+  ('saw-lead',1,'leads','Saw lead',13),('square-lead',1,'leads','Square lead',14),
+  ('fm-lead',1,'leads','FM lead',15),('soft-lead',1,'leads','Soft lead',16),
+  ('warm-pad',1,'pads-strings','Warm pad',17),('air-pad',1,'pads-strings','Air pad',18),
+  ('string-pad',1,'pads-strings','String pad',19),('choir-pad',1,'pads-strings','Choir pad',20),
+  ('muted-pluck',1,'plucks-bells-textures','Muted pluck',21),
+  ('bright-pluck',1,'plucks-bells-textures','Bright pluck',22),
+  ('bell',1,'plucks-bells-textures','Bell',23),('mallet',1,'plucks-bells-textures','Mallet',24);
+
 insert into public.discovery_state(singleton,version,updated_at)
 values(true,1,'2026-07-16T00:00:00Z');
 

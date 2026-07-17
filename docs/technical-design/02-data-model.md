@@ -41,6 +41,14 @@ Published history is append-only. Pattern and arrangement projection rows reject
 
 Acceptance verifies the expected contribution version and current project revision, then creates one project revision in a transaction. Rejected contributions remain visible only to their author and project owner.
 
+## Public MIDI library
+
+- `midi_library_listings` stores append-only editions for one exact immutable pattern version. At most one edition per pattern is active; creator unlisting timestamps that edition and relisting appends another.
+- Each edition snapshots the creator identity, normalized `commercial_reuse` or `reference_only` mode, versioned rights-basis attestation, bounded public source terms, controlled category/preset/tags, and note-derived duration/count/pitch/polyphony facets.
+- `midi_pattern_external_credits` stores immutable bounded external-credit snapshots separately from verified platform lineage. `midi_library_listing_tags` normalizes the controlled library tag set.
+- `search_public_midi_library` is the only anonymous listing/note projection. It rejects malformed filters, returns at most 25 active non-hidden rows with keyset ordering, and never exposes private attestation evidence or base listing tables.
+- Direct pattern-version RLS remains owner/member/public-project scoped. A library listing does not make unlisted/private base rows enumerable; reference-only notes are readable only inside the safe catalog projection.
+
 ## Moderation, deletion, and avatar operations
 
 - Private moderation reports/actions and content holds are operational authority.
@@ -62,9 +70,8 @@ All application-facing tables have RLS enabled. Anonymous access is limited to s
 
 ## Planned post-pivot extensions
 
-These are accepted data-boundary requirements, not implemented tables. Their exact schema belongs to the corresponding detailed implementation plan and forward migration.
+These are accepted data-boundary requirements not yet implemented after LIB-01. Their exact schema belongs to the corresponding detailed implementation plan and forward migration.
 
-- **Public MIDI library:** explicit listing records point to exact immutable pattern versions and carry discoverability metadata without making every public-project pattern reusable automatically. A normalized indexed reuse mode distinguishes `commercial_reuse`/CC BY 4.0 from `reference_only`/no reuse grant and supports bounded All/mode Explore filtering. Listing authority includes a versioned rights-basis/attestation snapshot for the selected public display/reuse mode. A commercial listing requires the version's immutable CC BY fields; a reference-only listing requires no reuse license plus a separate public-display attestation. A version that already carries CC BY cannot be downgraded. LIB-01 must expand the current CC-only public-pattern constraint/command/RLS model through a forward migration and expose reference-only notes through a narrow safe projection rather than broad base-table access. Immutable external credits remain separate from verified platform creator/source lineage and may include bounded names, roles, work titles, source URLs, and source terms. Safe projections may expose approved listing, credit, reuse mode, rights term, deterministic musical facet, and public-project usage data only.
 - **Saved clips:** private user-owned bookmarks point only to exact immutable commercially reusable pattern versions. Saving never copies notes, changes ownership, or grants public visibility. Studio import creates a normal attributed copy-on-write workspace reference. Save/import/fork/editor-copy/export commands recheck reuse mode authoritatively and reject reference-only versions.
 - **Beta feedback:** private bug/suggestion records hold bounded user-provided text and disclosed context for administrator triage. They do not store attachments, complete manifests, secrets, signed URLs, or automatic logs.
 - **Challenges:** normalized lifecycle, ownership, featured-placement, entry, vote, and finalized-result relationships accompany a validated versioned constraint snapshot. Entries pin exact immutable project revisions; client preflight never replaces authoritative submission validation. Completed challenge/result rows remain addressable and immutable except for audited corrections or moderation visibility.

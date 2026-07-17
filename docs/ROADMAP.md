@@ -78,6 +78,8 @@ This is the next sequential implementation program after DIFF. Begin with a dedi
 
 Add explicit pattern-version listing/unlisting with two rights modes: **Commercial reuse permitted — CC BY 4.0** and **Reference only — reuse not granted**. Include derived musical metadata, safe public projections, bounded search/filter contracts, an All/commercially-reusable/reference-only Explore filter, external-credit snapshots, and a rights-classification/attestation gate. Expand the current CC-only public-pattern constraints and read policy through a reviewed forward migration: CC-licensed versions cannot be downgraded, while reference-only versions retain no reuse license and use a separate public-display attestation. Reference-only is not a cure for missing rights; uncertain-rights covers/recreations cannot enter either mode. Public project publication must not list every pattern automatically.
 
+Status: Complete in the repository. `/library` and `/library/manage` use the exact-version listing commands, safe 25-row keyset search projection, deterministic note facets, two rights filters, immutable external-credit snapshots, and exclusive browser-local preview. The forward migration is not applied to hosted Supabase without separate authority. LIB-02 is next.
+
 ### LIB-02 — Discovery, preview, history, usage, and pattern diff
 
 Add library browse/detail pages with deterministic preview, read-only notes, immutable version/lineage history, selection between any two versions in the same pattern history, prominent reuse-mode labels, visible external credits/rights terms, and public-project usage. Add **Report unoriginal or unauthorized work** with administrator hide/review/restore actions. Private project usage and reports must never leak through counts or links.
@@ -86,7 +88,7 @@ Add library browse/detail pages with deterministic preview, read-only notes, imm
 
 Add a private saved-pattern collection referencing exact immutable commercially reusable versions. Saving does not duplicate notes or transfer ownership. Users can import a commercially reusable saved/discovered version into a chosen private workspace, fork it explicitly, or open it in the MIDI editor through an owned private copy-on-write draft. Reference-only listings remain preview/history surfaces and all reuse commands reject them authoritatively. All permitted reuse paths preserve platform lineage, license, and external credits.
 
-Status: LIB-01 through LIB-03 require one detailed local library plan before implementation. They are sequential because each establishes contracts consumed by the next.
+Status: LIB-01 is complete in the repository. LIB-02 and LIB-03 remain sequential because each consumes the prior slice’s authority.
 
 ## Wave C — Curated constraint challenges
 

@@ -177,10 +177,11 @@ set local role authenticated;
 set local request.jwt.claim.sub='f3000000-0000-4000-8000-000000000003';
 select is((select count(*) from public.workspaces),0::bigint,'unrelated actor cannot read private workspaces');
 select is((select count(*) from public.arrangement_versions),0::bigint,'unrelated actor cannot read a private arrangement');
-select is((select count(*) from public.midi_pattern_versions),1::bigint,'public CC BY pattern is reusable by another actor');
-select lives_ok($$select public.create_midi_pattern_v3(
-  'f3090000-0000-4000-8000-000000000001','Derived phrase',(select id from public.midi_pattern_versions))$$,
-  'copy-on-write pattern identity retains an exact public source version');
+select is((select count(*) from public.midi_pattern_versions),0::bigint,'unlisted CC BY pattern is not broadly readable');
+select throws_ok($$select public.create_midi_pattern_v3(
+  'f3090000-0000-4000-8000-000000000001','Derived phrase',
+  'f3020000-0000-4000-8000-000000000001')$$,
+  'PT404','midi_pattern_source_not_found','unlisted patterns cannot enter the source-copy path');
 reset role;
 
 set local role authenticated;
@@ -226,7 +227,7 @@ reset role;
 
 set local role anon;
 select is((select count(*) from public.arrangement_versions),0::bigint,'anonymous cannot read private arrangements');
-select is((select count(*) from public.midi_pattern_versions),1::bigint,'anonymous can read explicitly public CC BY pattern content');
+select is((select count(*) from public.midi_pattern_versions),0::bigint,'anonymous cannot enumerate unlisted CC BY pattern content');
 reset role;
 
 select * from finish();
