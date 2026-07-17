@@ -16,7 +16,7 @@ describe("SiteHeader", () => {
     const sections = screen.getByRole("navigation", { name: "Sections" });
     expect(
       within(sections).getByRole("link", { name: "The MIDI Library" }),
-    ).toHaveAttribute("href", "/#library");
+    ).toHaveAttribute("href", "/library");
     expect(
       within(sections).getByRole("link", { name: "Versioning" }),
     ).toHaveAttribute("href", "/#versioning");

@@ -39,16 +39,16 @@ A contribution workspace begins from an exact base project revision. Submission 
 
 ### Public reads and discovery
 
-Public project pages, preview, history, attribution, and discovery read arrangement versions and exact MIDI pattern versions. Pattern creator snapshots and CC BY 4.0 lineage survive profile renames and deletion. Public pattern-library listing is a later explicit feature, separate from project publication; it distinguishes commercially reusable CC BY 4.0 listings from reference-only/no-reuse listings.
+Public project pages, preview, history, attribution, and discovery read arrangement versions and exact MIDI pattern versions. Pattern creator snapshots and CC BY 4.0 lineage survive profile renames and deletion. Public pattern-library listing is explicit and separate from project publication; LIB-01 distinguishes commercially reusable CC BY 4.0 listings from reference-only/no-reuse listings through a bounded safe projection while direct pattern reads remain project/member/owner scoped.
 
 ### Moderation, deletion, and avatars
 
 Reports do not hide content. Admin actions change moderation state through security-definer commands with pinned `search_path`. Recoverable deletion preserves immutable references and honors content holds. Avatar originals use a private bucket; sanitized derivatives use a public bucket. The bounded retention operator can delete only proven avatar candidates.
 
-## Planned post-pivot workflow boundaries
+## Current and planned post-pivot workflow boundaries
 
 - **Diff:** repositories load two exact immutable versions only after proving both belong to the same project or pattern history and are independently visible to the caller. Pure feature-owned mapping creates a static landing-matched note overlay; lazy browser-local audition remains separate from comparison selection.
-- **Library publication:** an authorized command validates listing eligibility, selected reuse mode, rights-basis/attestation, source-term compatibility, and bounded external credits before exposing a pattern version. External credits never replace verified platform lineage. Explore can filter All, commercially reusable CC BY 4.0, or reference-only/no-reuse through a bounded server query and safe projection. Save, import, fork, open-in-editor, and export commands accept commercially reusable listings only, use exact copy-on-write references, and do not add Storage media.
+- **Library publication (implemented in LIB-01):** an authorized command validates exact ownership, selected reuse mode, rights-basis/attestation, source-term compatibility, controlled facets, and bounded external credits before exposing a pattern version. Append-only editions retain history; unlisting closes only the active edition. External credits never replace verified platform lineage. `/library` filters All, commercially reusable CC BY 4.0, or reference-only/no-reuse through a maximum-25 keyset query and safe note projection. Card preview is mutually exclusive and browser-local. Future save, import, fork, open-in-editor, and export commands must accept commercially reusable listings only, use exact copy-on-write references, and add no Storage media.
 - **Library moderation:** an unoriginal/unauthorized-work report stores private claimant/source context. Only an administrator action changes listing visibility; hiding discovery never mutates immutable notes, lineage, credits, or project history.
 - **Challenges:** one safe public projection exposes the administrator-selected featured challenge to the landing page and dashboard. Submission validation remains authoritative on the server/database. Completed challenge/result/leaderboard projections remain addressable and read-only; badge links resolve to those canonical results.
 

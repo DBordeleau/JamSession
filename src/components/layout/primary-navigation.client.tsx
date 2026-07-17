@@ -15,6 +15,11 @@ const links = [
     active: (pathname: string) => pathname === "/explore",
   },
   {
+    href: "/library",
+    label: "MIDI library",
+    active: (pathname: string) => pathname.startsWith("/library"),
+  },
+  {
     href: "/studio",
     label: "Studio",
     active: (pathname: string) =>

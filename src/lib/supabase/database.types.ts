@@ -780,6 +780,362 @@ export type Database = {
         }
         Relationships: []
       }
+      midi_library_categories: {
+        Row: {
+          active: boolean
+          code: string
+          display_name: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          display_name: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          display_name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      midi_library_listing_tags: {
+        Row: {
+          created_at: string
+          listing_id: string
+          tag_code: string
+        }
+        Insert: {
+          created_at?: string
+          listing_id: string
+          tag_code: string
+        }
+        Update: {
+          created_at?: string
+          listing_id?: string
+          tag_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "midi_library_listing_tags_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "midi_library_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "midi_library_listing_tags_tag_code_fkey"
+            columns: ["tag_code"]
+            isOneToOne: false
+            referencedRelation: "midi_library_tags"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      midi_library_listings: {
+        Row: {
+          attestation_version: string
+          attested_at: string
+          attested_by: string
+          category_code: string
+          creator_credit_name: string
+          creator_display_name: string
+          creator_username: string
+          creator_version: number
+          description: string
+          duration_beats: number
+          duration_ticks: number
+          id: string
+          instrument_family_code: string
+          listed_at: string
+          max_pitch: number | null
+          midi_pattern_id: string
+          midi_pattern_version_id: string
+          min_pitch: number | null
+          moderation_hidden_at: string | null
+          moderation_version: number
+          note_count: number
+          owner_id: string
+          polyphony_kind: string
+          public_domain_rationale: string | null
+          request_id: string
+          request_payload_sha256: string
+          reuse_mode: string
+          rights_basis: string
+          rights_payload_sha256: string
+          search_vector: unknown
+          suggested_preset_id: string
+          suggested_preset_version: number
+          supporting_source_terms: string | null
+          supporting_source_url: string | null
+          title: string
+          unlist_request_id: string | null
+          unlisted_at: string | null
+          unlisted_by: string | null
+        }
+        Insert: {
+          attestation_version: string
+          attested_at?: string
+          attested_by: string
+          category_code: string
+          creator_credit_name: string
+          creator_display_name: string
+          creator_username: string
+          creator_version?: number
+          description?: string
+          duration_beats: number
+          duration_ticks: number
+          id?: string
+          instrument_family_code: string
+          listed_at?: string
+          max_pitch?: number | null
+          midi_pattern_id: string
+          midi_pattern_version_id: string
+          min_pitch?: number | null
+          moderation_hidden_at?: string | null
+          moderation_version?: number
+          note_count: number
+          owner_id: string
+          polyphony_kind: string
+          public_domain_rationale?: string | null
+          request_id: string
+          request_payload_sha256: string
+          reuse_mode: string
+          rights_basis: string
+          rights_payload_sha256: string
+          search_vector?: unknown
+          suggested_preset_id: string
+          suggested_preset_version: number
+          supporting_source_terms?: string | null
+          supporting_source_url?: string | null
+          title: string
+          unlist_request_id?: string | null
+          unlisted_at?: string | null
+          unlisted_by?: string | null
+        }
+        Update: {
+          attestation_version?: string
+          attested_at?: string
+          attested_by?: string
+          category_code?: string
+          creator_credit_name?: string
+          creator_display_name?: string
+          creator_username?: string
+          creator_version?: number
+          description?: string
+          duration_beats?: number
+          duration_ticks?: number
+          id?: string
+          instrument_family_code?: string
+          listed_at?: string
+          max_pitch?: number | null
+          midi_pattern_id?: string
+          midi_pattern_version_id?: string
+          min_pitch?: number | null
+          moderation_hidden_at?: string | null
+          moderation_version?: number
+          note_count?: number
+          owner_id?: string
+          polyphony_kind?: string
+          public_domain_rationale?: string | null
+          request_id?: string
+          request_payload_sha256?: string
+          reuse_mode?: string
+          rights_basis?: string
+          rights_payload_sha256?: string
+          search_vector?: unknown
+          suggested_preset_id?: string
+          suggested_preset_version?: number
+          supporting_source_terms?: string | null
+          supporting_source_url?: string | null
+          title?: string
+          unlist_request_id?: string | null
+          unlisted_at?: string | null
+          unlisted_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "midi_library_listings_attested_by_fkey"
+            columns: ["attested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "midi_library_listings_attested_by_fkey"
+            columns: ["attested_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "midi_library_listings_category_code_fkey"
+            columns: ["category_code"]
+            isOneToOne: false
+            referencedRelation: "midi_library_categories"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "midi_library_listings_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "midi_library_listings_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "midi_library_listings_pattern_version_fk"
+            columns: ["midi_pattern_version_id", "midi_pattern_id"]
+            isOneToOne: false
+            referencedRelation: "midi_pattern_versions"
+            referencedColumns: ["id", "midi_pattern_id"]
+          },
+          {
+            foreignKeyName: "midi_library_listings_preset_fk"
+            columns: ["suggested_preset_id", "suggested_preset_version"]
+            isOneToOne: false
+            referencedRelation: "midi_library_presets"
+            referencedColumns: ["preset_id", "version"]
+          },
+          {
+            foreignKeyName: "midi_library_listings_unlisted_by_fkey"
+            columns: ["unlisted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "midi_library_listings_unlisted_by_fkey"
+            columns: ["unlisted_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      midi_library_presets: {
+        Row: {
+          active: boolean
+          display_name: string
+          family_code: string
+          preset_id: string
+          sort_order: number
+          version: number
+        }
+        Insert: {
+          active?: boolean
+          display_name: string
+          family_code: string
+          preset_id: string
+          sort_order: number
+          version: number
+        }
+        Update: {
+          active?: boolean
+          display_name?: string
+          family_code?: string
+          preset_id?: string
+          sort_order?: number
+          version?: number
+        }
+        Relationships: []
+      }
+      midi_library_tags: {
+        Row: {
+          active: boolean
+          code: string
+          display_name: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          display_name: string
+          sort_order: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          display_name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      midi_pattern_external_credits: {
+        Row: {
+          attribution_note: string | null
+          created_at: string
+          credited_name: string
+          id: string
+          inherited_from_credit_id: string | null
+          listing_id: string
+          midi_pattern_version_id: string
+          position: number
+          role: string
+          source_terms: string | null
+          source_url: string | null
+          work_title: string | null
+        }
+        Insert: {
+          attribution_note?: string | null
+          created_at?: string
+          credited_name: string
+          id?: string
+          inherited_from_credit_id?: string | null
+          listing_id: string
+          midi_pattern_version_id: string
+          position: number
+          role: string
+          source_terms?: string | null
+          source_url?: string | null
+          work_title?: string | null
+        }
+        Update: {
+          attribution_note?: string | null
+          created_at?: string
+          credited_name?: string
+          id?: string
+          inherited_from_credit_id?: string | null
+          listing_id?: string
+          midi_pattern_version_id?: string
+          position?: number
+          role?: string
+          source_terms?: string | null
+          source_url?: string | null
+          work_title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "midi_pattern_external_credits_inherited_from_credit_id_fkey"
+            columns: ["inherited_from_credit_id"]
+            isOneToOne: false
+            referencedRelation: "midi_pattern_external_credits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "midi_pattern_external_credits_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "midi_library_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "midi_pattern_external_credits_midi_pattern_version_id_fkey"
+            columns: ["midi_pattern_version_id"]
+            isOneToOne: false
+            referencedRelation: "midi_pattern_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       midi_pattern_notes: {
         Row: {
           duration_ticks: number
@@ -2278,6 +2634,47 @@ export type Database = {
         Args: { p_after_created_at?: string; p_after_id?: string }
         Returns: Json
       }
+      list_midi_library_pattern_version: {
+        Args: {
+          p_attestation_version: string
+          p_category_code: string
+          p_description: string
+          p_external_credits: Json
+          p_pattern_version_id: string
+          p_public_domain_rationale: string
+          p_replace_listing_id?: string
+          p_request_id: string
+          p_reuse_mode: string
+          p_rights_basis: string
+          p_suggested_preset_id: string
+          p_suggested_preset_version: number
+          p_supporting_source_terms: string
+          p_supporting_source_url: string
+          p_tags: string[]
+        }
+        Returns: {
+          creator_version: number
+          listed_at: string
+          listing_id: string
+        }[]
+      }
+      list_owned_midi_library_versions: {
+        Args: { p_limit?: number }
+        Returns: {
+          active_creator_version: number
+          active_listing_id: string
+          active_listing_pattern_version_id: string
+          active_reuse_mode: string
+          created_at: string
+          duration_ticks: number
+          note_count: number
+          pattern_id: string
+          pattern_name: string
+          pattern_version_id: string
+          reuse_license_code: string
+          version_number: number
+        }[]
+      }
       list_public_profile_contributions: {
         Args: {
           p_after_accepted_at?: string
@@ -2546,6 +2943,60 @@ export type Database = {
           username_normalized: string
         }[]
       }
+      search_public_midi_library: {
+        Args: {
+          p_after_listed_at?: string
+          p_after_listing_id?: string
+          p_after_title?: string
+          p_category?: string
+          p_duration_max?: number
+          p_duration_min?: number
+          p_instrument_family?: string
+          p_limit?: number
+          p_notes_max?: number
+          p_notes_min?: number
+          p_pitch_max?: number
+          p_pitch_min?: number
+          p_polyphony?: string
+          p_preset?: string
+          p_query?: string
+          p_rights?: string
+          p_sort?: string
+          p_tags?: string[]
+        }
+        Returns: {
+          category_code: string
+          category_name: string
+          creator_credit_name: string
+          creator_display_name: string
+          creator_username: string
+          description: string
+          duration_beats: number
+          duration_ticks: number
+          external_credits: Json
+          instrument_family_code: string
+          listed_at: string
+          listing_id: string
+          max_pitch: number
+          midi_pattern_id: string
+          midi_pattern_version_id: string
+          min_pitch: number
+          note_count: number
+          notes: Json
+          owner_id: string
+          polyphony_kind: string
+          public_domain_rationale: string
+          reuse_mode: string
+          rights_basis: string
+          suggested_preset_id: string
+          suggested_preset_name: string
+          suggested_preset_version: number
+          supporting_source_terms: string
+          supporting_source_url: string
+          tags: Json
+          title: string
+        }[]
+      }
       search_public_projects: {
         Args: {
           p_after_project_id?: string
@@ -2665,6 +3116,18 @@ export type Database = {
         Returns: {
           last_active_at: string
           touched: boolean
+        }[]
+      }
+      unlist_midi_library_listing: {
+        Args: {
+          p_expected_creator_version: number
+          p_listing_id: string
+          p_request_id: string
+        }
+        Returns: {
+          creator_version: number
+          listing_id: string
+          unlisted_at: string
         }[]
       }
       update_project_metadata: {
