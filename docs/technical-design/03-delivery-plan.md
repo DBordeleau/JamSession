@@ -1,6 +1,6 @@
 # Delivery plan and verification
 
-Status: PIVOT-09 complete locally; PIVOT-10 not authorized
+Status: PIVOT-09 complete locally; PIVOT-10 same-project reset authorized and pending
 
 ## Implemented foundation
 
@@ -29,4 +29,4 @@ See the tracked [roadmap](../ROADMAP.md) for outcomes and ordering.
 
 ## Hosted cutover boundary
 
-PIVOT-10 is the only slice authorized—after explicit user approval—to create/link a fresh hosted Supabase project, rehearse the clean baseline, configure hosted Auth/avatar Storage, or coordinate Vercel environment changes. PIVOT-09 does none of those actions. The old hosted project must not be deleted by an implementation worker.
+PIVOT-10 is the only slice authorized to mutate the hosted Supabase project. It retains the existing project reference and environment bindings while destructively deleting all application/Auth/Storage data and obsolete audio project resources, replaying the four clean migrations with a linked remote reset, recreating only required administrator/invitation/avatar state, and verifying hosted MIDI-only behavior. The operator must inventory non-database resources, empty Storage through the Storage API, verify the exact project reference before every destructive command, and never ask another worker or the user to apply migrations out of sequence.

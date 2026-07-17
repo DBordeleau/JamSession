@@ -1,7 +1,7 @@
 # Jam Session roadmap
 
 Status: MIDI-only foundation implemented through PIVOT-09
-Hosted state: not rehearsed or cut over; PIVOT-10 requires explicit approval
+Hosted state: same-project destructive rebaseline approved; not yet executed
 
 ## Current checkpoint
 
@@ -11,21 +11,21 @@ The pre-pivot PR 01–20, OPT-01–OPT-05, MIDI-01–MIDI-07, and STUDIO-01–ST
 
 ## Foundation sequence
 
-| Slice    | Outcome                                                                           | Status                            |
-| -------- | --------------------------------------------------------------------------------- | --------------------------------- |
-| PIVOT-00 | Product, vocabulary, licensing, runtime, and ownership contract                   | Complete                          |
-| PIVOT-01 | Manifest v3, canonicalization, hashing, and semantic-diff domain                  | Complete                          |
-| PIVOT-02 | Versioned bundled synthesis presets and browser-local runtime/render              | Complete                          |
-| PIVOT-03 | Transitional normalized MIDI schema and commands                                  | Complete                          |
-| PIVOT-04 | Studio creation/edit/save/publication cutover                                     | Complete                          |
-| PIVOT-05 | Contribution review/acceptance and fork cutover                                   | Complete                          |
-| PIVOT-06 | Public project, preview, history, and attribution cutover                         | Complete                          |
-| PIVOT-07 | Application legacy-audio removal                                                  | Complete                          |
-| PIVOT-08 | Supabase legacy-audio infrastructure removal                                      | Complete                          |
-| PIVOT-09 | Clean migration baseline, deterministic testing, and documentation reconciliation | Complete                          |
-| PIVOT-10 | Fresh hosted Supabase rehearsal and cutover                                       | Blocked pending explicit approval |
+| Slice    | Outcome                                                                           | Status                        |
+| -------- | --------------------------------------------------------------------------------- | ----------------------------- |
+| PIVOT-00 | Product, vocabulary, licensing, runtime, and ownership contract                   | Complete                      |
+| PIVOT-01 | Manifest v3, canonicalization, hashing, and semantic-diff domain                  | Complete                      |
+| PIVOT-02 | Versioned bundled synthesis presets and browser-local runtime/render              | Complete                      |
+| PIVOT-03 | Transitional normalized MIDI schema and commands                                  | Complete                      |
+| PIVOT-04 | Studio creation/edit/save/publication cutover                                     | Complete                      |
+| PIVOT-05 | Contribution review/acceptance and fork cutover                                   | Complete                      |
+| PIVOT-06 | Public project, preview, history, and attribution cutover                         | Complete                      |
+| PIVOT-07 | Application legacy-audio removal                                                  | Complete                      |
+| PIVOT-08 | Supabase legacy-audio infrastructure removal                                      | Complete                      |
+| PIVOT-09 | Clean migration baseline, deterministic testing, and documentation reconciliation | Complete                      |
+| PIVOT-10 | Existing hosted Supabase destructive rebaseline and verification                  | Authorized; preflight pending |
 
-PIVOT-10 may create or link a fresh hosted Supabase project, rehearse the clean baseline, configure hosted Auth/avatar Storage, and verify deployment ordering only after explicit authorization. No current repository milestone implies that approval.
+PIVOT-10 retains the existing hosted project reference, URL, API keys, OAuth provider configuration, and environment bindings. It is authorized to delete all existing application/Auth/Storage data and obsolete audio infrastructure, reset the linked database to the four clean migrations, recreate only required invitations/admin/avatar state, and verify the hosted MIDI-only product. No other worker may mutate the hosted project, and no migration should be applied manually before PIVOT-10 completes its inventory and target preflight.
 
 ## Post-foundation product sequence
 

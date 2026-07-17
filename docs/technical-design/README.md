@@ -37,7 +37,7 @@ The PR 01–20, OPT-01–OPT-05, MIDI-01–MIDI-07, STUDIO-01–STUDIO-06, and U
 
 ## Next work and hosted state
 
-Post-foundation product work sequences semantic visual diffs, the public MIDI pattern library, then challenges. PIVOT-10 is separately blocked pending explicit approval; it alone may create/link a fresh hosted Supabase project, rehearse the clean baseline there, or coordinate hosted/Vercel cutover. A green local repository does not imply hosted parity.
+Post-foundation product work sequences semantic visual diffs, the public MIDI pattern library, then challenges. PIVOT-10 is approved and solely owns the destructive same-project hosted rebaseline and verification; it retains the existing project reference/API configuration and must not be bypassed by manual migration application. A green local repository does not imply hosted parity.
 
 ## Global invariants
 

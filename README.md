@@ -2,7 +2,7 @@
 
 Jam Session is a public MIDI creation, remix, reuse, and constraint-challenge platform for bedroom producers, casual musicians, and learners. Musicians build arrangements from reusable MIDI patterns, preserve immutable revision history, propose contributions with durable attribution, and fork projects with navigable lineage.
 
-> **Current status:** PIVOT-01 through PIVOT-09 are implemented on the `midi-only-pivot` integration branch. The application, clean schema baseline, deterministic seed, and default test path are MIDI-only; avatar originals and derivatives are the only Storage media. PIVOT-10 remains a separately approved fresh-hosted-project rehearsal and has not run. PR 19/20 and the OPT/MIDI/STUDIO sequencing are historical delivery evidence, not current work.
+> **Current status:** PIVOT-01 through PIVOT-09 are implemented on the `midi-only-pivot` integration branch. The application, clean schema baseline, deterministic seed, and default test path are MIDI-only; avatar originals and derivatives are the only Storage media. PIVOT-10 is approved to destructively rebaseline the existing hosted project in place, but that reset has not run. PR 19/20 and the OPT/MIDI/STUDIO sequencing are historical delivery evidence, not current work.
 
 ## Target MVP scope
 
@@ -95,11 +95,11 @@ Open [http://localhost:3000](http://localhost:3000), and stop the server with `C
 
 ## Supabase environments
 
-`npm run dev` always follows the uncommitted `NEXT_PUBLIC_SUPABASE_URL`; starting local Supabase does not redirect the app automatically. Until PIVOT-10 is explicitly approved and completes a fresh hosted rehearsal, the clean local stack is the only environment known to match the MIDI-only baseline. An existing `.env.local` may still name the old hosted project and must not be treated as schema parity.
+`npm run dev` always follows the uncommitted `NEXT_PUBLIC_SUPABASE_URL`; starting local Supabase does not redirect the app automatically. Until PIVOT-10 completes its approved same-project destructive rebaseline, the clean local stack is the only environment known to match the MIDI-only baseline. The hosted project URL and API keys remain the intended configuration, but its current schema must not be treated as MIDI-only authority before that reset is verified.
 
 Before debugging missing rows, RLS, Auth, RPCs, or Storage, check the host configured by `NEXT_PUBLIC_SUPABASE_URL` without exposing any keys. Use the logs and schema for that environment. Local containers and hosted Supabase are independent databases, so local logs cannot explain a request sent to the hosted URL, and locally applied migrations do not automatically update hosted Supabase.
 
-Do not overwrite an existing `.env.local` or apply migrations/repairs to hosted Supabase unless the task explicitly authorizes that change. The local stack is the authority for clean migration resets, pgTAP/RLS tests, generated types, deterministic fixtures, and MIDI browser flows. PIVOT-10 alone owns fresh hosted-project rehearsal and cutover.
+Do not overwrite an existing `.env.local` or apply migrations/repairs to hosted Supabase unless the task explicitly authorizes that change. The local stack is the authority for clean migration resets, pgTAP/RLS tests, generated types, deterministic fixtures, and MIDI browser flows. PIVOT-10 alone owns the destructive reset and verification of the existing hosted project.
 
 ### Local Supabase validation stack
 
@@ -136,7 +136,7 @@ npm run supabase:stop
 
 `npm run db:reset` permanently deletes all local database content before reapplying migrations and seed data. Confirm the CLI is targeting the intended local project before running destructive commands. `npm run db:types` regenerates the committed TypeScript definitions atomically from the running local database; `npm run db:types:check` detects drift without modifying tracked files.
 
-Local invitations and migrations do not change any hosted project. Hosted configuration and migration ordering remain unavailable until the separately approved PIVOT-10 rehearsal.
+Local invitations and migrations do not change the hosted project. PIVOT-10 must clear managed Auth/Storage state in the documented order and run the clean linked reset itself; do not apply hosted migrations manually before its preflight.
 
 ## Common commands
 
@@ -280,7 +280,7 @@ Start Supabase, run `npm run db:reset`, then run `npm run db:types`. Commit the 
 
 ### Authentication development
 
-Use `npm run supabase:start:auth` when explicitly exercising Auth, PostgREST, and browser identity flows against local Supabase; database-only checks continue to use the lighter `npm run supabase:start`. `npm run dev` always follows the values in the active environment. Until PIVOT-10 completes an explicitly approved fresh hosted rehearsal, use process-scoped local values for flows that must match the MIDI-only baseline and do not treat an existing hosted `.env.local` as schema authority.
+Use `npm run supabase:start:auth` when explicitly exercising Auth, PostgREST, and browser identity flows against local Supabase; database-only checks continue to use the lighter `npm run supabase:start`. `npm run dev` always follows the values in the active environment. Until PIVOT-10 completes the approved same-project rebaseline, use process-scoped local values for flows that must match the MIDI-only baseline and do not treat the hosted schema as current authority.
 
 Product sign-in is Google-only. Google Cloud, hosted Supabase, exact callback URLs, invitation provisioning, and the production smoke checklist are documented in [docs/setup/google-auth.md](docs/setup/google-auth.md). Local/CI browser automation can prepare the seeded `.test` actor with `npm run auth:e2e:setup`; it requires an ephemeral `TEST_AUTH_PASSWORD`, and the test route additionally requires `ENABLE_TEST_AUTH=true`.
 
