@@ -6,7 +6,7 @@ This file is the operating contract for coding agents working in this repository
 
 Jam Session is a public MIDI creation, remix, reuse, and constraint-challenge platform for bedroom producers, casual musicians, and learners. Users create versioned MIDI arrangements, edit them in browser workspaces, submit contributions, fork projects, and preserve pattern/revision lineage and attribution.
 
-The target MVP is a Next.js application backed by Supabase Auth/Postgres and avatar-only Storage, with a client-only Tone.js MIDI runtime. PIVOT-09 established the reviewed MIDI-only migration baseline and removed active legacy-audio infrastructure. PIVOT-10 is approved to reset the existing hosted Supabase project to that baseline while retaining its project reference and API configuration.
+The target MVP is a Next.js application backed by Supabase Auth/Postgres and avatar-only Storage, with a client-only Tone.js MIDI runtime. PIVOT-10 rebaselined and verified the existing hosted Supabase project against the reviewed MIDI-only migrations while retaining its project reference and API configuration. Vercel deployment remains intentionally deferred.
 
 ## Read before changing code
 
@@ -29,7 +29,7 @@ If code, task instructions, and these documents disagree, stop and surface the c
 
 ## Current project state
 
-PIVOT-01 through PIVOT-09 are implemented on the MIDI-only integration line. Their manifest-v3, presets/runtime, database, Studio, collaboration, public-read, cleanup, testing, and documentation contracts supersede the historical PR 19/20 and OPT/MIDI/STUDIO delivery sequence without erasing its evidence. The next product work is semantic visual diffs, then the public pattern library, then challenges. No existing hosted application, Auth, or Storage data must be retained. PIVOT-10 alone is authorized to destructively rebaseline the existing hosted project after target verification; unrelated workers may not mutate hosted Supabase. npm is the sole package manager and Node.js 24 LTS is required.
+PIVOT-01 through PIVOT-10 are implemented on the MIDI-only integration line. Their manifest-v3, presets/runtime, database, Studio, collaboration, public-read, cleanup, hosted-rebaseline, testing, and documentation contracts supersede the historical PR 19/20 and OPT/MIDI/STUDIO delivery sequence without erasing its evidence. The next product work is semantic visual diffs, then the public pattern library, then challenges. The hosted project is now authoritative for the MIDI-only baseline; ordinary workers still may not mutate hosted Supabase without explicit task authority. npm is the sole package manager and Node.js 24 LTS is required.
 
 Before implementing a task:
 
@@ -90,7 +90,7 @@ The two-attempt ceiling applies when the same unresolved environment-dependent b
 
 ### Supabase environment contract
 
-`npm run dev` follows the uncommitted `NEXT_PUBLIC_SUPABASE_URL`; it does not switch to local Supabase merely because local containers are running. Until PIVOT-10 completes the approved same-project destructive rebaseline, the clean local stack is the only environment known to match the MIDI-only baseline. The hosted URL/API keys remain intended configuration, but they are not evidence of schema parity.
+`npm run dev` follows the uncommitted `NEXT_PUBLIC_SUPABASE_URL`; it does not switch to local Supabase merely because local containers are running. The retained hosted project and clean local stack both implement the MIDI-only baseline, but they remain independent environments and must be inspected separately when debugging.
 
 Before diagnosing Auth, RPC, RLS, Storage, or missing-data behavior, identify the host in `NEXT_PUBLIC_SUPABASE_URL` without printing keys or credentials. Inspect logs/schema/data in that active environment. A green local database check does not prove hosted parity. Do not apply migrations, seed data, repairs, or destructive commands to any hosted project unless the task explicitly authorizes that external mutation. Never replace hosted values incidentally; use process-scoped local configuration for the documented local flows.
 

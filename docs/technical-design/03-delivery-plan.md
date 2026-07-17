@@ -1,10 +1,10 @@
 # Delivery plan and verification
 
-Status: PIVOT-09 complete locally; PIVOT-10 same-project reset authorized and pending
+Status: PIVOT-10 same-project hosted rebaseline complete; Vercel deployment deferred
 
 ## Implemented foundation
 
-PIVOT-01 through PIVOT-09 delivered the manifest-v3 domain, deterministic semantic diff, bundled preset runtime, normalized Postgres model, Studio and collaboration cutovers, public reads, application/Supabase cleanup, clean migration baseline, deterministic testing, and documentation reconciliation.
+PIVOT-01 through PIVOT-10 delivered the manifest-v3 domain, deterministic semantic diff, bundled preset runtime, normalized Postgres model, Studio and collaboration cutovers, public reads, application/Supabase cleanup, clean migration baseline, hosted rehearsal, deterministic testing, and documentation reconciliation.
 
 The historical PR 01–20, OPT-01–OPT-05, MIDI-01–MIDI-07, and STUDIO-01–STUDIO-06 plans explain how the repository reached the pivot. They are superseded sequencing and must not be used as current environment, migration, or deployment instructions.
 
@@ -29,4 +29,4 @@ See the tracked [roadmap](../ROADMAP.md) for outcomes and ordering.
 
 ## Hosted cutover boundary
 
-PIVOT-10 is the only slice authorized to mutate the hosted Supabase project. It retains the existing project reference and environment bindings while destructively deleting all application/Auth/Storage data and obsolete audio project resources, replaying the four clean migrations with a linked remote reset, recreating only required administrator/invitation/avatar state, and verifying hosted MIDI-only behavior. The operator must inventory non-database resources, empty Storage through the Storage API, verify the exact project reference before every destructive command, and never ask another worker or the user to apply migrations out of sequence.
+PIVOT-10 completed the only authorized destructive mutation of the hosted Supabase project. It retained the existing project reference and local environment binding, replayed exactly four clean migrations through one linked reset, recreated required administrator/invitation/avatar state, and verified hosted MIDI-only behavior. Vercel deployment and its production smoke path are explicitly deferred until the user chooses to deploy; they are not a PIVOT-10 failure.
