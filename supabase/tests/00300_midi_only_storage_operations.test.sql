@@ -1,7 +1,7 @@
 begin;
 reset role;
 create extension if not exists pgtap with schema extensions;
-select plan(39);
+select plan(40);
 
 select hasnt_table('public','asset_uploads','source upload reservations are removed');
 select hasnt_table('public','asset_credits','source credit records are removed');
@@ -36,6 +36,17 @@ select ok(not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pron
   where n.nspname in ('public','private') and p.prosecdef
     and coalesce(array_to_string(p.proconfig,','),'') !~ 'search_path='),
   'every security-definer function pins search_path');
+select ok(not exists(
+  select 1
+  from pg_default_acl d
+  join pg_namespace n on n.oid=d.defaclnamespace
+  cross join lateral aclexplode(d.defaclacl) a
+  join pg_roles r on r.oid=a.grantee
+  where n.nspname='public'
+    and d.defaclrole=(select oid from pg_roles where rolname='postgres')
+    and d.defaclobjtype in ('r','S')
+    and r.rolname in ('anon','authenticated')
+), 'postgres-created public tables and sequences grant no default privileges to application roles');
 select is((select count(*) from storage.buckets),2::bigint,'only two avatar buckets remain');
 select is((select array_agg(id order by id) from storage.buckets),
   array['profile-images','public-avatars']::text[],'avatar buckets retain exact private/public boundary');

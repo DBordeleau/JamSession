@@ -108,6 +108,34 @@ check(currentDocs, [
   ],
 ]);
 
+check(
+  ["README.md"],
+  [
+    [
+      "deleted Studio audio runtime described as current behavior",
+      /Waveform Playlist|private source assets|original stems|while audio loads|source-admission denial/i,
+    ],
+    [
+      "stale hosted-development authority",
+      /Normal interactive development remains pointed at hosted Supabase/i,
+    ],
+  ],
+);
+
+check(
+  ["docs/design/brand.md"],
+  [
+    [
+      "deleted Studio adapter in current brand guidance",
+      /waveform-playlist-adapter|studio-surface\.tsx|transitional manifest-v2|legacy manifest-v1/i,
+    ],
+    [
+      "deleted landing hero component",
+      /hero-waveform\.client\.tsx|HeroWaveform/,
+    ],
+  ],
+);
+
 check(filesUnder("supabase/functions", [".ts", ".js", ".sql", ".json"]), [
   [
     "audio Edge Function",
