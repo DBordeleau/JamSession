@@ -37,7 +37,7 @@ The PR 01–20, OPT-01–OPT-05, MIDI-01–MIDI-07, STUDIO-01–STUDIO-06, and U
 
 ## Next work and hosted state
 
-Post-foundation product work sequences landing-matched static semantic visual diffs alongside beta feedback, followed by the rights-gated public MIDI library and saved clips, curated challenges with durable results, linked challenge awards, and release hardening. DIFF-01 is the exact next ready slice; FEEDBACK-01 may run in parallel after its own detailed local plan exists. PIVOT-10 completed the destructive same-project hosted rebaseline while retaining the existing project reference/API configuration, and migration `20260717142701` subsequently reconciled administrator invitations. Local and hosted checks remain distinct even though both now implement the same five-migration schema; Vercel deployment is deferred to RELEASE-03.
+Post-foundation product work sequences landing-matched static semantic visual diffs alongside beta feedback, followed by the rights-gated public MIDI library and saved clips, curated challenges with durable results, linked challenge awards, and release hardening. DIFF-01 and FEEDBACK-01 are both ready from their local parallel-safe plans and may start from the same green base. PIVOT-10 completed the destructive same-project hosted rebaseline while retaining the existing project reference/API configuration, and migration `20260717142701` subsequently reconciled administrator invitations. Local and hosted checks remain distinct even though both now implement the same five-migration schema; Vercel deployment is deferred to RELEASE-03.
 
 ## Global invariants
 

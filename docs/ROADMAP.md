@@ -67,7 +67,7 @@ Status: Planned; sequential after DIFF-02.
 
 Add one authenticated, rate-limited Postgres-backed flow for bug reports and suggestions plus a private administrator queue. Administrators can classify, mark handled, and delete irrelevant submissions. No attachments, automatic diagnostic collection, or GitHub API integration.
 
-Status: Needs a detailed local implementation plan before a worker starts. May run in parallel with the DIFF program if file/schema ownership is declared explicitly.
+Status: Ready from `local/implementation-plans/030-beta-feedback-intake-admin-triage.md`, which is intentionally untracked. May run in parallel with DIFF-01 from the same green base under the declared ownership boundary.
 
 ## Wave B — Public MIDI library and saved clips
 
