@@ -2,7 +2,7 @@
 
 Status: Post-pivot MVP release path accepted; implementation not yet deployed
 Current branch: `master` at or after the MIDI-only foundation merge
-Hosted state: existing Supabase project reconciled through five migrations; Vercel deployment deferred
+Hosted state: existing Supabase project reconciled through seven migrations; Vercel deployment deferred
 
 ## Release target
 
