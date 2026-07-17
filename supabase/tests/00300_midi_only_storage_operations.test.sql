@@ -1,7 +1,7 @@
 begin;
 reset role;
 create extension if not exists pgtap with schema extensions;
-select plan(30);
+select plan(39);
 
 select hasnt_table('public','asset_uploads','source upload reservations are removed');
 select hasnt_table('public','asset_credits','source credit records are removed');
@@ -17,6 +17,14 @@ select hasnt_table('public','contribution_version_clips','legacy contribution cl
 select hasnt_table('private','asset_verification_jobs','audio verification jobs are removed');
 select hasnt_table('private','source_admission_control','source admission control is removed');
 select hasnt_table('private','workspace_snapshot_uploads','Storage-backed snapshots are removed');
+select hasnt_table('public','midi_stems','pre-pivot stem identities are removed');
+select hasnt_table('public','midi_stem_versions','pre-pivot stem versions are removed');
+select hasnt_table('public','midi_stem_drafts','pre-pivot stem drafts are removed');
+select hasnt_table('private','studio_midi_apply_requests','standalone stem apply requests are removed');
+select hasnt_column('public','workspaces','snapshot_asset_id','workspaces never reference Storage snapshots');
+select hasnt_column('public','project_revisions','snapshot_asset_id','revisions never reference Storage snapshots');
+select hasnt_column('public','workspace_tracks','asset_id','workspace tracks are MIDI-only');
+select hasnt_column('public','workspace_clips','midi_stem_version_id','workspace clips reference pattern versions only');
 
 select ok(not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
   where n.nspname in ('public','private') and (p.proname ilike any(array[
@@ -24,6 +32,10 @@ select ok(not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pron
     or p.prosrc ilike any(array['%source_audio%','%revision_tracks%','%contribution_version_tracks%',
       '%waveform_peak%','%asset_verification%','%global_storage_usage%','%workspace-snapshots%']))),
   'no audio command or stale function body remains');
+select ok(not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+  where n.nspname in ('public','private') and p.prosecdef
+    and coalesce(array_to_string(p.proconfig,','),'') !~ 'search_path='),
+  'every security-definer function pins search_path');
 select is((select count(*) from storage.buckets),2::bigint,'only two avatar buckets remain');
 select is((select array_agg(id order by id) from storage.buckets),
   array['profile-images','public-avatars']::text[],'avatar buckets retain exact private/public boundary');

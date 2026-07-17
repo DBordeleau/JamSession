@@ -2,7 +2,7 @@
 
 Jam Session is a public MIDI creation, remix, reuse, and constraint-challenge platform for bedroom producers, casual musicians, and learners. Musicians build arrangements from reusable MIDI patterns, preserve immutable revision history, propose contributions with durable attribution, and fork projects with navigable lineage.
 
-> **Current status:** the product is pivoting to a MIDI-only MVP on the `midi-only-pivot` integration branch. PIVOT-00 freezes the target contract; PIVOT-01 (domain v3 and semantic diff), PIVOT-02 (instrument catalog/runtime), and PIVOT-03 (database foundation) form the next parallel wave. The existing application still contains legacy-audio code and commands until later pivot slices remove them. PR 19, PR 20, source-admission deployment, and the audio-egress plan are no longer the next delivery path.
+> **Current status:** PIVOT-01 through PIVOT-09 are implemented on the `midi-only-pivot` integration branch. The application, clean schema baseline, deterministic seed, and default test path are MIDI-only; avatar originals and derivatives are the only Storage media. PIVOT-10 remains a separately approved fresh-hosted-project rehearsal and has not run. PR 19/20 and the OPT/MIDI/STUDIO sequencing are historical delivery evidence, not current work.
 
 ## Target MVP scope
 
@@ -95,11 +95,11 @@ Open [http://localhost:3000](http://localhost:3000), and stop the server with `C
 
 ## Supabase environments
 
-The normal interactive development app currently targets the actual hosted Supabase project through the uncommitted `.env.local`. This is intentional so real Google OAuth, invitations, PostgREST, and Storage behavior use the shared hosted environment. `npm run dev` always follows `NEXT_PUBLIC_SUPABASE_URL`; starting local Supabase does not redirect the app to it.
+`npm run dev` always follows the uncommitted `NEXT_PUBLIC_SUPABASE_URL`; starting local Supabase does not redirect the app automatically. Until PIVOT-10 is explicitly approved and completes a fresh hosted rehearsal, the clean local stack is the only environment known to match the MIDI-only baseline. An existing `.env.local` may still name the old hosted project and must not be treated as schema parity.
 
 Before debugging missing rows, RLS, Auth, RPCs, or Storage, check the host configured by `NEXT_PUBLIC_SUPABASE_URL` without exposing any keys. Use the logs and schema for that environment. Local containers and hosted Supabase are independent databases, so local logs cannot explain a request sent to the hosted URL, and locally applied migrations do not automatically update hosted Supabase.
 
-Do not overwrite the existing hosted `.env.local` or apply migrations/repairs to hosted Supabase unless the task explicitly calls for that change. The local stack is the safe authority for clean migration resets, pgTAP/RLS tests, generated types, deterministic fixtures, and browser flows that explicitly opt into local Auth or Storage.
+Do not overwrite an existing `.env.local` or apply migrations/repairs to hosted Supabase unless the task explicitly authorizes that change. The local stack is the authority for clean migration resets, pgTAP/RLS tests, generated types, deterministic fixtures, and MIDI browser flows. PIVOT-10 alone owns fresh hosted-project rehearsal and cutover.
 
 ### Local Supabase validation stack
 
@@ -110,7 +110,7 @@ npm run supabase:start
 npm run supabase:status
 ```
 
-The first start downloads the database image and can take a while. This command intentionally starts only Postgres for migration, pgTAP, and type-generation work. Use `npm run supabase:start:auth` for authentication flows or `npm run supabase:start:storage` for upload/playback flows; each starts only the services that feature needs.
+The first start downloads the database image and can take a while. This command intentionally starts only Postgres for migration, pgTAP, and type-generation work. Use `npm run supabase:start:auth` for authentication and the default MIDI browser suite. Use `npm run supabase:start:storage` only for avatar-specific flows.
 
 Copy the example environment file without overwriting an existing local file:
 
@@ -136,11 +136,11 @@ npm run supabase:stop
 
 `npm run db:reset` permanently deletes all local database content before reapplying migrations and seed data. Confirm the CLI is targeting the intended local project before running destructive commands. `npm run db:types` regenerates the committed TypeScript definitions atomically from the running local database; `npm run db:types:check` detects drift without modifying tracked files.
 
-The configured hosted Supabase project is the normal interactive-development backend. Invitations and hosted migrations must be applied to the same project named by `NEXT_PUBLIC_SUPABASE_URL`; inserting into or migrating local Postgres does not change the hosted application.
+Local invitations and migrations do not change any hosted project. Hosted configuration and migration ordering remain unavailable until the separately approved PIVOT-10 rehearsal.
 
 ## Common commands
 
-The table reflects the executable repository during the staged pivot. Audio/upload commands remain listed until PIVOT-07 through PIVOT-09 remove their implementations; they are compatibility checks, not authority to add new audio behavior.
+The table reflects the executable MIDI-only repository.
 
 Run commands from the repository root:
 
@@ -149,6 +149,7 @@ Run commands from the repository root:
 | `npm ci`                         | Reproduce dependencies from the lockfile                        |
 | `npm run dev`                    | Start the local development server                              |
 | `npm run check`                  | Run formatting, lint, types, unit tests, and a production build |
+| `npm run check:midi-only`        | Enforce the zero-legacy-audio repository contract               |
 | `npm run format`                 | Format supported files                                          |
 | `npm run format:check`           | Check formatting without changing files                         |
 | `npm run lint`                   | Run ESLint with zero warnings allowed                           |
@@ -159,13 +160,12 @@ Run commands from the repository root:
 | `npm run build`                  | Create a production Next.js build                               |
 | `npm run start`                  | Serve an existing production build                              |
 | `npm run test:e2e`               | Run Playwright browser tests                                    |
-| `npm run test:e2e:local`         | Configure and run the full local browser suite                  |
-| `npm run test:e2e:identity`      | Run the local onboarding/upload/publish journey                 |
+| `npm run test:e2e:local`         | Run the required local MIDI browser suite                       |
+| `npm run test:e2e:identity`      | Run local onboarding and first-project creation                 |
 | `npm run test:e2e:studio`        | Run the fast fixture-backed studio startup smoke test           |
-| `npm run test:e2e:upload`        | Run the browser WAV-to-FLAC upload journey                      |
 | `npm run supabase:start`         | Start local Supabase Postgres only                              |
 | `npm run supabase:start:auth`    | Start the reduced local Auth stack                              |
-| `npm run supabase:start:storage` | Start the reduced local Storage/upload stack                    |
+| `npm run supabase:start:storage` | Start the reduced avatar Storage stack                          |
 | `npm run supabase:stop`          | Stop local Supabase while preserving its database               |
 | `npm run supabase:status`        | Show local database state                                       |
 | `npm run db:reset`               | Recreate the local database and apply seed data                 |
@@ -173,8 +173,6 @@ Run commands from the repository root:
 | `npm run db:check`               | Lint/test the database and check generated-type drift           |
 | `npm run db:types`               | Atomically regenerate committed database types                  |
 | `npm run auth:e2e:setup`         | Prepare the gated local/CI test Auth actor                      |
-| `npm run assets:verify`          | Lease-aware fallback verification of a processing source asset  |
-| `npm run assets:cleanup`         | Dry-run reference-aware asset cleanup                           |
 | `npm run avatars:process`        | Recover pending or expired profile-image processing jobs        |
 | `npm run avatars:cleanup`        | Dry-run cleanup of expired private avatar uploads               |
 | `npm run retention:preview`      | Preview bounded reference/hold-aware retention candidates       |
@@ -188,36 +186,22 @@ npx playwright install chromium
 
 That browser download is only needed for E2E tests, not normal development.
 
-For reliable local browser testing, start the reduced Storage stack and reset its database once, then use a targeted runner:
+For reliable local browser testing, start the reduced Auth stack and reset its database once:
 
 ```powershell
-npm run supabase:start:storage
+npm run supabase:start:auth
 npm run db:reset
-npm run test:e2e:studio
+npm run test:e2e:local
 ```
 
-Use `npm run test:e2e:identity` for onboarding, upload, verification, and first publish, `npm run test:e2e:upload` for browser lossless conversion, or `npm run test:e2e:local` for the complete browser suite. These local commands read the local Supabase values, prepare the test actor, force one Playwright worker, and run Next.js from the ignored `.next-e2e` directory so an ordinary development server does not share its lock or artifacts. The runner owns and cleans up that server process tree. It refuses non-local Supabase targets and fails during preflight when Storage or port 3100 is unavailable. No copied environment variables or Edge Runtime process is required.
-
-### Audio-delivery benchmark fixtures
-
-OPT-01 adds deterministic large WAV generation and local browser benchmarks without committing media. OPT-02 extends the delivery harness with `--loader progressive` so shell timing and actor-scoped warm reuse are measured separately from full WAV playback readiness. OPT-03 adds an optional lossless WAV-to-FLAC worker with progress, cancellation/fallback and same-PCM transient peak generation; OPT-04 persists those small private peaks. The generated FLAC is the canonical immutable source and download, not a duplicate of the selected WAV. FLAC and MP3 selections pass through unchanged.
-
-OPT-05 adds `scripts/generate-studio-flac-fixtures.mjs`, which uses the exact pinned production encoder/settings and rejects metadata or decoded-PCM drift, plus `--format wav|flac` delivery comparisons. Compression ratios are controlled synthetic-fixture evidence, not promises for recorded music. Generated media and raw results remain under ignored `local/`. See the [OPT-01 baseline](docs/technical-design/evidence/opt-01-audio-delivery-baseline.md), [OPT-02 progressive evidence](docs/technical-design/evidence/opt-02-progressive-studio.md), [OPT-03 lossless-upload evidence](docs/technical-design/evidence/opt-03-browser-lossless-upload.md), [OPT-04 persisted-peaks evidence](docs/technical-design/evidence/opt-04-persisted-waveform-peaks.md), and [OPT-05 rollout evidence](docs/technical-design/evidence/opt-05-audio-delivery-rollout.md). Start with:
-
-```powershell
-node scripts/generate-studio-audio-fixtures.mjs --profile controlled
-node scripts/generate-studio-flac-fixtures.mjs --profile controlled
-node scripts/benchmark-studio-audio.mjs --profile controlled --format flac --loader progressive --phase both --repetitions 5
-```
-
-These commands use loopback only and do not read or mutate hosted Supabase.
+The default local suite covers Auth/onboarding, MIDI Studio create/save/reload/publish/preview, contribution acceptance, and fork lineage. Targeted runners accept an explicit spec path. The runner reads local Supabase values, prepares the gated actor, forces one Playwright worker, and owns an isolated `.next-e2e` server process tree. It refuses non-local targets and does not require Storage or Edge Runtime. Historical audio optimization evidence remains under `docs/technical-design/evidence/` for archaeology only.
 
 ## Repository map
 
 ```text
 src/app/           Next.js routes, layouts, styles, and route-owned UI
 src/components/    Reusable layout and UI primitives used by current routes
-src/features/      Feature-owned auth, profile, project, asset, revision, workspace, export, studio, and planned MIDI code
+src/features/      Feature-owned auth, profile, project, MIDI, revision, workspace, export, and Studio code
 src/lib/env/       Runtime configuration validation
 src/lib/supabase/  Generated database types and user-scoped client factories
 src/test/          Shared unit-test setup
@@ -233,16 +217,16 @@ The `supabase/` directory contains forward-only migrations, local configuration,
 
 ## Core architecture vocabulary
 
-| Concept      | Meaning                                                                  |
-| ------------ | ------------------------------------------------------------------------ |
-| Project      | Long-lived song identity, metadata, visibility, and current revision     |
-| Revision     | Immutable published snapshot of an arrangement and its referenced assets |
-| Workspace    | Mutable private draft based on a revision                                |
-| Contribution | Review workflow containing an immutable proposed version                 |
-| Fork         | New project that points back to an exact source project and revision     |
-| Asset        | Immutable audio, editor snapshot, preview, waveform, or image object     |
+| Concept      | Meaning                                                              |
+| ------------ | -------------------------------------------------------------------- |
+| Project      | Long-lived song identity, metadata, visibility, and current revision |
+| Revision     | Immutable published wrapper around one exact arrangement version     |
+| Workspace    | Mutable private draft based on a revision                            |
+| Contribution | Review workflow containing an immutable proposed version             |
+| Fork         | New project that points back to an exact source project and revision |
+| Asset        | Private avatar original managed separately from the musical domain   |
 
-The backend forms a Git-like revision graph using Postgres relationships and immutable Storage assets rather than literal Git repositories. Projects point to immutable revisions; normalized tracks and append-only asset references form the currently implemented graph. See the [system architecture](docs/technical-design/01-system-architecture.md) and [data model](docs/technical-design/02-data-model.md) for details.
+The backend forms a Git-like revision graph in Postgres. Projects point to immutable revisions and arrangement versions; clips point to exact immutable MIDI pattern versions with durable creator lineage. Storage is used only for avatars. See the [system architecture](docs/technical-design/01-system-architecture.md) and [data model](docs/technical-design/02-data-model.md) for details.
 
 ## Troubleshooting
 
