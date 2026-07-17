@@ -51,15 +51,15 @@ Replace category counts with musician-facing arrangement, track, clip, note, and
 
 Status: Ready from `local/implementation-plans/028-semantic-visual-diffs.md`, which is intentionally untracked and must be supplied to the worker locally.
 
-### DIFF-02 — Read-only note overlay and paired audition
+### DIFF-02 — Static read-only note overlay and paired audition
 
-Add the accessible piano-roll overlay and mutually exclusive browser-local before/after playback without exposing editing controls or server audio.
+Add the accessible static piano-roll overlay using the landing's gold `+` Added, coral `~` Changed, and muted dashed `−` Removed language, plus mutually exclusive browser-local before/after playback. Animated transformation remains deferred.
 
 Status: Planned; sequential after DIFF-01.
 
-### DIFF-03 — Public project revision comparison
+### DIFF-03 — Authorized project revision-pair comparison
 
-Add public parent-to-child revision comparison and close the shared project comparison surface. The later library reuses it for exact pattern-version comparisons.
+Let viewers select, swap, link, and compare any two revisions they are authorized to read within one project. Public visitors select only public revisions; private projects retain membership authorization. The library later reuses the surface for any two authorized versions in one pattern history.
 
 Status: Planned; sequential after DIFF-02.
 
@@ -73,15 +73,15 @@ Status: Needs a detailed local implementation plan before a worker starts. May r
 
 ### LIB-01 — Explicit listing and searchable catalog
 
-Add explicit CC BY 4.0 pattern-version listing/unlisting, derived musical metadata, safe public projections, and bounded search/filter contracts. Public project publication must not list every pattern automatically.
+Add explicit pattern-version listing/unlisting with two rights modes: **Commercial reuse permitted — CC BY 4.0** and **Reference only — reuse not granted**. Include derived musical metadata, safe public projections, bounded search/filter contracts, an All/commercially-reusable/reference-only Explore filter, external-credit snapshots, and a rights-classification/attestation gate. Expand the current CC-only public-pattern constraints and read policy through a reviewed forward migration: CC-licensed versions cannot be downgraded, while reference-only versions retain no reuse license and use a separate public-display attestation. Reference-only is not a cure for missing rights; uncertain-rights covers/recreations cannot enter either mode. Public project publication must not list every pattern automatically.
 
 ### LIB-02 — Discovery, preview, history, usage, and pattern diff
 
-Add library browse/detail pages with deterministic preview, read-only notes, immutable version/lineage history, visual parent/source comparison, and public-project usage. Private project usage must never leak through counts or links.
+Add library browse/detail pages with deterministic preview, read-only notes, immutable version/lineage history, selection between any two versions in the same pattern history, prominent reuse-mode labels, visible external credits/rights terms, and public-project usage. Add **Report unoriginal or unauthorized work** with administrator hide/review/restore actions. Private project usage and reports must never leak through counts or links.
 
 ### LIB-03 — Saved clips and Studio import
 
-Add a private saved-pattern collection referencing exact immutable versions. Saving does not duplicate notes or transfer ownership. Users can import a saved or discovered version into a chosen private workspace; edits remain copy-on-write and preserve attribution.
+Add a private saved-pattern collection referencing exact immutable commercially reusable versions. Saving does not duplicate notes or transfer ownership. Users can import a commercially reusable saved/discovered version into a chosen private workspace, fork it explicitly, or open it in the MIDI editor through an owned private copy-on-write draft. Reference-only listings remain preview/history surfaces and all reuse commands reject them authoritatively. All permitted reuse paths preserve platform lineage, license, and external credits.
 
 Status: LIB-01 through LIB-03 require one detailed local library plan before implementation. They are sequential because each establishes contracts consumed by the next.
 
@@ -106,7 +106,7 @@ Let users validate a private/current revision, receive per-rule observed-versus-
 
 ### CHALLENGE-03 — Voting, official results, and moderation
 
-Add a post-submission voting phase, randomized/rotated entry presentation, one mutable vote per eligible user/entry, no self-votes, hidden totals until close, Community Favorite calculation, administrator-recorded official placements, and challenge/entry/vote moderation.
+Add a post-submission voting phase, randomized/rotated entry presentation, one mutable vote per eligible user/entry, no self-votes, hidden totals until close, Community Favorite calculation, administrator-recorded official placements, and challenge/entry/vote moderation. Surface the featured active challenge on the landing page and dashboard. Keep completed challenge pages permanently addressable with frozen rules, entries, leaderboard/rankings, and results.
 
 Status: CHALLENGE-01 through CHALLENGE-03 require a detailed local challenge plan after LIB-03. User-created challenge hosting, cash prizes, and programmable rules remain out of scope.
 
@@ -114,7 +114,7 @@ Status: CHALLENGE-01 through CHALLENGE-03 require a detailed local challenge pla
 
 ### BADGE-01 — Challenge achievements and profile awards
 
-Add an extensible badge-definition catalog and immutable profile award records tied to exact challenge results, placements, recipients, and submitted revisions. Launch with generic Winner, Community Favorite, and configurable Top Placement badges. Challenge-specific artwork/definitions may be added later without schema redesign.
+Add an extensible badge-definition catalog and immutable profile award records tied to exact challenge results, placements, recipients, and submitted revisions. Every displayed badge links to its completed challenge/result page. Launch with generic Winner, Community Favorite, and configurable Top Placement badges. Challenge-specific artwork/definitions may be added later without schema redesign.
 
 Status: Needs a detailed local plan after CHALLENGE-03 freezes result authority. XP, levels, streaks, and purchasable status remain deferred.
 
@@ -139,9 +139,10 @@ Status: Deployment remains explicitly unauthorized until the user starts RELEASE
 The invite-only MVP beta is releasable only when:
 
 - all DIFF, FEEDBACK, LIB, CHALLENGE, BADGE, and RELEASE slices are complete;
-- the critical Studio, publication, contribution, fork, diff, library save/import, challenge submission, feedback, and administrator journeys pass;
+- the critical Studio, publication, contribution, fork, diff, library rights filtering plus permitted save/import and denied reference-only reuse, challenge submission, feedback, and administrator journeys pass;
 - clean migrations, pgTAP/RLS tests, generated types, the MIDI-only static contract, and production build are green;
 - public queries do not reveal private projects, saved collections, feedback, votes before close, or administrator data;
+- public-library rights gating, external credits, copyright reporting, and moderation-hide behavior are verified and the operator copyright/contact process is documented;
 - beta content is seeded so discovery, library, and challenge pages are useful on day one;
 - the hosted migration target and Vercel/OAuth configuration are verified without exposing secrets; and
 - release and rollback runbooks name the exact production URL, commit, migrations, and operator checks.

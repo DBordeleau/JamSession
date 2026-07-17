@@ -21,10 +21,10 @@ The two-attempt ceiling applies to an unchanged environment blocker. A concrete 
 
 ## Post-pivot MVP sequence
 
-1. **Wave A — DIFF and FEEDBACK:** deliver musician-facing semantic comparisons and, in parallel where ownership permits, authenticated beta feedback with a private administrator queue.
-2. **Wave B — LIB:** add explicit public pattern listing, bounded search/filtering, browser-local preview, history/usage/diffs, private saved clips, and attributed Studio import.
-3. **Wave C — CHALLENGE:** add administrator-curated versioned challenges, deterministic eligibility feedback, immutable entries, voting, and finalized results.
-4. **Wave D — BADGE:** derive extensible immutable profile awards from finalized challenge results.
+1. **Wave A — DIFF and FEEDBACK:** deliver landing-matched static semantic comparisons for authorized revision pairs and, in parallel where ownership permits, authenticated beta feedback with a private administrator queue.
+2. **Wave B — LIB:** add rights-gated public pattern listing with commercially reusable and reference-only modes, All/mode Explore filtering, external credits, copyright reporting/moderation, bounded musical search/filtering, browser-local preview, any-two-version history diffs, private saved clips, and attributed reusable-only save/import/fork/editor actions.
+3. **Wave C — CHALLENGE:** add administrator-curated versioned challenges, featured landing/dashboard discovery, deterministic eligibility feedback, immutable entries, voting, and permanently addressable finalized results.
+4. **Wave D — BADGE:** derive extensible immutable profile awards from finalized challenge results and link every award to its canonical completed challenge/result.
 5. **Wave E — RELEASE:** coordinate the OpenMIDI frontend/repository rename, seed useful beta content, harden critical paths, configure Vercel, and run production smoke checks.
 
 DIFF and FEEDBACK are the only parallel-safe product programs by default. Library, challenge, badge, and release slices are dependency-ordered. Detailed worker plans must declare any narrower parallel ownership before branches start.

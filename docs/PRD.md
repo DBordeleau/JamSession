@@ -242,9 +242,9 @@ Summaries must be computed from canonical structured data, not supplied by a lan
 
 The MVP includes bounded comparisons for:
 
-- a project revision and its exact parent revision;
+- any two revisions the viewer is authorized to read within the same project;
 - a submitted contribution and its exact base revision; and
-- a public MIDI pattern version and its exact parent/source version where one exists.
+- any two versions the viewer is authorized to read within the same MIDI pattern/clip history.
 
 Each comparison provides:
 
@@ -255,7 +255,9 @@ Each comparison provides:
 - playback of either immutable side;
 - no attempt to automatically merge the two versions.
 
-The note overlay remains bounded to one selected track/clip/pattern context at a time. Arbitrary three-way comparisons, a full-project animated overlay, notation diff, or automatic merge are deferred.
+The default comparison may use a revision/version and its exact parent, but users can select non-adjacent versions, swap sides, and share/reload the exact authorized pair. The pair must belong to one project or one pattern history; cross-project, cross-pattern, three-way, notation, and automatic-merge comparisons are deferred.
+
+The note overlay remains bounded to one selected track/clip/pattern context at a time. The MVP is static: it shows before/after geometry together with the landing-page visual language—gold `+` Added notes, coral `~` Changed notes, muted dashed `−` Removed notes, and equivalent text. Animating notes between versions is a future enhancement, not an MVP requirement.
 
 ### 3. OpenMIDI Challenges
 
@@ -275,6 +277,8 @@ Each challenge includes:
 - maximum entries per user;
 - judging method and named host/judges where applicable;
 - immutable submitted revision references.
+
+OpenMIDI exposes one administrator-selected **featured active challenge** on the public landing page and signed-in dashboard. The card links to the canonical challenge page and reflects the real lifecycle rather than maintaining separate marketing-only challenge state. When no challenge is open, it may show the next scheduled challenge or the most recently completed challenge with an explicit label.
 
 #### Initial constraint vocabulary
 
@@ -328,11 +332,13 @@ Profiles may display durable, non-transferable badges for:
 
 Badge definitions live in an extensible catalog rather than hard-coded profile columns. Challenge completion grants immutable award records tied to the exact challenge, placement/result, recipient, and submitted revision. The initial catalog may be generic; later challenges can introduce their own artwork and award definitions without changing the award model.
 
+Completed challenge pages remain permanently addressable unless moderation hides them. They display the original prompt, frozen constraint/rule version, dates, host/judges, eligible entries, final leaderboard/rankings, Community Favorite, official placements, and result notes. Voting and entry mutation stay closed. Every profile badge links to the exact challenge page and result that awarded it.
+
 No XP or level system is included in MVP. Add it only if later evidence shows it improves creation and retention without rewarding spam.
 
 ### 4. Public MIDI clip library
 
-The library turns OpenMIDI's structured source material into a reusable commons. It should feel closer to browsing useful open-source components than downloading anonymous files, but it is not a package manager or commercial asset marketplace.
+The library turns OpenMIDI's structured source material into a browsable catalog with a clearly marked reusable commons. It should feel closer to browsing useful open-source components than downloading anonymous files, but it is not a package manager or commercial asset marketplace.
 
 Users can explicitly list an immutable MIDI pattern version from an eligible public project with:
 
@@ -342,27 +348,54 @@ Users can explicitly list an immutable MIDI pattern version from an eligible pub
 - tempo, meter, musical key/scale where declared;
 - duration, bar count, note range, polyphony, and note count derived automatically;
 - tags and supported reuse license/terms;
+- an explicit rights basis and immutable external-credit snapshot where third-party or public-domain material is acknowledged;
 - an immediate deterministic browser preview.
 
 Other users can:
 
 - search by pattern title, creator, and tags;
-- filter by instrument family/preset, tempo range, meter, declared key, duration/bar count, note range, polyphony, and note count where useful;
+- filter by instrument family/preset, tempo range, meter, declared key, duration/bar count, note range, polyphony, note count, and reuse permission where useful;
 - audition it without opening the full Studio;
 - inspect its notes in a read-only piano roll;
 - open a detail page with immutable version history, visual parent/source diffs, attribution/license, and the visible public projects that use the exact version or its descendants;
-- save an exact version to a private **Saved clips** collection without duplicating its note data;
-- import a saved or discovered exact version directly into a chosen private Studio workspace;
-- fork/edit it into a new immutable version;
-- export the supported Standard MIDI File subset.
+- for commercially reusable listings, save an exact version to a private **Saved clips** collection without duplicating its note data;
+- for commercially reusable listings, import a saved or discovered exact version directly into a chosen private Studio workspace;
+- for commercially reusable listings, fork it into a new private copy-on-write pattern while preserving source lineage;
+- for commercially reusable listings, choose **Open in MIDI editor**, which opens an owned editable draft—creating a private fork first when the selected immutable version belongs to someone else; and
+- export the supported Standard MIDI File subset only when the listing grants reuse.
 
 Saving is a bookmark/reference action, not publication or ownership transfer. Importing or editing is copy-on-write and must retain machine-readable lineage, license, and creator attribution. Published project/revision credits snapshot the reused material so later profile, listing, or collection changes do not rewrite history.
+
+#### Rights and licensing gate
+
+MIDI is a digital expression of a musical composition. Recreating a recognizable melody, harmony, or arrangement may implicate rights in the underlying composition even when no sound recording is uploaded. Attribution alone does not grant permission, and selecting a different Creative Commons license cannot license rights the user does not own.
+
+Every public listing has one explicit reuse mode:
+
+- **Commercial reuse permitted — CC BY 4.0.** Other users may save, import, fork, open in the editor, export, adapt, and use the pattern commercially when they follow the attribution terms.
+- **Reference only — reuse not granted.** Other users may search, preview, inspect notes, history, diffs, credits, and visible public usage, but cannot save it to their reusable collection, import, fork, open an editable copy, or export it through library actions. This mode is an all-rights-reserved public display choice, not a license to reuse.
+
+Library Explore provides an **All**, **Commercial reuse permitted**, and **Reference only** filter. Cards and detail pages show the reuse mode in text, not color alone. Reuse actions are omitted or disabled with a concise explanation on reference-only listings, and server commands enforce the same boundary rather than trusting hidden controls.
+
+Reuse mode is fixed for the exact listed version. A version already published under CC BY 4.0 cannot be relabeled reference-only because the granted license is not revoked by changing OpenMIDI metadata. A creator who wants different terms must publish and list a new eligible version. A reference-only version carries no reuse license; its separate display attestation authorizes OpenMIDI to present the notes and synthesize the browser preview under the product terms, subject to legal review before launch.
+
+Before either kind of public library listing, the user must classify the pattern as one of:
+
+- wholly original material they own and are authorized to publish under the selected reuse mode;
+- an adaptation/reuse of material they are authorized to distribute under the selected reuse mode, with the source license or permission and required credit recorded;
+- public-domain material, with source and public-domain rationale recorded; or
+- a cover, recreation, adaptation, or uncertain-rights work for which they cannot confirm authority to sublicense commercially.
+
+The interface explains the implications in plain language and links to the applicable terms. The last category cannot be publicly listed in either mode; marking an item reference-only does not create permission to distribute an unauthorized cover or adaptation. It may remain a private draft, and external credits do not override that restriction. The same check applies anywhere public project publication would make that pattern reusable, so users cannot bypass the gate by publishing through another route. Compatible adaptations require the user to affirm that their source terms and permissions allow the selected public display and downstream reuse, if any. The MVP offers one open reuse license—CC BY 4.0—and one no-reuse display mode rather than presenting alternate CC licenses as a false solution to missing rights. This workflow is risk reduction and user education, not a legal determination or warranty by OpenMIDI.
+
+External credits can identify a non-member creator/rightsholder, role, original work title, source URL, source license/terms, and a bounded attribution note. They are immutable snapshots on a published pattern version, render separately from verified OpenMIDI creator lineage, and are included with exports. A visible notice states that credit acknowledges a source but is not proof of permission.
 
 #### MVP boundaries
 
 - Publishing to the library is explicit; public project clips are not automatically listed.
 - Removing a saved item changes only that user's collection. Unlisting a pattern removes it from library discovery but cannot break existing project references, exports, or attribution.
-- Only public, rights-attested CC BY 4.0 pattern versions may be listed or imported through the public library.
+- Only rights-attested pattern versions may be listed. Only listings marked **Commercial reuse permitted — CC BY 4.0** may be saved to the reusable collection, imported, forked, opened as an editable copy, or exported through library actions.
+- Library listings expose a **Report unoriginal or unauthorized work** action. Reports may identify the original work/source URL and whether the reporter claims to be a rightsholder, but must not be publicly visible.
 - No dependency graph, semantic-version resolver, install command, or executable content.
 - No audio samples, soundfonts, plugin presets, or external binary assets.
 - No paid licenses or revenue splits.
@@ -407,7 +440,7 @@ The prototype retains:
 - holds and auditable moderation actions;
 - rate limits on challenge submissions, votes, reports, project creation, and library publishing.
 
-New moderation targets must include challenges, challenge entries, votes where abuse review requires them, and library listings. Hiding a listing or entry affects discovery and eligibility without mutating immutable project history.
+New moderation targets must include challenges, challenge entries, votes where abuse review requires them, library listings, and the immutable pattern versions behind reported listings. Library reports include a dedicated unoriginal/unauthorized-work reason and bounded claimant/source context. Administrators can hide a listing immediately, preserve the report and immutable evidence for review, record a decision, and remove or restore discovery without rewriting project history. OpenMIDI must publish a clear copyright/contact process before unrestricted public launch; the in-product report flow is not represented as a complete legal takedown process.
 
 ### 7. Beta feedback and administrator triage
 
@@ -470,6 +503,8 @@ Defer numerical progression. XP systems reward whatever is easiest to count and 
 - I can begin with a prompt, starter project, or reusable clip instead of a blank canvas.
 - I can search by musical properties, preview a pattern, save its exact version, and place it into a Studio project later.
 - I can import a clip, transform it, and know that its creator remains credited.
+- I can fork or open a library clip directly in the MIDI editor without losing its exact source lineage.
+- I am warned when a cover, recreation, or adaptation may not be eligible for commercial CC reuse, and I can record required external credits without being told that credit equals permission.
 - I can export MIDI to continue experimenting elsewhere.
 
 ### As a remixer or contributor
@@ -485,7 +520,7 @@ Defer numerical progression. XP systems reward whatever is easiest to count and 
 - I can validate my work before final submission.
 - I can replace my entry explicitly before the deadline.
 - I can listen to entries in a fairer browsing order and vote after submissions close.
-- My placement and participation remain connected to the exact work I submitted.
+- My placement and participation remain connected to the exact work I submitted, and any badge links back to the permanent challenge results.
 
 ### As a listener
 
@@ -503,6 +538,7 @@ Defer numerical progression. XP systems reward whatever is easiest to count and 
 - I can create and schedule a challenge from a bounded rule vocabulary.
 - I can preview how its rules will be presented and validated.
 - I can moderate projects, entries, library listings, accounts, and suspicious votes.
+- I can triage reports that a listed clip is unoriginal or unauthorized, hide it while reviewing evidence, and record a decision without rewriting immutable music history.
 - I can record official results without changing submitted revisions.
 - I can review, classify, handle, or delete beta feedback without exposing it publicly.
 
@@ -521,22 +557,24 @@ The MIDI-only MVP is ready for invited public testing when all of the following 
 
 - Revisions, contributions, and forks preserve immutable lineage and attribution.
 - Structured summaries are deterministic and correct for supported changes.
-- Project revisions, contribution versions, and eligible pattern versions can be compared with a useful accessible visual diff.
-- A published library clip can be searched, previewed, inspected, saved, imported, transformed, and credited.
+- Any two authorized revisions in one project and any two authorized versions in one pattern history can be compared with a useful accessible static visual diff.
+- Every published library clip can be searched, filtered by reuse mode, previewed, and inspected. Commercially reusable clips can also be saved, imported, forked, opened in the MIDI editor, transformed, exported, and credited; reference-only clips reject those reuse paths.
 - Library detail exposes immutable history and visible public-project usage without leaking private projects.
+- Library publication blocks uncertain-rights covers/recreations from both public modes, preserves external credits separately from platform lineage, and supports unoriginal/unauthorized-work reporting.
 
 ### Challenges
 
 - An administrator can schedule a curated challenge with supported track-count, instrument-count/family/preset, BPM, meter, and key constraints.
 - Users can compose, preflight, submit, and explicitly replace an eligible entry.
 - Submission closure, voting, official results, and Community Favorite are deterministic and auditable.
+- The featured active challenge appears on the landing page and dashboard, and completed challenge pages retain frozen details and final rankings.
 - Invalid or late entries cannot bypass authoritative validation.
 - Challenge pages remain useful with a small invited community.
 
 ### Recognition and feedback
 
 - Completed challenge results issue durable catalog-backed badges for winners, Community Favorites, and configured top placements.
-- Profiles display awards with their exact challenge/result source.
+- Profiles display awards as links to their exact completed challenge page and result source.
 - Authenticated beta users can submit rate-limited bugs and suggestions without attachments or sensitive diagnostics.
 - Administrators can review, classify, handle, and delete feedback in a private queue.
 
@@ -546,6 +584,7 @@ The MIDI-only MVP is ready for invited public testing when all of the following 
 - Suspended or hidden actors cannot publish, submit, vote, or bypass moderation.
 - Rate limits and uniqueness constraints prevent obvious vote and submission abuse.
 - User content and challenge terms have reporting and moderation paths.
+- Public library listings have a rights attestation, immutable external-credit display, unoriginal/unauthorized-work reporting, and a documented copyright/contact process before unrestricted launch.
 - Feedback, saved clips, badges, challenge entries, and votes have explicit RLS and command authorization.
 - The application runs within the prototype's $0 database, compute, and bandwidth budget under the intended invited-user load.
 - The production schema can be reset/seeded deliberately before launch without preserving experimental audio data.
@@ -629,7 +668,7 @@ MIDI projects are only enjoyable if deterministic built-in instruments sound goo
 
 ### Copyright and reuse confusion
 
-Require explicit supported reuse terms for library publishing and challenge starters. Preserve source lineage and immutable credit snapshots. Do not claim to adjudicate ownership disputes.
+Require a rights-basis choice and explicit authority for the selected commercially reusable or reference-only public mode before library publication. Warn that MIDI recreations can implicate the underlying composition and that attribution or reference-only status is not permission. Block uncertain-rights covers/recreations from library listing, preserve platform lineage and external credits separately, support dedicated unoriginal/unauthorized-work reports and temporary hiding, and publish a copyright/contact process before unrestricted launch. Do not claim that OpenMIDI has adjudicated ownership merely because a user passed the attestation.
 
 ### Studio scope expansion
 

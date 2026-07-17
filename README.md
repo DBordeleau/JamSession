@@ -10,10 +10,10 @@ OpenMIDI is a public MIDI creation, remix, reuse, and constraint-challenge platf
 - Publish immutable arrangement versions with human-readable semantic MIDI diffs.
 - Submit a contribution for the project owner to review.
 - Accept or reject contributions without rewriting project history.
-- Fork and reuse public MIDI while preserving creator lineage and CC BY 4.0 attribution.
-- Discover public projects and reusable MIDI patterns, preview and save exact versions, and import them into Studio with attribution.
-- Compare project, contribution, and pattern versions through musician-facing visual diffs.
-- Enter eligible immutable revisions in curated constraint challenges, vote, and earn extensible profile awards.
+- Fork and reuse commercially reusable public MIDI while preserving creator lineage and CC BY 4.0 attribution.
+- Discover rights-attested public MIDI patterns, filter commercially reusable and reference-only material, and preview every listing; reusable exact versions can also be saved, forked, opened, and imported into Studio with platform lineage and external credits intact.
+- Compare any two authorized project revisions or pattern versions through musician-facing static visual diffs.
+- Enter eligible immutable revisions in curated constraint challenges, vote, revisit completed leaderboards, and earn linked extensible profile awards.
 - Send a bug report or suggestion to a private administrator queue during the beta.
 
 The [product requirements](docs/PRD.md) describe the intended experience, the tracked [MVP roadmap](docs/ROADMAP.md) shows what is complete and what comes next, the [MIDI-only pivot contract](docs/technical-design/midi-only-pivot-contract.md) freezes the target vocabulary and persistence invariants, the [technical-design index](docs/technical-design/README.md) explains how it is built, and the [brand and visual-design guide](docs/design/brand.md) defines the product voice and presentation for user-facing surfaces. The [studio-forward plan](docs/studio-forward-refactor-plan.md) remains a historical record of the refactor that produced the current Studio.

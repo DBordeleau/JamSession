@@ -43,7 +43,10 @@ Before implementing a task:
 
 - Use the target nouns `MIDI pattern`, `pattern version`, `arrangement version`, `track`, and `clip`. “Stem” is historical/temporary compatibility vocabulary.
 - Do not reintroduce uploaded musical media or legacy-audio compatibility; the active application and schema are MIDI-only.
-- Public reusable MIDI uses CC BY 4.0 and immutable creator/source lineage. Implement library, challenge, and award behavior only in the roadmap order and from a dedicated local plan.
+- Public library MIDI has two explicit modes: commercially reusable CC BY 4.0 and reference-only/no-reuse. Reference-only content may be previewed and inspected but not saved, imported, forked, opened as an editable copy, or exported through library actions. Implement library, challenge, and award behavior only in roadmap order and from a dedicated local plan.
+- The MVP visual diff is a static combined overlay for any two authorized revisions in one project or any two authorized versions in one pattern history. Match the landing preview's gold `+` Added, coral `~` Changed, and muted dashed `−` Removed language; animated transformation is deferred.
+- Public-library listing requires a versioned rights basis and authority attestation for the selected public display/reuse mode. External credits are immutable and separate from verified platform lineage; attribution or reference-only status is not permission, and uncertain-rights covers/recreations cannot enter either public mode. Preserve dedicated copyright-report moderation privacy.
+- MVP challenges are administrator-curated. Surface one featured active challenge on the landing/dashboard, keep completed challenge/result pages addressable, and link awards back to their exact result. User-created challenge hosting remains deferred.
 - Presets are bundled/versioned synthesis only. Do not add samples, soundfonts, remote audio, or user-supplied synth graphs.
 - Historical wave ownership and transition rules remain in the pivot contract and local implementation plan for archaeology; they are not instructions for new work.
 

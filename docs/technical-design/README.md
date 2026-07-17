@@ -37,14 +37,14 @@ The PR 01–20, OPT-01–OPT-05, MIDI-01–MIDI-07, STUDIO-01–STUDIO-06, and U
 
 ## Next work and hosted state
 
-Post-foundation product work sequences semantic visual diffs alongside beta feedback, followed by the public MIDI library and saved clips, curated challenges, challenge awards, and release hardening. DIFF-01 is the exact next ready slice; FEEDBACK-01 may run in parallel after its own detailed local plan exists. PIVOT-10 completed the destructive same-project hosted rebaseline while retaining the existing project reference/API configuration, and migration `20260717142701` subsequently reconciled administrator invitations. Local and hosted checks remain distinct even though both now implement the same five-migration schema; Vercel deployment is deferred to RELEASE-03.
+Post-foundation product work sequences landing-matched static semantic visual diffs alongside beta feedback, followed by the rights-gated public MIDI library and saved clips, curated challenges with durable results, linked challenge awards, and release hardening. DIFF-01 is the exact next ready slice; FEEDBACK-01 may run in parallel after its own detailed local plan exists. PIVOT-10 completed the destructive same-project hosted rebaseline while retaining the existing project reference/API configuration, and migration `20260717142701` subsequently reconciled administrator invitations. Local and hosted checks remain distinct even though both now implement the same five-migration schema; Vercel deployment is deferred to RELEASE-03.
 
 ## Global invariants
 
 - Normalized Postgres rows are queryable authority; validated manifest-v3 JSON and hashes are portable snapshots.
 - Published and submitted history is immutable. Workspace saves use optimistic concurrency.
 - Acceptance appends one revision transactionally and never performs automatic musical merging.
-- Forks and reuse preserve exact source revision/pattern versions, creator snapshots, and CC BY 4.0 attribution.
+- Forks and reuse preserve exact source revision/pattern versions, creator snapshots, and CC BY 4.0 attribution. Reference-only library listings grant no reuse and cannot enter those command paths.
 - Public layouts are Auth-independent; authorization lives in verified identity, services, commands, and RLS.
 - Security-definer functions pin `search_path`, authorize the caller, and expose minimum execute grants.
 - Profile avatars are the only user-provided Storage media.
