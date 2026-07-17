@@ -1,8 +1,14 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { diffMidiArrangementsV1 } from "@/features/midi/semantic-diff-v1";
 import type { StudioLauncherProps } from "@/features/studio/components/studio-launcher.client";
 import type { ManifestV3 } from "@/features/studio/manifest/v3";
+import {
+  V3_DIFF_AFTER,
+  V3_DIFF_BEFORE,
+  V3_IDS,
+} from "@/features/studio/manifest/v3.fixtures";
 import { ReviewComparison } from "./review-comparison";
 
 vi.mock("@/features/studio/components/studio-launcher.client", () => ({
@@ -34,47 +40,119 @@ const common = {
 };
 
 describe("ReviewComparison", () => {
-  it("remounts Studio when switching immutable versions", () => {
+  it("preserves exact-side Studio audition and renders unchanged input", () => {
     render(
       <ReviewComparison
-        comparison={
-          {
-            semanticDiff: {
-              algorithmVersion: "jam-session-midi-semantic-diff-1",
-              unchanged: true,
-              metadata: [],
-              tracks: [],
-              clips: [],
-              notes: [],
-              lineage: [],
-            },
-            patternAttributions: [],
-          } as never
-        }
-        base={
-          {
-            ...common,
-            mode: "revision",
-            revisionId: "30000000-0000-4000-8000-000000000123",
-            revisionNumber: 1,
-          } as StudioLauncherProps
-        }
-        submitted={
-          {
-            ...common,
-            mode: "contributionVersion",
-            contributionId: "40000000-0000-4000-8000-000000000123",
-            versionId: "50000000-0000-4000-8000-000000000123",
-            versionNumber: 1,
-          } as StudioLauncherProps
-        }
+        comparison={{
+          baseArrangementVersionId: "60000000-0000-4000-8000-000000000123",
+          submittedArrangementVersionId: "70000000-0000-4000-8000-000000000123",
+          base: { manifest, patternVersions: [] },
+          submitted: { manifest, patternVersions: [] },
+          semanticDiff: {
+            algorithmVersion: "jam-session-midi-semantic-diff-1",
+            unchanged: true,
+            metadata: [],
+            tracks: [],
+            clips: [],
+            notes: [],
+            lineage: [],
+          },
+          patternAttributions: [],
+        }}
+        base={{
+          ...common,
+          mode: "revision",
+          revisionId: "30000000-0000-4000-8000-000000000123",
+          revisionNumber: 1,
+        }}
+        submitted={{
+          ...common,
+          mode: "contributionVersion",
+          contributionId: "40000000-0000-4000-8000-000000000123",
+          versionId: "50000000-0000-4000-8000-000000000123",
+          versionNumber: 1,
+        }}
       />,
     );
 
     expect(screen.getByTestId("studio-mode")).toHaveTextContent(
       "contributionVersion",
     );
+    expect(
+      screen.getByRole("heading", { name: "No musical changes found" }),
+    ).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Base revision" }));
     expect(screen.getByTestId("studio-mode")).toHaveTextContent("revision");
+  });
+
+  it("renders an actionable unavailable state", () => {
+    render(<ReviewComparison comparison={null} />);
+    expect(
+      screen.getByRole("heading", { name: "Comparison unavailable" }),
+    ).toBeVisible();
+  });
+
+  it("keeps pattern UUIDs in technical details instead of primary attribution", () => {
+    const studioPattern = (
+      pattern: (typeof V3_DIFF_AFTER.patternVersions)[number],
+    ) => ({
+      ...pattern,
+      name: "Pattern",
+      presetId: "warm-keys",
+      presetVersion: 1,
+    });
+    const { container } = render(
+      <ReviewComparison
+        comparison={{
+          baseArrangementVersionId: "60000000-0000-4000-8000-000000000123",
+          submittedArrangementVersionId: "70000000-0000-4000-8000-000000000123",
+          base: {
+            manifest: V3_DIFF_BEFORE.manifest,
+            patternVersions: V3_DIFF_BEFORE.patternVersions.map(studioPattern),
+          },
+          submitted: {
+            manifest: V3_DIFF_AFTER.manifest,
+            patternVersions: V3_DIFF_AFTER.patternVersions.map(studioPattern),
+          },
+          semanticDiff: diffMidiArrangementsV1(V3_DIFF_BEFORE, V3_DIFF_AFTER),
+          patternAttributions: [],
+        }}
+        base={{
+          ...common,
+          mode: "revision",
+          revisionId: "30000000-0000-4000-8000-000000000123",
+          revisionNumber: 1,
+        }}
+        submitted={{
+          ...common,
+          mode: "contributionVersion",
+          contributionId: "40000000-0000-4000-8000-000000000123",
+          versionId: "50000000-0000-4000-8000-000000000123",
+          versionNumber: 1,
+        }}
+      />,
+    );
+
+    const rendered = within(container);
+    const attribution = rendered
+      .getByRole("heading", { name: "Pattern attribution" })
+      .closest("section");
+    expect(attribution).not.toBeNull();
+    expect(
+      within(attribution!).queryByText(V3_IDS.patternVersion1),
+    ).not.toBeInTheDocument();
+    expect(
+      within(attribution!).getAllByText(/Pattern version [12]/),
+    ).not.toHaveLength(0);
+
+    const technicalDetails = rendered
+      .getByText("Technical comparison details")
+      .closest("details");
+    expect(technicalDetails).not.toBeNull();
+    expect(
+      within(technicalDetails!).getByText(
+        `Pattern version ID: ${V3_IDS.patternVersion1}`,
+      ),
+    ).toBeInTheDocument();
   });
 });
