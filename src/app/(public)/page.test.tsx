@@ -2,6 +2,10 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import Home from "./page";
 
+vi.mock("@/server/repositories/challenges", () => ({
+  getFeaturedChallenge: vi.fn().mockResolvedValue(null),
+}));
+
 // The canvas-driven pieces do nothing meaningful in jsdom; stub them so the
 // test focuses on the marketing copy and the calls to action.
 vi.mock("./_components/hero-canvas.client", () => ({
@@ -37,8 +41,8 @@ vi.mock("@/features/auth/auth-aware-link.client", () => ({
 }));
 
 describe("Home", () => {
-  it("leads with the OpenMIDI pitch and covers the core selling points", () => {
-    render(<Home />);
+  it("leads with the OpenMIDI pitch and covers the core selling points", async () => {
+    render(await Home());
 
     expect(
       screen.getByRole("heading", {

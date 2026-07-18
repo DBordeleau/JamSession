@@ -88,6 +88,18 @@ export const publicChallengeEntrySchema = z
     attributions: z.array(attributionSchema).min(1).max(2),
     durationMs: z.number().int().nonnegative(),
     submittedAt: z.string(),
+    voteTotal: z.number().int().nonnegative().nullable(),
+    rotationKey: z
+      .string()
+      .regex(/^[0-9a-f]{64}$/)
+      .optional(),
+  })
+  .strict();
+
+export const publicChallengeEntryPageSchema = z
+  .object({
+    rotationBucket: z.string(),
+    entries: z.array(publicChallengeEntrySchema),
   })
   .strict();
 
