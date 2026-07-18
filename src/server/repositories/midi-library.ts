@@ -20,6 +20,9 @@ import type {
   AdminMidiLibraryReport,
   MidiLibraryDetail,
   MidiLibraryPatternComparison,
+  MidiLibraryExport,
+  OwnedPrivateMidiWorkspace,
+  SavedMidiPattern,
 } from "@/features/midi-library/types";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { createSupabaseAnonymousClient } from "@/lib/supabase/anonymous";
@@ -218,6 +221,8 @@ export async function listOwnedMidiLibraryVersions(): Promise<
     reuseLicenseCode: row.reuse_license_code,
     durationTicks: row.duration_ticks,
     noteCount: row.note_count,
+    hasSourceLineage: row.has_source_lineage,
+    hasInheritedExternalCredits: row.has_inherited_external_credits,
     activeListingId: row.active_listing_id,
     activeListingPatternVersionId: row.active_listing_pattern_version_id,
     activeReuseMode:
@@ -405,4 +410,190 @@ export async function applyMidiLibraryModerationAction(input: {
   if (error || !data)
     throw new Error(error?.message ?? "midi_library_moderation_failed");
   return data;
+}
+
+const savedPatternSchema = z.object({
+  midi_pattern_version_id: z.uuid(),
+  source_listing_id: z.uuid(),
+  title: z.string(),
+  creator_username: z.string(),
+  creator_display_name: z.string(),
+  creator_credit_name: z.string(),
+  reuse_mode: z.literal("commercial_reuse"),
+  license_code: z.literal("CC-BY-4.0"),
+  license_version: z.literal("4.0"),
+  license_url: z.literal("https://creativecommons.org/licenses/by/4.0/"),
+  category_name: z.string(),
+  preset_id: z.string(),
+  preset_version: z.number().int(),
+  preset_name: z.string(),
+  duration_ticks: z.number().int().positive(),
+  note_count: z.number().int().nonnegative(),
+  created_at: z.iso.datetime({ offset: true }),
+  source_availability: z.enum([
+    "active",
+    "unlisted",
+    "moderation_hidden",
+    "unavailable",
+  ]),
+  can_reuse: z.boolean(),
+  external_credits: z.array(creditSchema),
+  notes: z.array(noteSchema),
+});
+
+export async function listSavedMidiLibraryPatterns(): Promise<
+  SavedMidiPattern[]
+> {
+  const db = await createSupabaseServerClient();
+  const { data, error } = await db.rpc("list_saved_midi_library_patterns", {
+    p_limit: 100,
+  });
+  if (error) throw new Error("midi_library_saved_unavailable");
+  return z
+    .array(savedPatternSchema)
+    .parse(data ?? [])
+    .map((row) => ({
+      midiPatternVersionId: row.midi_pattern_version_id,
+      sourceListingId: row.source_listing_id,
+      title: row.title,
+      creatorUsername: row.creator_username,
+      creatorDisplayName: row.creator_display_name,
+      creatorCreditName: row.creator_credit_name,
+      reuseMode: row.reuse_mode,
+      license: {
+        code: row.license_code,
+        version: row.license_version,
+        url: row.license_url,
+      },
+      categoryName: row.category_name,
+      preset: {
+        id: row.preset_id,
+        version: row.preset_version,
+        name: row.preset_name,
+      },
+      durationTicks: row.duration_ticks,
+      noteCount: row.note_count,
+      savedAt: row.created_at,
+      sourceAvailability: row.source_availability,
+      canReuse: row.can_reuse,
+      externalCredits: row.external_credits,
+      notes: row.notes,
+    }));
+}
+
+export async function listSavedMidiLibraryPatternIds(
+  patternVersionIds: string[],
+): Promise<string[]> {
+  if (!patternVersionIds.length) return [];
+  const db = await createSupabaseServerClient();
+  const { data, error } = await db.rpc("list_saved_midi_library_pattern_ids", {
+    p_pattern_version_ids: patternVersionIds,
+  });
+  if (error) throw new Error("midi_library_saved_ids_unavailable");
+  return (data ?? []).map((row) => row.midi_pattern_version_id);
+}
+
+export async function listOwnedPrivateMidiWorkspaces(): Promise<
+  OwnedPrivateMidiWorkspace[]
+> {
+  const db = await createSupabaseServerClient();
+  const { data, error } = await db.rpc("list_owned_private_midi_workspaces");
+  if (error) throw new Error("midi_library_workspaces_unavailable");
+  return (data ?? []).map((row) => ({
+    projectId: row.project_id,
+    projectTitle: row.project_title,
+    workspaceId: row.workspace_id,
+    lockVersion: row.lock_version,
+    updatedAt: row.updated_at,
+  }));
+}
+
+export async function saveMidiLibraryPattern(input: {
+  listingId: string;
+  patternVersionId: string;
+  requestId: string;
+}) {
+  const db = await createSupabaseServerClient();
+  const { data, error } = await db.rpc("save_midi_library_pattern", {
+    p_listing_id: input.listingId,
+    p_pattern_version_id: input.patternVersionId,
+    p_request_id: input.requestId,
+  });
+  if (error || !data?.[0])
+    throw new Error(error?.message ?? "midi_library_save_failed");
+  return data[0];
+}
+
+export async function removeSavedMidiLibraryPattern(input: {
+  patternVersionId: string;
+  requestId: string;
+}) {
+  const db = await createSupabaseServerClient();
+  const { data, error } = await db.rpc("remove_saved_midi_library_pattern", {
+    p_pattern_version_id: input.patternVersionId,
+    p_request_id: input.requestId,
+  });
+  if (error || !data?.[0])
+    throw new Error(error?.message ?? "midi_library_remove_failed");
+  return data[0];
+}
+
+export async function reuseMidiLibraryPattern(input: {
+  listingId: string;
+  patternVersionId: string;
+  requestId: string;
+  operation: "import" | "fork" | "open_editor";
+  workspaceId: string | null;
+  expectedWorkspaceLockVersion: number | null;
+  copyName: string | null;
+  startTick: number;
+}) {
+  const db = await createSupabaseServerClient();
+  const { data, error } = await db.rpc("reuse_midi_library_pattern", {
+    p_listing_id: input.listingId,
+    p_pattern_version_id: input.patternVersionId,
+    p_request_id: input.requestId,
+    p_operation: input.operation,
+    p_workspace_id: input.workspaceId ?? undefined,
+    p_expected_workspace_lock_version:
+      input.expectedWorkspaceLockVersion ?? undefined,
+    p_copy_name: input.copyName ?? undefined,
+    p_start_tick: input.startTick,
+  });
+  if (error || !data?.[0])
+    throw new Error(error?.message ?? "midi_library_reuse_failed");
+  return data[0];
+}
+
+const exportSchema = z.object({
+  listingId: z.uuid(),
+  midiPatternId: z.uuid(),
+  midiPatternVersionId: z.uuid(),
+  title: z.string(),
+  creatorCreditName: z.string(),
+  license: z.object({
+    code: z.literal("CC-BY-4.0"),
+    version: z.literal("4.0"),
+    url: z.literal("https://creativecommons.org/licenses/by/4.0/"),
+  }),
+  externalCredits: z.array(creditSchema),
+  ppq: z.literal(480),
+  durationTicks: z.number().int().positive(),
+  presetId: z.string(),
+  presetVersion: z.number().int(),
+  notes: z.array(noteSchema),
+});
+
+export async function getMidiLibraryExport(input: {
+  listingId: string;
+  patternVersionId: string;
+}): Promise<MidiLibraryExport> {
+  const db = await createSupabaseServerClient();
+  const { data, error } = await db.rpc("get_midi_library_export", {
+    p_listing_id: input.listingId,
+    p_pattern_version_id: input.patternVersionId,
+  });
+  if (error || !data)
+    throw new Error(error?.message ?? "midi_library_export_failed");
+  return exportSchema.parse(data);
 }

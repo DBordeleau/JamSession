@@ -214,6 +214,8 @@ export const midiLibraryListingInputSchema = z
       .max(8)
       .transform((tags) => [...new Set(tags)].sort()),
     externalCredits: z.array(externalCreditInputSchema).max(12),
+    hasSourceLineage: z.boolean(),
+    hasInheritedExternalCredits: z.boolean(),
     replaceListingId: z.uuid().nullable(),
   })
   .strict()
@@ -264,7 +266,23 @@ export const midiLibraryListingInputSchema = z
         message:
           "Public-domain listings require an HTTPS source and rationale.",
       });
-    if (value.rightsBasis !== "original" && value.externalCredits.length === 0)
+    if (value.hasSourceLineage && value.rightsBasis !== "authorized_adaptation")
+      context.addIssue({
+        code: "custom",
+        path: ["rightsBasis"],
+        message: "Derived patterns must retain their authorized source basis.",
+      });
+    if (value.hasInheritedExternalCredits && !value.hasSourceLineage)
+      context.addIssue({
+        code: "custom",
+        path: ["hasInheritedExternalCredits"],
+        message: "Inherited credits require verified source lineage.",
+      });
+    if (
+      value.rightsBasis !== "original" &&
+      !value.hasInheritedExternalCredits &&
+      value.externalCredits.length === 0
+    )
       context.addIssue({
         code: "custom",
         path: ["externalCredits"],
@@ -278,3 +296,35 @@ export const midiLibraryUnlistInputSchema = z
     expectedCreatorVersion: z.number().int().positive(),
   })
   .strict();
+
+export const midiLibrarySavedCommandSchema = z
+  .object({
+    listingId: z.uuid(),
+    patternVersionId: z.uuid(),
+    requestId: z.uuid(),
+  })
+  .strict();
+
+export const midiLibraryReuseCommandSchema = z
+  .object({
+    listingId: z.uuid(),
+    patternVersionId: z.uuid(),
+    requestId: z.uuid(),
+    operation: z.enum(["import", "fork", "open_editor"]),
+    workspaceId: z.uuid().nullable(),
+    expectedWorkspaceLockVersion: z.number().int().positive().nullable(),
+    copyName: z.string().trim().min(1).max(120).nullable(),
+    startTick: z.number().int().nonnegative().default(0),
+  })
+  .strict()
+  .refine(
+    ({ operation, workspaceId, expectedWorkspaceLockVersion, copyName }) =>
+      operation === "fork"
+        ? workspaceId === null &&
+          expectedWorkspaceLockVersion === null &&
+          copyName !== null
+        : workspaceId !== null &&
+          expectedWorkspaceLockVersion !== null &&
+          (operation === "import" || copyName !== null),
+    { message: "The reuse destination is inconsistent." },
+  );
