@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { Container } from "@/components/layout/container";
 import { Avatar } from "@/components/ui/avatar";
 import Link from "next/link";
+import { AwardGallery } from "@/features/awards/award-gallery";
 import {
   getPublicProfile,
   getPublicAvatarUrl,
   listPublicProfileContributions,
   listPublicProfileProjects,
+  listPublicProfileAwards,
 } from "@/server/repositories/profiles";
 
 async function find(raw: string) {
@@ -45,6 +47,7 @@ export default async function PublicProfilePage({
   searchParams: Promise<{
     projectsAfter?: string;
     contributionsAfter?: string;
+    awardsAfter?: string;
   }>;
 }) {
   const profile = await find((await params).username);
@@ -52,19 +55,22 @@ export default async function PublicProfilePage({
   const query = await searchParams;
   let projects;
   let contributions;
+  let awards;
   let cursorStale = false;
   try {
-    [projects, contributions] = await Promise.all([
+    [projects, contributions, awards] = await Promise.all([
       listPublicProfileProjects(profile.id, query.projectsAfter),
       listPublicProfileContributions(profile.id, query.contributionsAfter),
+      listPublicProfileAwards(profile.id, query.awardsAfter),
     ]);
   } catch (error) {
     if (error instanceof Error && error.message === "profile_cursor_stale")
       cursorStale = true;
     else throw error;
-    [projects, contributions] = await Promise.all([
+    [projects, contributions, awards] = await Promise.all([
       listPublicProfileProjects(profile.id),
       listPublicProfileContributions(profile.id),
+      listPublicProfileAwards(profile.id),
     ]);
   }
   const base = `/@${profile.username}`;
@@ -102,6 +108,14 @@ export default async function PublicProfilePage({
               results.
             </p>
           )}
+          <AwardGallery
+            awards={awards.items}
+            nextHref={
+              awards.nextCursor
+                ? `${base}?awardsAfter=${encodeURIComponent(awards.nextCursor)}${query.projectsAfter ? `&projectsAfter=${encodeURIComponent(query.projectsAfter)}` : ""}${query.contributionsAfter ? `&contributionsAfter=${encodeURIComponent(query.contributionsAfter)}` : ""}`
+                : null
+            }
+          />
           <section className="border-subtle mt-10 border-t pt-8">
             <h2 className="text-2xl font-bold">Public MIDI projects</h2>
             {projects.items.length > 0 ? (

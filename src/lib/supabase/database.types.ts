@@ -339,6 +339,108 @@ export type Database = {
           },
         ]
       }
+      badge_definition_versions: {
+        Row: {
+          badge_definition_id: string
+          created_at: string
+          created_by: string | null
+          description: string
+          earned_message: string
+          id: string
+          maximum_place: number | null
+          minimum_place: number | null
+          name: string
+          presentation_code: string
+          qualification_kind: string
+          version_number: number
+        }
+        Insert: {
+          badge_definition_id: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          earned_message: string
+          id?: string
+          maximum_place?: number | null
+          minimum_place?: number | null
+          name: string
+          presentation_code: string
+          qualification_kind: string
+          version_number: number
+        }
+        Update: {
+          badge_definition_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          earned_message?: string
+          id?: string
+          maximum_place?: number | null
+          minimum_place?: number | null
+          name?: string
+          presentation_code?: string
+          qualification_kind?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "badge_definition_versions_badge_definition_id_fkey"
+            columns: ["badge_definition_id"]
+            isOneToOne: false
+            referencedRelation: "badge_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "badge_definition_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "badge_definition_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      badge_definitions: {
+        Row: {
+          code: string
+          created_at: string
+          current_version_id: string
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          current_version_id: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          current_version_id?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "badge_definitions_current_version_fk"
+            columns: ["id", "current_version_id"]
+            isOneToOne: false
+            referencedRelation: "badge_definition_versions"
+            referencedColumns: ["badge_definition_id", "id"]
+          },
+        ]
+      }
       challenge_entries: {
         Row: {
           attribution_snapshot: Json
@@ -2079,6 +2181,174 @@ export type Database = {
           },
         ]
       }
+      profile_awards: {
+        Row: {
+          award_basis: string
+          awarded_at: string
+          badge_code_snapshot: string
+          badge_definition_id: string
+          badge_definition_version_id: string
+          badge_description_snapshot: string
+          badge_earned_message_snapshot: string
+          badge_name_snapshot: string
+          challenge_entry_id: string
+          challenge_id: string
+          challenge_result_id: string
+          challenge_slug_snapshot: string
+          challenge_title_snapshot: string
+          challenge_version_id: string
+          final_vote_total: number
+          id: string
+          place: number | null
+          placement_label_snapshot: string | null
+          presentation_code_snapshot: string
+          project_id: string
+          project_revision_id: string
+          project_title_snapshot: string
+          recipient_credit_name_snapshot: string
+          recipient_display_name_snapshot: string
+          recipient_id: string
+          recipient_username_snapshot: string
+          revision_number_snapshot: number
+        }
+        Insert: {
+          award_basis: string
+          awarded_at?: string
+          badge_code_snapshot: string
+          badge_definition_id: string
+          badge_definition_version_id: string
+          badge_description_snapshot: string
+          badge_earned_message_snapshot: string
+          badge_name_snapshot: string
+          challenge_entry_id: string
+          challenge_id: string
+          challenge_result_id: string
+          challenge_slug_snapshot: string
+          challenge_title_snapshot: string
+          challenge_version_id: string
+          final_vote_total: number
+          id?: string
+          place?: number | null
+          placement_label_snapshot?: string | null
+          presentation_code_snapshot: string
+          project_id: string
+          project_revision_id: string
+          project_title_snapshot: string
+          recipient_credit_name_snapshot: string
+          recipient_display_name_snapshot: string
+          recipient_id: string
+          recipient_username_snapshot: string
+          revision_number_snapshot: number
+        }
+        Update: {
+          award_basis?: string
+          awarded_at?: string
+          badge_code_snapshot?: string
+          badge_definition_id?: string
+          badge_definition_version_id?: string
+          badge_description_snapshot?: string
+          badge_earned_message_snapshot?: string
+          badge_name_snapshot?: string
+          challenge_entry_id?: string
+          challenge_id?: string
+          challenge_result_id?: string
+          challenge_slug_snapshot?: string
+          challenge_title_snapshot?: string
+          challenge_version_id?: string
+          final_vote_total?: number
+          id?: string
+          place?: number | null
+          placement_label_snapshot?: string | null
+          presentation_code_snapshot?: string
+          project_id?: string
+          project_revision_id?: string
+          project_title_snapshot?: string
+          recipient_credit_name_snapshot?: string
+          recipient_display_name_snapshot?: string
+          recipient_id?: string
+          recipient_username_snapshot?: string
+          revision_number_snapshot?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_awards_badge_definition_id_fkey"
+            columns: ["badge_definition_id"]
+            isOneToOne: false
+            referencedRelation: "badge_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_awards_badge_version_fk"
+            columns: ["badge_definition_id", "badge_definition_version_id"]
+            isOneToOne: false
+            referencedRelation: "badge_definition_versions"
+            referencedColumns: ["badge_definition_id", "id"]
+          },
+          {
+            foreignKeyName: "profile_awards_challenge_entry_fk"
+            columns: ["challenge_id", "challenge_entry_id"]
+            isOneToOne: false
+            referencedRelation: "challenge_entries"
+            referencedColumns: ["challenge_id", "id"]
+          },
+          {
+            foreignKeyName: "profile_awards_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_awards_challenge_result_fk"
+            columns: ["challenge_id", "challenge_result_id"]
+            isOneToOne: false
+            referencedRelation: "challenge_results"
+            referencedColumns: ["challenge_id", "id"]
+          },
+          {
+            foreignKeyName: "profile_awards_challenge_version_fk"
+            columns: ["challenge_id", "challenge_version_id"]
+            isOneToOne: false
+            referencedRelation: "challenge_versions"
+            referencedColumns: ["challenge_id", "id"]
+          },
+          {
+            foreignKeyName: "profile_awards_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_awards_project_revision_fk"
+            columns: ["project_id", "project_revision_id"]
+            isOneToOne: false
+            referencedRelation: "project_revisions"
+            referencedColumns: ["project_id", "id"]
+          },
+          {
+            foreignKeyName: "profile_awards_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_awards_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_awards_result_entry_fk"
+            columns: ["challenge_result_id", "challenge_entry_id"]
+            isOneToOne: false
+            referencedRelation: "challenge_result_entries"
+            referencedColumns: ["challenge_result_id", "challenge_entry_id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_path: string | null
@@ -3520,6 +3790,14 @@ export type Database = {
         Args: { p_after_id?: string; p_after_updated_at?: string }
         Returns: Json
       }
+      list_public_profile_awards: {
+        Args: {
+          p_after_awarded_at?: string
+          p_after_id?: string
+          p_profile_id: string
+        }
+        Returns: Json
+      }
       list_public_profile_contributions: {
         Args: {
           p_after_accepted_at?: string
@@ -3749,6 +4027,14 @@ export type Database = {
           revision_id: string
           revision_number: number
         }[]
+      }
+      reconcile_current_challenge_awards: {
+        Args: {
+          p_challenge_id: string
+          p_expected_result_id: string
+          p_request_id: string
+        }
+        Returns: Json
       }
       release_content_hold: {
         Args: { p_hold_id: string; p_reason: string; p_request_id: string }

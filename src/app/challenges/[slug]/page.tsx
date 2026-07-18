@@ -204,6 +204,7 @@ export default async function ChallengeDetailPage({
                   {publicEntries.map((entry) => (
                     <li
                       key={entry.entryId}
+                      id={`entry-${entry.entryId}`}
                       className="border-subtle bg-surface rounded-card border p-5"
                     >
                       <p className="text-accent font-mono text-xs tracking-widest uppercase">
