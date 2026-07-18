@@ -77,10 +77,12 @@ select extensions.dblink_exec('entry_a',$remote$
 $remote$);
 select extensions.dblink_exec('entry_b',$remote$
   create or replace function pg_temp.try_replace() returns jsonb language plpgsql security definer set search_path='' as $$
-  declare prior uuid;
+  declare prior uuid; response jsonb;
   begin
     select id into prior from public.challenge_entries where challenge_id='ff500000-0000-4000-8000-000000000001' and entrant_id='ff000000-0000-4000-8000-000000000001' and status='active';
-    return jsonb_build_object('ok',true,'result',public.submit_challenge_entry('ff500000-0000-4000-8000-000000000001','ff600000-0000-4000-8000-000000000001','ff400000-0000-4000-8000-000000000002','ff700000-0000-4000-8000-000000000003',prior,'challenge-display-attestation-v1'));
+    response := public.submit_challenge_entry('ff500000-0000-4000-8000-000000000001','ff600000-0000-4000-8000-000000000001','ff400000-0000-4000-8000-000000000002','ff700000-0000-4000-8000-000000000003',prior,'challenge-display-attestation-v1');
+    if response ? 'errorCode' then return jsonb_build_object('ok',false,'state',response->>'errorCode'); end if;
+    return jsonb_build_object('ok',true,'result',response);
   exception when others then return jsonb_build_object('ok',false,'state',sqlstate,'message',sqlerrm); end $$;
 $remote$);
 create temp table prior_entry as select (result->>'entryId')::uuid id from entry_results where attempt='first';

@@ -1,7 +1,7 @@
 begin;
 reset role;
 create extension if not exists pgtap with schema extensions;
-select plan(49);
+select plan(53);
 
 select has_table('public','challenge_entries','exact challenge entries exist');
 select has_table('private','challenge_entry_commands','private entry command audit exists');
@@ -101,15 +101,20 @@ reset role;
 update public.projects set status='active',deleted_at=null where id='fe100000-0000-4000-8000-000000000001';
 set local role authenticated;
 set local request.jwt.claim.sub='fe000000-0000-4000-8000-000000000001';
-select throws_ok($$select public.submit_challenge_entry('fe500000-0000-4000-8000-000000000001','fe600000-0000-4000-8000-000000000001','fe400000-0000-4000-8000-000000000003',gen_random_uuid(),null,'challenge-display-attestation-v1')$$,'PT422','challenge_revision_ineligible','database independently rejects ineligible submission');
-select throws_ok($$select public.submit_challenge_entry('fe500000-0000-4000-8000-000000000001','fe600000-0000-4000-8000-000000000001','fe400000-0000-4000-8000-000000000002',gen_random_uuid(),null,null)$$,'PT400','challenge_entry_attestation_required','explicit challenge display attestation is required');
+select is(public.submit_challenge_entry('fe500000-0000-4000-8000-000000000001','fe600000-0000-4000-8000-000000000001','fe400000-0000-4000-8000-000000000003','fe700000-0000-4000-8000-000000000010',null,'challenge-display-attestation-v1')->>'errorCode','PT422','database independently rejects ineligible submission');
+select is(public.submit_challenge_entry('fe500000-0000-4000-8000-000000000001','fe600000-0000-4000-8000-000000000001','fe400000-0000-4000-8000-000000000002','fe700000-0000-4000-8000-000000000011',null,null)->>'errorCode','PT400','explicit challenge display attestation is required');
+select public.submit_challenge_entry('fe500000-0000-4000-8000-000000000001','fe600000-0000-4000-8000-000000000001','fe400000-0000-4000-8000-000000000003','fe700000-0000-4000-8000-000000000010',null,'challenge-display-attestation-v1');
+reset role;
+select is((select count(*) from private.challenge_entry_commands where actor_id='fe000000-0000-4000-8000-000000000001' and outcome='rejected'),2::bigint,'rejected attempts persist and identical rejected requests replay without consuming another attempt');
+set local role authenticated;
+set local request.jwt.claim.sub='fe000000-0000-4000-8000-000000000001';
 create temp table submitted as select public.submit_challenge_entry('fe500000-0000-4000-8000-000000000001','fe600000-0000-4000-8000-000000000001','fe400000-0000-4000-8000-000000000002','fe700000-0000-4000-8000-000000000001',null,'challenge-display-attestation-v1') result;
 reset role;
 select is((select count(*) from public.challenge_entries where challenge_id='fe500000-0000-4000-8000-000000000001'),1::bigint,'first submission creates one immutable entry');
 set local role authenticated;
 set local request.jwt.claim.sub='fe000000-0000-4000-8000-000000000001';
 select is(public.submit_challenge_entry('fe500000-0000-4000-8000-000000000001','fe600000-0000-4000-8000-000000000001','fe400000-0000-4000-8000-000000000002','fe700000-0000-4000-8000-000000000001',null,'challenge-display-attestation-v1'),(select result from submitted),'identical submission replays idempotently');
-select throws_ok($$select public.submit_challenge_entry('fe500000-0000-4000-8000-000000000001','fe600000-0000-4000-8000-000000000001','fe400000-0000-4000-8000-000000000002','fe700000-0000-4000-8000-000000000001',gen_random_uuid(),'challenge-display-attestation-v1')$$,'PT409','challenge_entry_request_conflict','changed payload under one request ID conflicts');
+select is(public.submit_challenge_entry('fe500000-0000-4000-8000-000000000001','fe600000-0000-4000-8000-000000000001','fe400000-0000-4000-8000-000000000002','fe700000-0000-4000-8000-000000000001',gen_random_uuid(),'challenge-display-attestation-v1')->>'errorCode','PT409','changed payload under one request ID conflicts');
 reset role;
 select throws_ok($$update public.challenge_entries set project_title_snapshot='Crafted'$$,'PT403','challenge_entry_immutable','immutable entry snapshot cannot be edited');
 select throws_ok($$delete from public.challenge_entries$$,'PT403','challenge_entry_immutable','entry evidence cannot be deleted');
@@ -130,7 +135,7 @@ select is((select count(*) from public.challenge_entries where challenge_id='fe5
 set local role authenticated;
 set local request.jwt.claim.sub='fe000000-0000-4000-8000-000000000001';
 select is(public.get_my_challenge_entry('fe500000-0000-4000-8000-000000000001')->>'revisionNumber','3','owner My entry projection pins replacement revision');
-select throws_ok($$select public.submit_challenge_entry('fe500000-0000-4000-8000-000000000001','fe600000-0000-4000-8000-000000000001','fe400000-0000-4000-8000-000000000004',gen_random_uuid(),(select (result->>'entryId')::uuid from submitted),'challenge-display-attestation-v1')$$,'PT409','challenge_entry_stale','stale replacement contention fails');
+select is(public.submit_challenge_entry('fe500000-0000-4000-8000-000000000001','fe600000-0000-4000-8000-000000000001','fe400000-0000-4000-8000-000000000004',gen_random_uuid(),(select (result->>'entryId')::uuid from submitted),'challenge-display-attestation-v1')->>'errorCode','PT409','stale replacement contention fails');
 select is(jsonb_array_length(public.list_public_challenge_entries('exact-entry-test')),0,'entrant list remains completely hidden before voting opens');
 select is(public.get_public_challenge_entry('exact-entry-test',(select (result->>'entryId')::uuid from replacement)),null,'entry detail remains hidden before voting');
 
@@ -140,7 +145,7 @@ update public.challenge_versions set voting_opens_at=now()-interval '1 second',s
 alter table public.challenge_versions enable trigger challenge_versions_immutable;
 set local role authenticated;
 set local request.jwt.claim.sub='fe000000-0000-4000-8000-000000000001';
-select throws_ok($$select public.submit_challenge_entry('fe500000-0000-4000-8000-000000000001','fe600000-0000-4000-8000-000000000001','fe400000-0000-4000-8000-000000000004',gen_random_uuid(),(select (result->>'entryId')::uuid from replacement),'challenge-display-attestation-v1')$$,'PT409','challenge_submissions_closed','exact close boundary rejects late replacement');
+select is(public.submit_challenge_entry('fe500000-0000-4000-8000-000000000001','fe600000-0000-4000-8000-000000000001','fe400000-0000-4000-8000-000000000004',gen_random_uuid(),(select (result->>'entryId')::uuid from replacement),'challenge-display-attestation-v1')->>'errorCode','PT409','exact close boundary rejects late replacement');
 select is(jsonb_array_length(public.list_public_challenge_entries('exact-entry-test')),1,'voting phase exposes only the one active visible entry');
 select is(public.get_public_challenge_entry('exact-entry-test',(select (result->>'entryId')::uuid from replacement))->>'projectTitle','Private Four Track Entry','challenge projection exposes the exact private-project snapshot');
 select is(public.get_public_challenge_entry_preview('exact-entry-test',(select (result->>'entryId')::uuid from replacement))->>'revisionId','fe400000-0000-4000-8000-000000000004','challenge preview returns only the pinned exact revision through its safe endpoint authority');
@@ -152,6 +157,47 @@ select is(public.get_public_challenge_entry_preview('exact-entry-test',(select (
 update public.projects set moderation_state='visible' where id='fe100000-0000-4000-8000-000000000001';
 update public.challenges set state='completed',completed_at=now() where id='fe500000-0000-4000-8000-000000000001';
 select is(jsonb_array_length(public.list_public_challenge_entries('exact-entry-test')),1,'completed phase retains only the active moderation-visible exact entry');
+
+set local role authenticated;
+set local request.jwt.claim.sub='fe000000-0000-4000-8000-000000000002';
+do $$
+declare i integer;
+begin
+  for i in 1..20 loop
+    perform public.submit_challenge_entry(
+      'fe500000-0000-4000-8000-000000000001','fe600000-0000-4000-8000-000000000001',
+      'fe400000-0000-4000-8000-000000000004',('feb00000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,
+      (select (result->>'entryId')::uuid from replacement),'challenge-display-attestation-v1'
+    );
+  end loop;
+end $$;
+reset role;
+select is((select count(*) from private.challenge_entry_commands where actor_id='fe000000-0000-4000-8000-000000000002' and outcome='rejected'),20::bigint,'late rejected attempts persist and consume the hourly budget');
+set local role authenticated;
+set local request.jwt.claim.sub='fe000000-0000-4000-8000-000000000002';
+select is(public.submit_challenge_entry('fe500000-0000-4000-8000-000000000001','fe600000-0000-4000-8000-000000000001','fe400000-0000-4000-8000-000000000004','feb00000-0000-4000-8000-000000000021',(select (result->>'entryId')::uuid from replacement),'challenge-display-attestation-v1')->>'errorCode','PT429','the next distinct attempt is rate limited before authoritative evaluation');
+
+reset role;
+insert into auth.users(instance_id,id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+select '00000000-0000-0000-0000-000000000000',('fe900000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,'authenticated','authenticated',
+  'hidden-entry-'||i||'@example.test','','{}','{}',now(),now() from generate_series(1,25) i;
+update public.profiles set username='HiddenEntry'||right(id::text,2),username_normalized=lower('HiddenEntry'||right(id::text,2)),
+  display_name='Hidden Entry',credit_name='Hidden Entry',profile_completed_at=now()
+where id::text like 'fe900000-0000-4000-8000-%';
+insert into public.challenge_entries(
+  id,challenge_id,challenge_version_id,entrant_id,project_id,project_revision_id,project_title_snapshot,
+  entrant_username_snapshot,entrant_display_name_snapshot,entrant_credit_name_snapshot,revision_number_snapshot,
+  revision_message_snapshot,attribution_snapshot,duration_ms_snapshot,display_attestation_version,display_attested_at,
+  evaluator_version,facts,evaluation,evaluation_sha256,status,replacement_of_entry_id,submit_request_id,submitted_at,moderation_state
+)
+select ('fea00000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,e.challenge_id,e.challenge_version_id,
+  ('fe900000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,e.project_id,e.project_revision_id,e.project_title_snapshot,
+  'HiddenEntry'||lpad(i::text,2,'0'),e.entrant_display_name_snapshot,e.entrant_credit_name_snapshot,e.revision_number_snapshot,
+  e.revision_message_snapshot,e.attribution_snapshot,e.duration_ms_snapshot,e.display_attestation_version,e.display_attested_at,
+  e.evaluator_version,e.facts,e.evaluation,e.evaluation_sha256,'active',null,gen_random_uuid(),e.submitted_at-interval '2 days','hidden'
+from public.challenge_entries e cross join generate_series(1,25) i
+where e.id=(select (result->>'entryId')::uuid from replacement);
+select is(jsonb_array_length(public.list_public_challenge_entries('exact-entry-test')),1,'visibility filtering precedes the 25-entry page cap');
 
 select * from finish();
 rollback;

@@ -3,7 +3,7 @@ import "server-only";
 import { z } from "zod";
 import { canonicalizeChallengeConstraintsV1 } from "@/features/challenges/constraint-v1";
 import {
-  challengeEntryCommandResultSchema,
+  challengeEntryCommandResponseSchema,
   challengePreflightSchema,
   challengeRevisionOptionSchema,
   myChallengeEntrySchema,
@@ -262,7 +262,7 @@ export async function submitChallengeEntry(input: {
     p_display_attestation_version: input.displayAttestationVersion,
   });
   return {
-    data: data ? challengeEntryCommandResultSchema.parse(data) : null,
+    data: data ? challengeEntryCommandResponseSchema.parse(data) : null,
     error,
   };
 }

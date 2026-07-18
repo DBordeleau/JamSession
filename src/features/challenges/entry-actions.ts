@@ -79,6 +79,7 @@ export async function submitChallengeEntryAction(
       displayAttestationVersion: parsed.data.displayAttestationVersion,
     });
     if (result.error || !result.data) return commandError(result.error?.code);
+    if ("errorCode" in result.data) return commandError(result.data.errorCode);
     revalidatePath(`/challenges/${parsed.data.slug}`);
     return {
       status: "success",

@@ -89,21 +89,32 @@ create index challenge_entries_replacement_idx on public.challenge_entries(repla
 
 create table private.challenge_entry_commands (
   id uuid primary key default gen_random_uuid(),
-  actor_id uuid not null references public.profiles(id) on delete restrict,
+  actor_id uuid not null,
   request_id uuid not null,
   request_payload_sha256 text not null,
-  challenge_id uuid not null references public.challenges(id) on delete restrict,
-  challenge_version_id uuid not null references public.challenge_versions(id) on delete restrict,
+  challenge_id uuid not null,
+  challenge_version_id uuid not null,
+  project_revision_id uuid not null,
   action text not null,
-  expected_prior_entry_id uuid references public.challenge_entries(id) on delete restrict,
-  resulting_entry_id uuid not null references public.challenge_entries(id) on delete restrict,
+  expected_prior_entry_id uuid,
+  resulting_entry_id uuid references public.challenge_entries(id) on delete restrict,
+  outcome text not null,
+  error_code text,
+  error_message text,
+  response jsonb,
   created_at timestamptz not null default statement_timestamp(),
+  completed_at timestamptz,
   unique(actor_id,request_id),
-  constraint challenge_entry_commands_action_check check (action in ('submit','replace','withdraw')),
+  constraint challenge_entry_commands_action_check check (action in ('submit','replace')),
+  constraint challenge_entry_commands_outcome_check check (outcome in ('succeeded','rejected')),
   constraint challenge_entry_commands_hash_check check (request_payload_sha256 ~ '^[0-9a-f]{64}$'),
   constraint challenge_entry_commands_shape_check check (
     (action='submit' and expected_prior_entry_id is null) or
-    (action='replace' and expected_prior_entry_id is not null) or action='withdraw'
+    (action='replace' and expected_prior_entry_id is not null)
+  ),
+  constraint challenge_entry_commands_result_check check (
+    (outcome='succeeded' and resulting_entry_id is not null and error_code is null and error_message is null and response is not null and completed_at is not null)
+    or (outcome='rejected' and resulting_entry_id is null and error_code is not null and error_message is not null and response is not null and completed_at is not null)
   )
 );
 
@@ -402,70 +413,86 @@ declare
   v_version public.challenge_versions%rowtype; v_project public.projects%rowtype; v_revision public.project_revisions%rowtype;
   v_active public.challenge_entries%rowtype; v_entry public.challenge_entries%rowtype; v_command private.challenge_entry_commands%rowtype;
   v_facts jsonb; v_evaluation jsonb; v_payload_hash text; v_entry_id uuid := gen_random_uuid(); v_action text;
-  v_attributions jsonb;
+  v_attributions jsonb; v_profile_found boolean; v_response jsonb; v_error_code text; v_error_message text;
 begin
-  if v_actor is null then raise sqlstate 'PT401' using message='challenge_entry_unauthenticated'; end if;
-  select * into v_profile from public.profiles where id=v_actor and status='active' and profile_completed_at is not null
-    and moderation_state='visible' and purged_at is null for update;
-  if not found or v_profile.username is null or v_profile.display_name is null or v_profile.credit_name is null
-    then raise sqlstate 'PT403' using message='challenge_entry_actor_ineligible'; end if;
-  if p_request_id is null or p_display_attestation_version is distinct from 'challenge-display-attestation-v1'
-    then raise sqlstate 'PT400' using message='challenge_entry_attestation_required'; end if;
+  if v_actor is null then return jsonb_build_object('errorCode','PT401'); end if;
+  if p_request_id is null then return jsonb_build_object('errorCode','PT400'); end if;
+  select * into v_profile from public.profiles where id=v_actor for update;
+  v_profile_found := found;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_actor::text,0));
   v_payload_hash := encode(extensions.digest(pg_catalog.convert_to(jsonb_build_object('challengeId',p_challenge_id,'challengeVersionId',p_challenge_version_id,
     'revisionId',p_project_revision_id,'expectedEntryId',p_expected_active_entry_id,'attestation',p_display_attestation_version)::text,'UTF8'),'sha256'),'hex');
   select * into v_command from private.challenge_entry_commands where actor_id=v_actor and request_id=p_request_id;
   if found then
-    if v_command.request_payload_sha256<>v_payload_hash then raise sqlstate 'PT409' using message='challenge_entry_request_conflict'; end if;
-    return (select jsonb_build_object('entryId',e.id,'challengeId',e.challenge_id,'challengeVersionId',e.challenge_version_id,
-      'projectId',e.project_id,'revisionId',e.project_revision_id,'status',e.status,'submittedAt',e.submitted_at,
-      'replacedEntryId',v_command.expected_prior_entry_id) from public.challenge_entries e where e.id=v_command.resulting_entry_id);
+    if v_command.request_payload_sha256<>v_payload_hash then return jsonb_build_object('errorCode','PT409'); end if;
+    return v_command.response;
   end if;
   if (select count(*) from private.challenge_entry_commands where actor_id=v_actor and created_at>statement_timestamp()-interval '1 hour')>=20
-    then raise sqlstate 'PT429' using message='challenge_entry_rate_limited'; end if;
-  select * into v_challenge from public.challenges where id=p_challenge_id for update;
-  if not found then raise sqlstate 'PT404' using message='challenge_not_found'; end if;
-  select * into v_version from public.challenge_versions where id=p_challenge_version_id and challenge_id=v_challenge.id;
-  if not found or v_challenge.state<>'published' or v_challenge.current_version_id<>v_version.id
-    then raise sqlstate 'PT409' using message='challenge_version_stale'; end if;
-  if statement_timestamp()<v_version.opens_at or statement_timestamp()>=v_version.submissions_close_at
-    then raise sqlstate 'PT409' using message='challenge_submissions_closed'; end if;
-  select * into v_active from public.challenge_entries where challenge_id=v_challenge.id and entrant_id=v_actor and status='active' for update;
-  if p_expected_active_entry_id is null and found then raise sqlstate 'PT409' using message='challenge_entry_expected_first'; end if;
-  if p_expected_active_entry_id is not null and (not found or v_active.id<>p_expected_active_entry_id)
-    then raise sqlstate 'PT409' using message='challenge_entry_stale'; end if;
-  select * into v_revision from public.project_revisions r where r.id=p_project_revision_id
-    and r.manifest_version=3 and r.arrangement_version_id is not null;
-  if not found then raise sqlstate 'PT404' using message='challenge_revision_not_found'; end if;
-  select * into v_project from public.projects p where p.id=v_revision.project_id and p.owner_id=v_actor
-    and p.current_revision_id=v_revision.id and p.status='active' and p.deleted_at is null and p.moderation_state='visible'
-    for update;
-  if not found then raise sqlstate 'PT404' using message='challenge_revision_not_found'; end if;
-  v_facts := private.challenge_revision_facts_v1(v_revision.id);
-  v_evaluation := private.evaluate_challenge_constraints_v1(v_version.constraints,v_facts);
-  if not (v_evaluation->>'eligible')::boolean then raise sqlstate 'PT422' using message='challenge_revision_ineligible'; end if;
-  select coalesce(jsonb_agg(jsonb_build_object('kind',ra.kind,'creditName',ra.credit_name) order by ra.kind),'[]'::jsonb)
-    into v_attributions from public.revision_attributions ra where ra.revision_id=v_revision.id;
-  if p_expected_active_entry_id is not null then
-    update public.challenge_entries set status='replaced',replaced_by_entry_id=v_entry_id,closed_at=statement_timestamp()
-      where id=v_active.id;
-    v_action := 'replace';
-  else v_action := 'submit'; end if;
-  insert into public.challenge_entries(id,challenge_id,challenge_version_id,entrant_id,project_id,project_revision_id,
-    project_title_snapshot,entrant_username_snapshot,entrant_display_name_snapshot,entrant_credit_name_snapshot,
-    revision_number_snapshot,revision_message_snapshot,attribution_snapshot,duration_ms_snapshot,
-    display_attestation_version,display_attested_at,evaluator_version,facts,evaluation,evaluation_sha256,status,
-    replacement_of_entry_id,submit_request_id,submitted_at)
-  values(v_entry_id,v_challenge.id,v_version.id,v_actor,v_project.id,v_revision.id,v_project.title,v_profile.username,
-    v_profile.display_name,v_profile.credit_name,v_revision.revision_number,v_revision.message,v_attributions,v_revision.duration_ms,
-    p_display_attestation_version,statement_timestamp(),1,v_facts,v_evaluation,
-    encode(extensions.digest(pg_catalog.convert_to(v_evaluation::text,'UTF8'),'sha256'),'hex'),'active',p_expected_active_entry_id,p_request_id,statement_timestamp())
-  returning * into v_entry;
-  insert into private.challenge_entry_commands(actor_id,request_id,request_payload_sha256,challenge_id,challenge_version_id,
-    action,expected_prior_entry_id,resulting_entry_id)
-  values(v_actor,p_request_id,v_payload_hash,v_challenge.id,v_version.id,v_action,p_expected_active_entry_id,v_entry.id);
-  return jsonb_build_object('entryId',v_entry.id,'challengeId',v_entry.challenge_id,'challengeVersionId',v_entry.challenge_version_id,
-    'projectId',v_entry.project_id,'revisionId',v_entry.project_revision_id,'status',v_entry.status,'submittedAt',v_entry.submitted_at,
-    'replacedEntryId',p_expected_active_entry_id);
+    then return jsonb_build_object('errorCode','PT429'); end if;
+  v_action := case when p_expected_active_entry_id is null then 'submit' else 'replace' end;
+  begin
+    if not v_profile_found or v_profile.status<>'active' or v_profile.profile_completed_at is null
+      or v_profile.moderation_state<>'visible' or v_profile.purged_at is not null
+      or v_profile.username is null or v_profile.display_name is null or v_profile.credit_name is null
+      then raise sqlstate 'PT403' using message='challenge_entry_actor_ineligible'; end if;
+    if p_display_attestation_version is distinct from 'challenge-display-attestation-v1'
+      then raise sqlstate 'PT400' using message='challenge_entry_attestation_required'; end if;
+    select * into v_challenge from public.challenges where id=p_challenge_id for update;
+    if not found then raise sqlstate 'PT404' using message='challenge_not_found'; end if;
+    select * into v_version from public.challenge_versions where id=p_challenge_version_id and challenge_id=v_challenge.id;
+    if not found or v_challenge.state<>'published' or v_challenge.current_version_id<>v_version.id
+      then raise sqlstate 'PT409' using message='challenge_version_stale'; end if;
+    if statement_timestamp()<v_version.opens_at or statement_timestamp()>=v_version.submissions_close_at
+      then raise sqlstate 'PT409' using message='challenge_submissions_closed'; end if;
+    select * into v_active from public.challenge_entries where challenge_id=v_challenge.id and entrant_id=v_actor and status='active' for update;
+    if p_expected_active_entry_id is null and found then raise sqlstate 'PT409' using message='challenge_entry_expected_first'; end if;
+    if p_expected_active_entry_id is not null and (not found or v_active.id<>p_expected_active_entry_id)
+      then raise sqlstate 'PT409' using message='challenge_entry_stale'; end if;
+    select * into v_revision from public.project_revisions r where r.id=p_project_revision_id
+      and r.manifest_version=3 and r.arrangement_version_id is not null;
+    if not found then raise sqlstate 'PT404' using message='challenge_revision_not_found'; end if;
+    select * into v_project from public.projects p where p.id=v_revision.project_id and p.owner_id=v_actor
+      and p.current_revision_id=v_revision.id and p.status='active' and p.deleted_at is null and p.moderation_state='visible'
+      for update;
+    if not found then raise sqlstate 'PT404' using message='challenge_revision_not_found'; end if;
+    v_facts := private.challenge_revision_facts_v1(v_revision.id);
+    v_evaluation := private.evaluate_challenge_constraints_v1(v_version.constraints,v_facts);
+    if not (v_evaluation->>'eligible')::boolean then raise sqlstate 'PT422' using message='challenge_revision_ineligible'; end if;
+    select coalesce(jsonb_agg(jsonb_build_object('kind',ra.kind,'creditName',ra.credit_name) order by ra.kind),'[]'::jsonb)
+      into v_attributions from public.revision_attributions ra where ra.revision_id=v_revision.id;
+    if p_expected_active_entry_id is not null then
+      update public.challenge_entries set status='replaced',replaced_by_entry_id=v_entry_id,closed_at=statement_timestamp()
+        where id=v_active.id;
+    end if;
+    insert into public.challenge_entries(id,challenge_id,challenge_version_id,entrant_id,project_id,project_revision_id,
+      project_title_snapshot,entrant_username_snapshot,entrant_display_name_snapshot,entrant_credit_name_snapshot,
+      revision_number_snapshot,revision_message_snapshot,attribution_snapshot,duration_ms_snapshot,
+      display_attestation_version,display_attested_at,evaluator_version,facts,evaluation,evaluation_sha256,status,
+      replacement_of_entry_id,submit_request_id,submitted_at)
+    values(v_entry_id,v_challenge.id,v_version.id,v_actor,v_project.id,v_revision.id,v_project.title,v_profile.username,
+      v_profile.display_name,v_profile.credit_name,v_revision.revision_number,v_revision.message,v_attributions,v_revision.duration_ms,
+      p_display_attestation_version,statement_timestamp(),1,v_facts,v_evaluation,
+      encode(extensions.digest(pg_catalog.convert_to(v_evaluation::text,'UTF8'),'sha256'),'hex'),'active',p_expected_active_entry_id,p_request_id,statement_timestamp())
+    returning * into v_entry;
+    v_response := jsonb_build_object('entryId',v_entry.id,'challengeId',v_entry.challenge_id,'challengeVersionId',v_entry.challenge_version_id,
+      'projectId',v_entry.project_id,'revisionId',v_entry.project_revision_id,'status',v_entry.status,'submittedAt',v_entry.submitted_at,
+      'replacedEntryId',p_expected_active_entry_id);
+  exception when others then
+    get stacked diagnostics v_error_code=returned_sqlstate,v_error_message=message_text;
+    v_response := jsonb_build_object('errorCode',case when left(v_error_code,2)='PT' then v_error_code else 'PT500' end);
+  end;
+  if v_error_code is null then
+    insert into private.challenge_entry_commands(actor_id,request_id,request_payload_sha256,challenge_id,challenge_version_id,
+      project_revision_id,action,expected_prior_entry_id,resulting_entry_id,outcome,response,completed_at)
+    values(v_actor,p_request_id,v_payload_hash,p_challenge_id,p_challenge_version_id,p_project_revision_id,v_action,
+      p_expected_active_entry_id,v_entry.id,'succeeded',v_response,statement_timestamp());
+  else
+    insert into private.challenge_entry_commands(actor_id,request_id,request_payload_sha256,challenge_id,challenge_version_id,
+      project_revision_id,action,expected_prior_entry_id,outcome,error_code,error_message,response,completed_at)
+    values(v_actor,p_request_id,v_payload_hash,p_challenge_id,p_challenge_version_id,p_project_revision_id,v_action,
+      p_expected_active_entry_id,'rejected',v_error_code,v_error_message,v_response,statement_timestamp());
+  end if;
+  return v_response;
 end;
 $$;
 
@@ -544,9 +571,10 @@ begin
   select * into v_challenge from public.challenges where slug=p_slug and state<>'draft';
   if not found then return '[]'::jsonb; end if;
   return coalesce((select jsonb_agg(private.challenge_entry_public_projection(e.id,v_now) order by e.submitted_at,e.id)
-    from (select id,submitted_at from public.challenge_entries where challenge_id=v_challenge.id and status='active'
+    from (select id,submitted_at from public.challenge_entries candidate where challenge_id=v_challenge.id and status='active'
+      and private.challenge_entry_is_public(candidate,v_now)
       order by submitted_at,id limit 25) e
-    where private.challenge_entry_public_projection(e.id,v_now) is not null),'[]'::jsonb);
+    ),'[]'::jsonb);
 end;
 $$;
 
@@ -621,4 +649,4 @@ grant execute on function public.get_public_challenge_entry(text,uuid) to anon,a
 grant execute on function public.get_public_challenge_entry_preview(text,uuid) to anon,authenticated;
 
 comment on table public.challenge_entries is 'Exact immutable challenge-version and current project-revision entries with command-owned lifecycle fields.';
-comment on table private.challenge_entry_commands is 'Private append-only entry idempotency and replacement audit authority.';
+comment on table private.challenge_entry_commands is 'Private append-only attempt, rejection, idempotency, replacement, and rate-limit audit authority.';

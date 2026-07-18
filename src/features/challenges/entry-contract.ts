@@ -43,6 +43,11 @@ export const challengeEntryCommandResultSchema = z
   })
   .strict();
 
+export const challengeEntryCommandResponseSchema = z.union([
+  challengeEntryCommandResultSchema,
+  z.object({ errorCode: z.string().regex(/^PT[0-9]{3}$/) }).strict(),
+]);
+
 export const myChallengeEntrySchema = z
   .object({
     entryId: z.uuid(),
