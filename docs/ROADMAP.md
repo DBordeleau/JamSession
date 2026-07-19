@@ -1,14 +1,14 @@
 # OpenMIDI MVP roadmap
 
 Status: Post-pivot MVP release path accepted; implementation not yet deployed
-Current branch: `master` at or after the MIDI-only foundation merge
+Current branch: `master` at post-BADGE checkpoint `97c540d`; RELEASE-01 is next
 Hosted state: existing Supabase project reconciled through seven migrations; Vercel deployment deferred
 
 ## Release target
 
 The next milestone is an invite-only OpenMIDI beta deployed to Vercel. It must let users create and publish MIDI projects, contribute and fork, discover reusable MIDI patterns, understand musical changes, participate in one curated constraint challenge, earn challenge awards, and report beta problems without relying on uploaded musical media.
 
-The product was previously named Jam Session. Current product documentation uses OpenMIDI. Frontend copy, repository/package metadata, OAuth branding, and deployment URLs remain transitional until RELEASE-01. Stable manifest engine IDs, database identifiers, migration history, and historical evidence are compatibility contracts and are not renamed incidentally.
+OpenMIDI is the sole prelaunch product and technical identity. RELEASE-01 removes the former working name and namespace from the current repository, including persisted engine identifiers, fixtures, local infrastructure names, and clean-baseline migration source. Git history retains archaeology; current runtime compatibility with prelaunch musical data is not required.
 
 ## Completed foundation
 
@@ -135,17 +135,21 @@ Status: Complete in the repository. Three stable badge identities point to appen
 
 ### RELEASE-01 — OpenMIDI product/repository/frontend rename
 
-After the GitHub repository is renamed, update user-facing copy, metadata, package/repository links, OAuth branding, environment examples, deployment names, and current documentation. Do not rename stable manifest engine IDs, database objects, or applied migrations without an explicit compatibility migration.
+Complete the OpenMIDI identity reset across user-facing copy, metadata, package/repository links, environment examples, runtime/browser namespaces, persisted manifest/diff engine identifiers, test actors/fixtures, local infrastructure identity, current documentation, and clean-baseline migration source. Add a reviewed forward reconciliation migration for the retained hosted project rather than requiring a new Supabase project. Git history remains the historical record.
+
+Status: Worker-ready after the post-BADGE pulse and the superseding clean-namespace decision. This slice may make destructive local database/fixture changes and may add the hosted reconciliation migration, but it must not apply hosted migrations, delete hosted data, change external OAuth/Supabase/Vercel configuration, or deploy the application.
 
 ### RELEASE-02 — Seeded beta and release hardening
 
 Seed several useful public projects, a curated MIDI-library set, and one scheduled/open challenge. Perform the final accessibility, authorization, moderation, empty/error/loading-state, responsive, usage-budget, and administrator runbook pass. Confirm feedback triage and invitations are usable before inviting testers.
 
+Status: Sequentially blocked on RELEASE-01. It prepares deterministic, original, rights-safe beta fixtures and operator tooling in the repository; it does not mutate hosted production data.
+
 ### RELEASE-03 — Vercel deployment and production smoke
 
 Configure Vercel against the retained hosted Supabase project, apply only reviewed pending migrations in order, configure exact site/OAuth callback URLs and secrets, deploy the avatar function if required, and run the production smoke path. Document rollback/disable procedures and verify that no musical Storage or source-audio infrastructure returns.
 
-Status: Deployment remains explicitly unauthorized until the user starts RELEASE-03. Merging code never applies migrations or changes hosted configuration automatically.
+Status: Sequentially blocked on RELEASE-02. Deployment remains explicitly unauthorized until the user starts RELEASE-03 and supplies the production-origin/operator decisions named by the release plan. RELEASE-03 owns the approved deletion of existing hosted musical domain data, the OpenMIDI namespace reconciliation, the remaining migrations, and provider configuration. Merging code never applies migrations or changes hosted configuration automatically.
 
 ## Release gates
 

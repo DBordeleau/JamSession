@@ -6,7 +6,7 @@ Last updated: 2026-07-17
 
 Supersedes: The collaboration-first, MIDI-plus-legacy-audio MVP definition
 
-Product rename: OpenMIDI was previously called Jam Session. User-facing, repository, and package-metadata rename work is scheduled before deployment. Existing manifest engine IDs, migration history, database identifiers, and historical evidence remain stable unless a later compatibility plan explicitly changes them.
+Product identity: OpenMIDI is the sole prelaunch product and technical namespace. RELEASE-01 removes the former working identity from the current repository, including persisted engine identifiers and clean-baseline migration source. Existing musical domain data does not require retention; the retained hosted Supabase project is reconciled forward during the explicitly authorized release rollout.
 
 ## Product summary
 
@@ -18,18 +18,20 @@ The MVP is MIDI-only. It does not accept, store, arrange, preview, or distribute
 
 ## Implementation checkpoint
 
-| Capability                                                       | State before the post-pivot program |
-| ---------------------------------------------------------------- | ----------------------------------- |
-| MIDI Studio, recording, arranging, save, publication, and export | Complete                            |
-| Contributions, owner review, acceptance, and attribution         | Complete                            |
-| Copy-on-write project forks and lineage                          | Complete                            |
-| Public project discovery, preview, history, profiles, moderation | Complete                            |
-| Visual project/contribution/pattern comparison                   | Planned                             |
-| Public MIDI library and saved clip collection                    | Complete in repository              |
-| Curated challenges, validation, voting, and results              | Planned                             |
-| Challenge achievements and profile badges                        | Planned                             |
-| Beta bug/suggestion intake and administrator triage              | Planned                             |
-| OpenMIDI frontend/repository rename and production deployment    | Planned                             |
+| Capability                                                       | Current repository state  |
+| ---------------------------------------------------------------- | ------------------------- |
+| MIDI Studio, recording, arranging, save, publication, and export | Complete                  |
+| Contributions, owner review, acceptance, and attribution         | Complete                  |
+| Copy-on-write project forks and lineage                          | Complete                  |
+| Public project discovery, preview, history, profiles, moderation | Complete                  |
+| Visual project/contribution/pattern comparison                   | Complete                  |
+| Public MIDI library and saved clip collection                    | Complete                  |
+| Curated challenges, validation, voting, and results              | Complete                  |
+| Challenge achievements and profile badges                        | Complete                  |
+| Beta bug/suggestion intake and administrator triage              | Complete                  |
+| OpenMIDI frontend/repository rename                              | Next: RELEASE-01          |
+| Seeded-beta hardening                                            | Planned: RELEASE-02       |
+| Hosted rollout, Vercel deployment, and production smoke          | Deferred until RELEASE-03 |
 
 “Complete” describes merged repository behavior, not a production deployment. OpenMIDI is not yet deployed to Vercel.
 
@@ -591,7 +593,7 @@ The MIDI-only MVP is ready for invited public testing when all of the following 
 
 ### Seed content and deployment
 
-- The frontend, metadata, documentation, repository links, OAuth branding, and deployment configuration consistently use OpenMIDI while stable persisted engine/schema identifiers remain compatible.
+- The frontend, metadata, documentation, repository links, OAuth branding, deployment configuration, persisted engine identifiers, runtime namespaces, fixtures, and current migration source consistently use OpenMIDI, with no active dependency on the former prelaunch identity.
 - The beta launches with several useful public projects, a curated set of listed MIDI patterns, and one scheduled/open challenge so discovery is not empty.
 - Vercel is configured with reviewed environment-variable scopes and the existing hosted Supabase project.
 - Google OAuth callback/site URLs, the invitation hook, avatar processing, migrations, and application origins are verified against the production URL.
@@ -680,4 +682,4 @@ PIVOT-00 through PIVOT-10 resolved the repository strategy, reset posture, manif
 
 ## Remaining product decisions
 
-The [tracked roadmap](ROADMAP.md) sequences semantic visual diffs and beta feedback first, then the public MIDI library, curated challenges, challenge awards, and release/deployment. Semantic visual diffs and beta feedback have detailed parallel-safe local plans; each later program needs its own detailed slice plan before implementation. Those plans must not revisit the accepted MIDI-only persistence, licensing, immutable-history, avatar-only Storage, or stable persisted-identifier boundaries without a superseding product decision and ADR. The hosted rebaseline is complete; every future hosted migration and the eventual Vercel deployment require explicit operational authority.
+The [tracked roadmap](ROADMAP.md) sequences semantic visual diffs and beta feedback first, then the public MIDI library, curated challenges, challenge awards, and release/deployment. The feature programs are complete and the detailed release program is worker-ready. RELEASE-01 includes the accepted one-time prelaunch identity reset; it must not revisit MIDI-only persistence, licensing, immutable-history, or avatar-only Storage boundaries. Every hosted migration, destructive musical-data reconciliation, and the eventual Vercel deployment still requires explicit operational authority.

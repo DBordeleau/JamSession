@@ -4,7 +4,7 @@ ADRs preserve decisions that coding agents must not silently revisit. A changed 
 
 ## Decision status
 
-ADR-001 through ADR-005 retain the platform, client-only runtime, immutable-history, portable-manifest, and copy-on-write foundations. ADR-006 through ADR-009 are historical/superseded where they describe Waveform Playlist, manifest v1/v2, uploaded musical media, source admission, or the old OPT/MIDI/STUDIO sequence. ADR-010 through ADR-014 are the current MIDI-only authority and are implemented through the completed PIVOT-10 hosted rebaseline. ADR-015 governs the staged OpenMIDI product rename. ADR-016 adds the public-library rights gate, external-credit boundary, and copyright-report posture to ADR-013's single-license decision. ADR-017 fixes challenge versioning, time-derived phases, exact entry publication, and authoritative constraint/result boundaries. Historical references to Jam Session retain the name in use when those decisions were made.
+ADR-001 through ADR-005 retain the platform, client-only runtime, immutable-history, portable-manifest, and copy-on-write foundations. ADR-006 through ADR-009 are historical/superseded where they describe Waveform Playlist, manifest v1/v2, uploaded musical media, source admission, or the old OPT/MIDI/STUDIO sequence. ADR-010 through ADR-014 are the current MIDI-only authority and are implemented through the completed PIVOT-10 hosted rebaseline. ADR-015's compatibility-preserving rename is superseded. ADR-016 adds the public-library rights gate, external-credit boundary, and copyright-report posture to ADR-013's single-license decision. ADR-017 fixes challenge versioning, time-derived phases, exact entry publication, and authoritative constraint/result boundaries. ADR-018 authorizes the one-time prelaunch clean OpenMIDI namespace and disposal of existing musical domain data; Git history preserves earlier wording.
 
 ## Accepted for initial implementation
 
@@ -119,11 +119,10 @@ ADR-001 through ADR-005 retain the platform, client-only runtime, immutable-hist
 
 ### ADR-015: OpenMIDI product name with stable persisted identifiers
 
-- **Status:** Accepted 2026-07-17.
-- **Decision:** Rename the public product from Jam Session to OpenMIDI. Current product and planning documentation adopts OpenMIDI immediately; RELEASE-01 coordinates frontend copy, repository/package metadata, OAuth branding, and deployment naming after the GitHub repository name is final. Persisted manifest engine/version values such as `jam-session-midi`, applied migrations, database identifiers, historical evidence, and compatibility fixtures are not renamed incidentally.
-- **Why:** One public identity is required before beta, while renaming serialized or already-applied technical identifiers offers no user value and could break immutable manifests, fixtures, migrations, integrations, or historical traceability.
-- **Consequence:** Transitional code and infrastructure may display the old name until RELEASE-01. New current-facing documentation and product copy use OpenMIDI; historical records may retain Jam Session. Any persisted-identifier rename requires a separate compatibility and migration decision.
-- **Validation:** RELEASE-01 audits current user-facing surfaces and repository links for OpenMIDI while manifest-v3 round trips, historical migrations, and stored engine identifiers remain byte-compatible.
+- **Status:** Superseded by ADR-018 on 2026-07-18 before public launch.
+- **Decision:** The initial rename decision would have retained the former prelaunch technical namespace for serialized compatibility.
+- **Why superseded:** There are no launched users or production musical records requiring compatibility, and retaining a permanent second identity creates avoidable maintenance and product confusion.
+- **Historical consequence:** Git history preserves the earlier decision. Current implementation follows ADR-018.
 
 ### ADR-016: Rights-gated public MIDI listings, reuse modes, and separate external credits
 
@@ -140,6 +139,14 @@ ADR-001 through ADR-005 retain the platform, client-only runtime, immutable-hist
 - **Why:** Immutable versions keep entrants bound to the rules they saw, normalized exact references preserve project history, and time-derived phases avoid a fragile scheduled worker on the $0 prototype. A narrow entry projection permits private-project participation without exposing the project, workspace, membership, or unrelated revision history.
 - **Consequence:** Draft edits append challenge versions; published challenge versions cannot be rewritten. CHALLENGE-01 owns lifecycle/version authority, CHALLENGE-02 owns eligibility and exact entries, and CHALLENGE-03 owns voting/moderation/results/featured discovery. Administrators—not named host/judge credits—hold mutation authority. User-created challenges, programmable rule code, cash prizes, and generic social scoring remain deferred.
 - **Validation:** Clean migration and RLS tests cover anonymous, active, unrelated, administrator, entrant, project owner, and suspended actors; deterministic fixtures prove TypeScript/Postgres eligibility parity; browser coverage proves admin creation, actionable failed preflight, exact replacement, hidden pre-close totals, no self-vote, permanent completed results, and no private-project leakage.
+
+### ADR-018: Prelaunch clean OpenMIDI namespace and disposable musical data
+
+- **Status:** Accepted 2026-07-18; supersedes ADR-015.
+- **Decision:** OpenMIDI is the only identity retained in the current repository. RELEASE-01 replaces the former working name across product copy, repository/package metadata, runtime and browser namespaces, persisted manifest/diff engine identifiers, test actors/fixtures, local Supabase identity, current documentation, and clean migration source. Because the product has not launched, existing projects, revisions, patterns, clips, workspaces, contributions, challenge entries/results, and derived awards may be deleted instead of migrated. The retained hosted Supabase project, project reference, API configuration, Auth identities, operator roles/invitations, feedback, and avatar infrastructure remain unless the reviewed reconciliation proves a narrower dependency requires removal.
+- **Why:** One clean namespace is cheaper to reason about and test than permanent prelaunch compatibility. Deleting disposable musical data avoids a risky JSON/normalized-history conversion while keeping the existing Free-plan project and integrations.
+- **Consequence:** RELEASE-01 is a one-time exception to migration-source immutability: it updates the clean baseline for fresh resets and adds a forward reconciliation migration for the already-retained hosted project. That migration must delete musical data in dependency-safe transactional order, replace runtime constraints/functions/preset engine values, and be locally tested but not hosted-applied. RELEASE-03 alone may execute it with explicit authority. After RELEASE-01, migrations and OpenMIDI identifiers are immutable again. Git history, not the active tree, preserves the former identity.
+- **Validation:** A case-insensitive tracked-tree scan finds no former product/namespace reference; clean reset, generated types, pgTAP, manifest-v3 round trips, browser creation/publication/export, and deterministic engine/diff fixtures use only OpenMIDI identifiers. The hosted rollout preflight confirms the same project, records disposable row counts, preserves named non-musical state, applies the forward reconciliation, and proves no former runtime value remains.
 
 ## ADR template
 

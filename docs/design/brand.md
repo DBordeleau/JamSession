@@ -1,6 +1,6 @@
 # OpenMIDI — Brand & Visual Design
 
-> OpenMIDI is the current product name. Existing frontend copy and repository metadata may still say Jam Session until the coordinated RELEASE-01 rename; do not create a second visual system during that transition.
+> OpenMIDI is the sole prelaunch product and technical identity. Existing transitional copy and namespaces are removed together in RELEASE-01; do not create a second visual system during that reset.
 
 Status: Adopted 2026-07-13 with the landing redesign; extended across the app
 (header, sign-in, dashboard, projects, profile, studio) 2026-07-14; product
@@ -351,11 +351,11 @@ pages, the create/edit form.
 
 ## 9. Open follow-ups
 
-- **Challenge discovery**: `/explore` and `/library` now provide real public
-  discovery. CHALLENGE-03 will replace the landing's marketing-only challenge
-  state with a canonical featured challenge card while preserving the approved
-  landing composition and clearly labeling scheduled, open, voting, and
-  completed states.
+- **Release identity**: the canonical featured challenge card is live on the
+  landing and dashboard. RELEASE-01 will finish the coordinated OpenMIDI
+  product and technical namespace reset while preserving the established
+  visual system. Prelaunch musical data compatibility is intentionally not a
+  release requirement.
 - **Self-hosted display face**: the serif accent currently relies on
   Palatino/Georgia system fallbacks. A self-hosted display face (inlined, no CDN)
   would sharpen the identity further.

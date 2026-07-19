@@ -6,7 +6,7 @@ This file is the operating contract for coding agents working in this repository
 
 OpenMIDI is a public MIDI creation, remix, reuse, and constraint-challenge platform for bedroom producers, casual musicians, and learners. Users create versioned MIDI arrangements, edit them in browser workspaces, submit contributions, fork projects, and preserve pattern/revision lineage and attribution.
 
-The target MVP is a Next.js application backed by Supabase Auth/Postgres and avatar-only Storage, with a client-only Tone.js MIDI runtime. PIVOT-10 rebaselined and verified the existing hosted Supabase project against the reviewed MIDI-only migrations while retaining its project reference and API configuration. The product name is OpenMIDI, but frontend/repository/package/OAuth/deployment renaming is deferred to RELEASE-01 and must not rename persisted `jam-session-*` engine identifiers or historical migrations incidentally. Vercel deployment remains intentionally deferred.
+The target MVP is a Next.js application backed by Supabase Auth/Postgres and avatar-only Storage, with a client-only Tone.js MIDI runtime. PIVOT-10 rebaselined and verified the existing hosted Supabase project against the reviewed MIDI-only migrations while retaining its project reference and API configuration. RELEASE-01 is authorized as a one-time prelaunch identity reset: it replaces the former product name and technical namespace throughout the current tree, including persisted engine identifiers and clean-baseline migration source, and adds a forward hosted reconciliation migration that may delete existing musical domain data. Vercel deployment remains intentionally deferred.
 
 ## Read before changing code
 
@@ -29,7 +29,7 @@ If code, task instructions, and these documents disagree, stop and surface the c
 
 ## Current project state
 
-PIVOT-01 through PIVOT-10, the administrator-invitation reconciliation, DIFF-01 through DIFF-03, FEEDBACK-01, LIB-01 through LIB-03, CHALLENGE-01 through CHALLENGE-03, and BADGE-01 are complete. Their manifest-v3, presets/runtime, database, Studio, collaboration, public-read, cleanup, hosted-rebaseline, semantic-comparison, beta-feedback, public-library, saved-clip, authorized-reuse, versioned-challenge-lifecycle, exact-entry, private-voting, moderation, immutable-result, featured-discovery, versioned-badge, exact-result-award, testing, and documentation contracts supersede the historical PR 19/20 and OPT/MIDI/STUDIO delivery sequence without erasing its evidence. The post-CHALLENGE pulse is recorded in `docs/technical-design/evidence/post-challenge-milestone-pulse-check.md`; RELEASE-01 is the next implementation slice. The retained hosted project records the four-file MIDI-only baseline plus the administrator-invitation and two beta-feedback forward migrations, for seven migrations total; the four LIB migrations, CHALLENGE-01 through CHALLENGE-03, and BADGE-01 remain repository-only until explicit hosted-mutation authority is granted. npm is the sole package manager and Node.js 24 LTS is required.
+PIVOT-01 through PIVOT-10, the administrator-invitation reconciliation, DIFF-01 through DIFF-03, FEEDBACK-01, LIB-01 through LIB-03, CHALLENGE-01 through CHALLENGE-03, and BADGE-01 are complete. Their manifest-v3, presets/runtime, database, Studio, collaboration, public-read, cleanup, hosted-rebaseline, semantic-comparison, beta-feedback, public-library, saved-clip, authorized-reuse, versioned-challenge-lifecycle, exact-entry, private-voting, moderation, immutable-result, featured-discovery, versioned-badge, exact-result-award, testing, and documentation contracts supersede the historical PR 19/20 and OPT/MIDI/STUDIO delivery sequence without erasing its evidence. The current release handoff is recorded in `docs/technical-design/evidence/post-badge-milestone-pulse-check.md`; RELEASE-01 is the next implementation slice. The retained hosted project records the four-file MIDI-only baseline plus the administrator-invitation and two beta-feedback forward migrations, for seven migrations total; the four LIB migrations, CHALLENGE-01 through CHALLENGE-03, and BADGE-01 remain repository-only until explicit hosted-mutation authority is granted. npm is the sole package manager and Node.js 24 LTS is required.
 
 Before implementing a task:
 
@@ -48,7 +48,7 @@ Before implementing a task:
 - Public-library listing requires a versioned rights basis and authority attestation for the selected public display/reuse mode. External credits are immutable and separate from verified platform lineage; attribution or reference-only status is not permission, and uncertain-rights covers/recreations cannot enter either public mode. Preserve dedicated copyright-report moderation privacy.
 - MVP challenges are administrator-curated. Surface one featured active challenge on the landing/dashboard, keep completed challenge/result pages addressable, and link awards back to their exact result. User-created challenge hosting remains deferred.
 - Presets are bundled/versioned synthesis only. Do not add samples, soundfonts, remote audio, or user-supplied synth graphs.
-- Historical wave ownership and transition rules remain in the pivot contract and local implementation plan for archaeology; they are not instructions for new work.
+- Historical wave ownership and transition rules remain available in Git history; they are not instructions for new work and should not force the former prelaunch identity to remain in the current tree.
 
 ## Authoritative commands
 
@@ -170,7 +170,7 @@ Prefer a working vertical slice over speculative abstraction. Do not silently re
 ## Database and migration rules
 
 - Schema changes require a forward-only SQL migration and affected RLS/integration tests in the same change.
-- Never change an already-applied migration to alter current behavior. The four clean baseline migrations and every later migration are immutable; use a new forward migration for all current schema changes. PIVOT-09's historical baseline replacement was a one-time completed exception.
+- Never change an already-applied migration to alter current behavior. RELEASE-01 is a user-authorized one-time prelaunch exception: update the clean migration source to the OpenMIDI namespace for fresh installs and add a forward reconciliation migration for the retained hosted project in the same change. After RELEASE-01, the resulting baseline and every forward migration are immutable again.
 - Use expand/migrate/contract for destructive or incompatible changes unless the accepted clean-baseline pivot contract explicitly removes that need.
 - Index foreign keys used for relationship checks and indexes required by measured query patterns. Avoid speculative indexing.
 - Use constraints for durable invariants and transactions/database functions for multi-row state transitions.
