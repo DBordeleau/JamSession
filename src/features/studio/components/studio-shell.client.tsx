@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -62,6 +62,7 @@ export function StudioShell({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const lifecycle = useRef<StudioSessionLifecyclePort | null>(null);
   const lifecycleSubscription = useRef<(() => void) | null>(null);
   const reduce = useReducedMotion();
@@ -119,7 +120,9 @@ export function StudioShell({
 
   const requestNavigation = useCallback(
     (target: string) => {
-      if (switchTarget || target === pathname) return;
+      const query = searchParams.toString();
+      const currentLocation = query ? `${pathname}?${query}` : pathname;
+      if (switchTarget || target === currentLocation) return;
       setSwitchTarget(target);
       void coordinateStudioExit(lifecycle.current, confirmLeave)
         .then((outcome) => {
@@ -130,7 +133,7 @@ export function StudioShell({
         })
         .finally(() => setSwitchTarget(null));
     },
-    [confirmLeave, pathname, router, switchTarget],
+    [confirmLeave, pathname, router, searchParams, switchTarget],
   );
 
   const context: StudioShellContextValue = {
@@ -491,6 +494,14 @@ export function useStudioLifecycleRegistration(
     () => registerLifecycle?.(port, { editable }),
     [editable, port, registerLifecycle],
   );
+}
+
+export function useStudioNavigation() {
+  const shell = useContext(StudioShellContext);
+  return {
+    requestNavigation: shell?.requestNavigation,
+    switching: shell?.switching ?? false,
+  };
 }
 
 function ProjectMenuButton({

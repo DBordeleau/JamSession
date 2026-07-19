@@ -38,6 +38,33 @@ const manifest: WorkspaceManifestV3 = {
   tracks: [],
 };
 
+const project = {
+  id: projectId,
+  ownerId: viewerId,
+  title: "Owned project",
+  timeSignature: { numerator: 4, denominator: 4 },
+  license: {
+    code: "cc-by-4.0",
+    name: "CC BY 4.0",
+    url: "https://creativecommons.org/licenses/by/4.0/",
+    summary: "Reuse with attribution.",
+    allowsDerivatives: true,
+  },
+  openToContributions: true,
+  currentRevisionId: revisionId,
+  compatibility: "midi" as const,
+};
+
+const revision = {
+  projectId,
+  revisionId,
+  revisionNumber: 2,
+  arrangementVersionId: "70000000-0000-4000-8000-000000000123",
+  manifest: { ...manifest, workspaceId: undefined } as never,
+  manifestSha256: "b".repeat(64),
+  durationMs: 4000,
+};
+
 describe("resolveStudioSession", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -93,6 +120,63 @@ describe("resolveStudioSession", () => {
 
     await expect(resolveStudioSession(projectId, viewerId)).resolves.toBeNull();
     expect(getPublicProject).not.toHaveBeenCalled();
+    expect(getStudioRevisionV3).not.toHaveBeenCalled();
+  });
+
+  it("keeps an owner workspace as the default when its base is stale", async () => {
+    vi.mocked(getProjectForViewer).mockResolvedValue(project as never);
+    vi.mocked(getStudioWorkspaceV3).mockResolvedValue({
+      id: workspaceId,
+      projectId,
+      ownerId: viewerId,
+      contributionId: null,
+      baseRevisionId: "80000000-0000-4000-8000-000000000123",
+      lockVersion: 3,
+      manifest,
+      manifestSha256: "a".repeat(64),
+      updatedAt: "2026-07-19T00:00:00.000Z",
+    });
+    vi.mocked(getStudioRevisionV3).mockResolvedValue(revision);
+
+    const session = await resolveStudioSession(projectId, viewerId);
+
+    expect(session?.descriptor?.mode).toBe("ownerWorkspace");
+    expect(session?.descriptor?.capabilities.canEdit).toBe(true);
+  });
+
+  it("opens the latest immutable revision without replacing an owner workspace", async () => {
+    vi.mocked(getProjectForViewer).mockResolvedValue(project as never);
+    vi.mocked(getStudioWorkspaceV3).mockResolvedValue({
+      id: workspaceId,
+      projectId,
+      ownerId: viewerId,
+      contributionId: null,
+      baseRevisionId: "80000000-0000-4000-8000-000000000123",
+      lockVersion: 3,
+      manifest,
+      manifestSha256: "a".repeat(64),
+      updatedAt: "2026-07-19T00:00:00.000Z",
+    });
+    vi.mocked(getStudioRevisionV3).mockResolvedValue(revision);
+
+    const session = await resolveStudioSession(projectId, viewerId, {
+      revisionId,
+    });
+
+    expect(session?.descriptor?.mode).toBe("memberRevision");
+    expect(session?.descriptor?.capabilities.canEdit).toBe(false);
+    expect(session?.workspace?.id).toBe(workspaceId);
+  });
+
+  it("rejects a revision selector that does not target the current revision", async () => {
+    vi.mocked(getProjectForViewer).mockResolvedValue(project as never);
+    vi.mocked(getStudioWorkspaceV3).mockResolvedValue(null);
+
+    await expect(
+      resolveStudioSession(projectId, viewerId, {
+        revisionId: "80000000-0000-4000-8000-000000000123",
+      }),
+    ).resolves.toBeNull();
     expect(getStudioRevisionV3).not.toHaveBeenCalled();
   });
 });

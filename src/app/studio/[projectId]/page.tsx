@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireViewer } from "@/features/auth/guards";
 import { projectIdSchema } from "@/features/projects/schema";
 import { StudioLauncher } from "@/features/studio/components/studio-launcher.client";
+import { StudioRevisionSwitcher } from "@/features/studio/components/studio-revision-switcher.client";
 import { MIDI_V3_PPQ } from "@/features/midi/domain-v3";
 import type { ManifestV3 } from "@/features/studio/manifest/v3";
 import type { StudioSessionDescriptor } from "@/features/studio/session-contract";
@@ -19,23 +20,41 @@ export default async function StudioProjectPage({
   searchParams = Promise.resolve({}),
 }: {
   params: Promise<{ projectId: string }>;
-  searchParams?: Promise<{ editClip?: string }>;
+  searchParams?: Promise<{ editClip?: string; revision?: string }>;
 }) {
   const { projectId } = await params;
-  const editClip = (await searchParams).editClip;
+  const query = await searchParams;
+  const editClip = query.editClip;
+  const requestedRevisionId = query.revision;
   const initialEditorClipId = projectIdSchema.safeParse(editClip).success
     ? editClip
     : undefined;
   if (!projectIdSchema.safeParse(projectId).success) notFound();
-  const viewer = await requireViewer(`/studio/${projectId}`);
-  const session = await resolveStudioSession(projectId, viewer.id);
+  if (
+    requestedRevisionId &&
+    !projectIdSchema.safeParse(requestedRevisionId).success
+  )
+    notFound();
+  const callbackPath = requestedRevisionId
+    ? `/studio/${projectId}?revision=${requestedRevisionId}`
+    : `/studio/${projectId}`;
+  const viewer = await requireViewer(callbackPath);
+  const session = requestedRevisionId
+    ? await resolveStudioSession(projectId, viewer.id, {
+        revisionId: requestedRevisionId,
+      })
+    : await resolveStudioSession(projectId, viewer.id);
   if (!session) notFound();
   const { project, workspace, revision, descriptor } = session;
-  const contribution = workspace?.contributionId
-    ? await getContributionForViewer(workspace.contributionId)
-    : null;
+  const viewingRevision = descriptor?.mode === "memberRevision";
+  const contribution =
+    !viewingRevision && workspace?.contributionId
+      ? await getContributionForViewer(workspace.contributionId)
+      : null;
   const editable = project.ownerId === viewer.id;
-  const sessionManifest = workspace?.manifest ?? revision?.manifest;
+  const sessionManifest = viewingRevision
+    ? revision?.manifest
+    : (workspace?.manifest ?? revision?.manifest);
   const patternVersions = sessionManifest
     ? await loadStudioPatternVersions(sessionManifest)
     : [];
@@ -48,7 +67,18 @@ export default async function StudioProjectPage({
   const launcherKey = descriptor ? sessionAuthorityKey(descriptor) : projectId;
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col">
+    <section className="flex min-h-0 flex-1 flex-col gap-3">
+      {workspace && !workspace.contributionId && revision ? (
+        <StudioRevisionSwitcher
+          projectId={projectId}
+          revisionId={project.currentRevisionId ?? revision.revisionId}
+          revisionNumber={revision.revisionNumber}
+          selected={viewingRevision ? "revision" : "draft"}
+          staleDraft={
+            workspace.baseRevisionId !== (project.currentRevisionId ?? null)
+          }
+        />
+      ) : null}
       {workspace && contribution ? (
         <StudioLauncher
           key={launcherKey}
@@ -77,7 +107,7 @@ export default async function StudioProjectPage({
           patternVersions={patternVersions}
           initialEditorClipId={initialEditorClipId}
         />
-      ) : workspace ? (
+      ) : workspace && !viewingRevision ? (
         <StudioLauncher
           key={launcherKey}
           mode="workspace"
@@ -98,7 +128,7 @@ export default async function StudioProjectPage({
           patternVersions={patternVersions}
           initialEditorClipId={initialEditorClipId}
         />
-      ) : revision && editable ? (
+      ) : revision && editable && !viewingRevision ? (
         <CreateWorkspaceForm
           projectId={projectId}
           currentRevisionId={revision.revisionId}

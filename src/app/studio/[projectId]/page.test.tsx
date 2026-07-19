@@ -4,7 +4,7 @@ import { requireViewer } from "@/features/auth/guards";
 import { notFound } from "next/navigation";
 import { resolveStudioSession } from "@/server/services/studio-session";
 import { loadStudioPatternVersions } from "@/server/repositories/studio-v3";
-import type { ReactElement } from "react";
+import { Children, type ReactElement } from "react";
 
 vi.mock("next/navigation", () => ({
   notFound: vi.fn(() => {
@@ -23,6 +23,9 @@ vi.mock("@/server/repositories/studio-v3", () => ({
 }));
 vi.mock("@/features/studio/components/studio-launcher.client", () => ({
   StudioLauncher: () => null,
+}));
+vi.mock("@/features/studio/components/studio-revision-switcher.client", () => ({
+  StudioRevisionSwitcher: () => null,
 }));
 vi.mock("@/features/workspaces/create-workspace-form", () => ({
   CreateWorkspaceForm: () => null,
@@ -96,12 +99,33 @@ describe("canonical selected Studio route", () => {
     const page = (await StudioProjectPage({
       params: Promise.resolve({ projectId }),
     })) as ReactElement<{ children: ReactElement }>;
-    const launcher = page.props.children as ReactElement<{
+    const launcher = Children.toArray(page.props.children).at(
+      -1,
+    ) as ReactElement<{
       manifest: unknown;
       patternVersions: unknown;
     }>;
 
     expect(launcher.props.manifest).toEqual(manifest);
     expect(launcher.props.patternVersions).toEqual([]);
+  });
+
+  it("loads the requested latest revision as a read-only Studio source", async () => {
+    vi.mocked(requireViewer).mockResolvedValue({ id: projectId } as never);
+    vi.mocked(resolveStudioSession).mockResolvedValue(null);
+
+    await expect(
+      StudioProjectPage({
+        params: Promise.resolve({ projectId }),
+        searchParams: Promise.resolve({ revision: projectId }),
+      }),
+    ).rejects.toThrow("NEXT_NOT_FOUND");
+
+    expect(requireViewer).toHaveBeenCalledWith(
+      `/studio/${projectId}?revision=${projectId}`,
+    );
+    expect(resolveStudioSession).toHaveBeenCalledWith(projectId, projectId, {
+      revisionId: projectId,
+    });
   });
 });
