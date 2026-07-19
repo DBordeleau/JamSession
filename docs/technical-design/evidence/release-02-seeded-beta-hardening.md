@@ -5,7 +5,7 @@ Outcome: Complete in the repository; hosted seed import and deployment remain de
 
 ## Seed content and rights basis
 
-The versioned `release-02-beta-content.json` fixture contains three compact, original manifest-v3 projects, seven exact pattern versions, and one approachable administrator-curated challenge. Four patterns are listed for commercial reuse under CC BY 4.0. Three patterns are intentionally reference-only so the beta library demonstrates listening and inspection without granting save, import, fork, edit, or export rights. The fixture records the operator's original-work attestation and the expected canonical manifest and challenge-constraint hashes.
+The versioned `release-02-beta-content.json` fixture contains three compact, original manifest-v3 projects, seven exact pattern versions, and one approachable administrator-curated challenge. Four patterns are listed for commercial reuse under CC BY 4.0. Three patterns are intentionally reference-only so the beta library demonstrates listening and inspection without granting save, import, fork, edit, or export rights. Pocket Circuit remains the CC BY forkable example and embeds only commercially reusable patterns; Neon Steps and Windowlight Waltz are all-rights-reserved, so their reference-only pattern dependencies cannot be copied through a project fork. The fixture schema enforces that every CC BY project track resolves to a commercial-reuse pattern. The fixture records the operator's original-work attestation and the expected canonical manifest and challenge-constraint hashes.
 
 The content is deterministic and uses bundled synthesis presets only. It contains no uploaded audio, samples, soundfonts, rendered previews, remote synthesis assets, external credits, real hosted identifiers, email addresses, project references, credentials, or secrets.
 
@@ -15,7 +15,7 @@ The content is deterministic and uses bundled synthesis presets only. It contain
 
 Mutation requires both `--execute` and `--confirm RELEASE-02-BETA-v1`. The importer uses existing authenticated RPCs and stable request IDs. Exact existing content is reused, incomplete exact imports resume, and name or hash mismatches stop as conflicts. It does not use a service-role credential or mutate Storage, Auth provider settings, deployment configuration, or any hosted service by itself.
 
-A local rehearsal with a synthetic administrator produced 11 `CREATE` decisions before execution, imported seven patterns, three projects, and one challenge, then produced 11 exact `REUSE` decisions on the next dry run.
+A clean local rehearsal with a synthetic administrator produced 11 `CREATE` decisions before execution, reported the corrected 4-commercial/3-reference mapping and all-rights-reserved/CC BY project licenses, imported seven patterns, three projects, and one challenge, then produced 11 exact `REUSE` decisions on the next dry run.
 
 ## Release hardening
 

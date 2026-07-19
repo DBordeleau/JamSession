@@ -9,10 +9,11 @@ Prerequisites for any hosted action:
 - a named green commit and an approved target host;
 - explicit authority for the exact operation;
 - an active completed profile with database administrator membership for administrator commands;
+- a verified comparison between the retained hosted schema, the linked migration ledger, and the 16 repository migration versions before any RELEASE-03 migration or deployment action;
 - a second operator check for target, intended actor, and any destructive or externally visible action; and
 - a secure place for process-scoped credentials that is not shell history, a ticket, logs, or source control.
 
-Stop immediately on a target mismatch, an unexpected migration ledger, an actor/token mismatch, an RLS leak, broken invitation enforcement, a secret in output, musical Storage or remote-audio behavior, a seed conflict, or unexplained provider usage. Do not repair or rerun the 16 hosted migrations through the corrected RELEASE-01 reconciliation.
+Stop immediately on a target mismatch, an unexpected migration ledger, an actor/token mismatch, an RLS leak, broken invitation enforcement, a secret in output, musical Storage or remote-audio behavior, a seed conflict, or unexplained provider usage. SQL Editor execution made the schema current without proving that all 16 repository versions are recorded. Do not blindly replay schema SQL. Reconcile missing ledger entries only through a separately reviewed, authorized, non-schema RELEASE-03 procedure, and never repeat the destructive RELEASE-01 cleanup.
 
 ## Invitations and administrator access
 
@@ -92,6 +93,7 @@ Expected dry-run evidence:
 - fixture version 1, three projects, seven patterns, and one challenge;
 - four `commercial_reuse` patterns with reviewed CC BY 4.0 hashes;
 - three `reference_only` original patterns with reviewed no-reuse hashes;
+- Pocket Circuit as the CC BY forkable project with only commercial-reuse pattern dependencies, while Neon Steps and Windowlight Waltz are all-rights-reserved;
 - the challenge constraint hash; and
 - only `CREATE` or `REUSE`, with zero `CONFLICT` decisions.
 
@@ -112,7 +114,7 @@ Clear the three process-scoped variables after the run and close the operator sh
 
 ## Rollback and disable procedures
 
-Database migrations are forward-only and already applied. Never roll them back, repair their ledger, or repeat the RELEASE-01 cleanup.
+The hosted schema implements the reviewed changes, but the linked ledger may omit SQL Editor executions. Before deployment, verify schema and ledger state and reconcile missing history only through a reviewed, authorized, non-schema RELEASE-03 procedure. Do not reverse the current schema, blindly replay migration SQL, or repeat the destructive RELEASE-01 cleanup.
 
 For a seed or application incident:
 

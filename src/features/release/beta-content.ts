@@ -129,6 +129,9 @@ const betaContentSchema = z
   .superRefine((fixture, context) => {
     const projectKeys = new Set(fixture.projects.map(({ key }) => key));
     const patternKeys = new Set(fixture.patterns.map(({ key }) => key));
+    const patternsByKey = new Map(
+      fixture.patterns.map((pattern) => [pattern.key, pattern]),
+    );
     for (const pattern of fixture.patterns) {
       if (!projectKeys.has(pattern.projectKey)) {
         context.addIssue({
@@ -137,12 +140,30 @@ const betaContentSchema = z
         });
       }
     }
-    for (const project of fixture.projects) {
-      for (const track of project.tracks) {
+    for (const [projectIndex, project] of fixture.projects.entries()) {
+      for (const [trackIndex, track] of project.tracks.entries()) {
         if (!patternKeys.has(track.patternKey)) {
           context.addIssue({
             code: "custom",
             message: `Unknown patternKey ${track.patternKey}`,
+          });
+          continue;
+        }
+        const pattern = patternsByKey.get(track.patternKey);
+        if (
+          project.licenseCode === "cc-by-4.0" &&
+          pattern?.reuseMode !== "commercial_reuse"
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "projects",
+              projectIndex,
+              "tracks",
+              trackIndex,
+              "patternKey",
+            ],
+            message: `CC BY project ${project.key} cannot embed reference-only pattern ${track.patternKey}`,
           });
         }
       }

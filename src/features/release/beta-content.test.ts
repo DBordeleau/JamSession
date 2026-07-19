@@ -23,17 +23,38 @@ describe("RELEASE-02 beta content", () => {
     }
   });
 
-  it("covers both rights modes with original compact works", () => {
+  it("keeps the reviewed rights modes consistent with project forks", () => {
+    const patternsByKey = new Map(
+      release02BetaContent.patterns.map((pattern) => [pattern.key, pattern]),
+    );
     expect(
-      release02BetaContent.patterns.some(
-        ({ reuseMode }) => reuseMode === "commercial_reuse",
-      ),
-    ).toBe(true);
+      release02BetaContent.patterns
+        .filter(({ reuseMode }) => reuseMode === "commercial_reuse")
+        .map(({ key }) => key)
+        .sort(),
+    ).toEqual(["circuit-drums", "circuit-hook", "neon-bass", "neon-pocket"]);
     expect(
-      release02BetaContent.patterns.some(
-        ({ reuseMode }) => reuseMode === "reference_only",
-      ),
-    ).toBe(true);
+      release02BetaContent.patterns
+        .filter(({ reuseMode }) => reuseMode === "reference_only")
+        .map(({ key }) => key)
+        .sort(),
+    ).toEqual(["neon-reply", "windowlight-air", "windowlight-chords"]);
+    expect(
+      release02BetaContent.projects.find(({ key }) => key === "neon-steps")
+        ?.licenseCode,
+    ).toBe("all-rights-reserved");
+    for (const project of release02BetaContent.projects) {
+      if (project.licenseCode !== "cc-by-4.0") {
+        continue;
+      }
+      expect(
+        project.tracks.every(
+          ({ patternKey }) =>
+            patternsByKey.get(patternKey)?.reuseMode === "commercial_reuse",
+        ),
+        project.key,
+      ).toBe(true);
+    }
     expect(
       release02BetaContent.patterns.reduce(
         (count, pattern) => count + pattern.notes.length,

@@ -1,6 +1,6 @@
 # Delivery plan and verification
 
-Status: MIDI-only foundation through RELEASE-02 complete; hosted migrations current and Vercel deployment deferred
+Status: MIDI-only foundation through RELEASE-02 complete; hosted schema current, linked migration ledger unverified, and Vercel deployment deferred
 
 ## Implemented foundation
 
@@ -29,7 +29,7 @@ DIFF-01 through DIFF-03, FEEDBACK-01, LIB-01 through LIB-03, CHALLENGE-01 throug
 4. **Wave D — BADGE:** complete with a versioned bounded catalog, transactional exact-current-result issuance, immutable correction evidence, serialized reconciliation, and safe profile cards linking to permanent result/entry context.
 5. **Wave E — RELEASE:** RELEASE-01 identity reconciliation and RELEASE-02 seeded-beta hardening are complete; configure providers, import the approved hosted seed, deploy Vercel, and run production smoke only in authorized RELEASE-03.
 
-Library, challenge, badge, and release slices are dependency-ordered. All 16 reviewed migrations through the corrected RELEASE-01 reconciliation are already applied to the retained hosted project and must not be rerun or repaired. RELEASE-02 prepared deterministic seed fixtures, operator tooling, hardening evidence, and runbooks without hosted mutation. RELEASE-03 alone may change external OAuth/Supabase/Vercel configuration, execute the approved hosted beta import, deploy, or run production smoke—and only after explicit authority.
+Library, challenge, badge, and release slices are dependency-ordered. The retained hosted schema implements all reviewed changes through the corrected RELEASE-01 reconciliation, but the later SQL Editor executions may not be represented by all 16 repository versions in the linked migration ledger. RELEASE-02 prepared deterministic seed fixtures, operator tooling, hardening evidence, and runbooks without hosted mutation. RELEASE-03 must first verify and, if needed, reconcile the linked ledger through a reviewed authorized procedure; only then may it change external OAuth/Supabase/Vercel configuration, execute the approved hosted beta import, deploy, or run production smoke—and only after explicit authority.
 
 The [RELEASE-01 evidence](evidence/release-01-openmidi-identity-reset.md) records the current checkpoint, exact reconciliation migration, preservation boundary, and deferred hosted rollout. The detailed ignored release plan sequences RELEASE-02 next.
 
@@ -37,6 +37,6 @@ See the tracked [roadmap](../ROADMAP.md) for slice outcomes, ordering, and relea
 
 ## Hosted cutover boundary
 
-PIVOT-10 retained the existing project reference and local environment binding, replayed the four clean baseline migrations through one linked reset, recreated required administrator/invitation/avatar state, and verified hosted MIDI-only behavior. The later authorized LIB, CHALLENGE, BADGE, and corrected RELEASE-01 forward migrations brought the hosted ledger to 16 and cleared disposable musical data. Vercel deployment and its production smoke path remain deferred.
+PIVOT-10 retained the existing project reference and local environment binding, replayed the four clean baseline migrations through one linked reset, recreated required administrator/invitation/avatar state, and verified hosted MIDI-only behavior. The later authorized LIB, CHALLENGE, BADGE, and corrected RELEASE-01 SQL Editor executions brought the hosted schema current and cleared disposable musical data; they did not establish a 16-entry linked ledger. Vercel deployment and its production smoke path remain deferred.
 
-The retained hosted ledger is current through `20260719010758_release_01_openmidi_identity_reconciliation.sql`. Repository merges still do not apply migrations automatically: verify the exact target and obtain explicit hosted-mutation authority before any subsequent change. RELEASE-03 must not rerun the namespace reconciliation, repair migration history, or repeat the broad PIVOT-10 reset.
+The retained hosted schema includes the behavior of `20260719010758_release_01_openmidi_identity_reconciliation.sql`, but the linked migration ledger must be inspected before claiming that version is recorded. Repository merges still do not apply migrations automatically: verify the exact target and obtain explicit hosted-mutation authority before any subsequent change. RELEASE-03 must compare schema and ledger state, reconcile missing history only through a reviewed non-schema procedure, and never repeat the destructive namespace cleanup or broad PIVOT-10 reset.

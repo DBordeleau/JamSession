@@ -1,6 +1,6 @@
 # OpenMIDI technical design
 
-Status: MIDI-only foundation through RELEASE-02 complete; hosted migrations current and deployment deferred
+Status: MIDI-only foundation through RELEASE-02 complete; hosted schema current, linked migration ledger unverified, and deployment deferred
 Last updated: 2026-07-18
 
 This document set turns the [product requirements](../PRD.md) into implementation contracts. The tracked [roadmap](../ROADMAP.md) owns delivery order, the [pivot contract](midi-only-pivot-contract.md) freezes manifest-v3 vocabulary and invariants, and the [brand guide](../design/brand.md) owns user-facing presentation.
@@ -28,7 +28,7 @@ The MIDI-only foundation and post-pivot feature program through BADGE-01 are imp
 - public project discovery/history/preview and safe profile/dashboard navigation;
 - bounded semantic comparison for contribution versions and any two authorized same-project revisions, with a static accessible note overlay and mutually exclusive browser-local audition;
 - reporting, admin moderation, holds, recoverable deletion, retention, and avatar processing;
-- all 16 reviewed migrations through the corrected RELEASE-01 reconciliation, deterministic MIDI-only infrastructure seed, versioned RELEASE-02 beta definitions, current generated types, and pgTAP coverage; and
+- all 16 reviewed repository migrations through the corrected RELEASE-01 reconciliation, deterministic MIDI-only infrastructure seed, versioned RELEASE-02 beta definitions, current generated types, and pgTAP coverage; and
 - an Auth/Postgres-only default browser suite plus enforceable zero-legacy-audio static checks.
 
 Supabase Storage contains only private avatar originals and public avatar derivatives. Musical state and recovery snapshots live in Postgres. Tone.js and browser audio APIs remain inside the client-only MIDI runtime. The repository does not require an audio worker, scheduled job, musical bucket, or musical-media secret.
@@ -39,7 +39,7 @@ The PR 01–20, OPT-01–OPT-05, MIDI-01–MIDI-07, STUDIO-01–STUDIO-06, and U
 
 ## Next work and hosted state
 
-Wave A, LIB-01 through LIB-03, CHALLENGE-01 through CHALLENGE-03, BADGE-01, RELEASE-01, and RELEASE-02 are complete. The library, challenge, and badge authorization contracts remain unchanged. The retained hosted project contains all 16 reviewed migrations through the corrected RELEASE-01 reconciliation, which cleared disposable musical state while preserving the reviewed non-musical boundary. Those migrations must not be rerun, repaired, or modified. RELEASE-02 added deterministic rights-safe beta definitions, a dry-run-first idempotent importer, release-path hardening, and operator procedures without hosted mutation. Authorized hosted seed import, provider configuration, Vercel deployment, and production smoke remain deferred to RELEASE-03.
+Wave A, LIB-01 through LIB-03, CHALLENGE-01 through CHALLENGE-03, BADGE-01, RELEASE-01, and RELEASE-02 are complete. The library, challenge, and badge authorization contracts remain unchanged. The retained hosted schema implements all reviewed changes through the corrected RELEASE-01 reconciliation, which cleared disposable musical state while preserving the reviewed non-musical boundary. The later changes were executed through the SQL Editor, so the linked ledger is not yet verified against all 16 repository migrations. RELEASE-03 must verify and, if needed, reconcile that history through an authorized reviewed procedure before later migration work. RELEASE-02 added deterministic rights-safe beta definitions, a dry-run-first idempotent importer, release-path hardening, and operator procedures without hosted mutation. Authorized hosted seed import, provider configuration, Vercel deployment, and production smoke remain deferred to RELEASE-03.
 
 ## Global invariants
 
