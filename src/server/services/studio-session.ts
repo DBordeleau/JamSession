@@ -14,6 +14,7 @@ import {
 export async function resolveStudioSession(
   projectId: string,
   viewerId: string,
+  options: { revisionId?: string } = {},
 ) {
   const [memberProject, workspace] = await Promise.all([
     getProjectForViewer(projectId),
@@ -48,16 +49,21 @@ export async function resolveStudioSession(
         currentRevisionId: publicProject!.currentRevisionId,
         compatibility: "midi" as const,
       };
-  const revision = project.currentRevisionId
+  if (options.revisionId && options.revisionId !== project.currentRevisionId)
+    return null;
+  const selectedRevisionId = options.revisionId ?? project.currentRevisionId;
+  const revision = selectedRevisionId
     ? await getStudioRevisionV3({
         projectId,
-        revisionId: project.currentRevisionId,
+        revisionId: selectedRevisionId,
       })
     : null;
+  if (options.revisionId && !revision) return null;
   if (!workspace && !revision)
     return { project, workspace: null, revision: null, descriptor: null };
   const owner = project.ownerId === viewerId;
   const workspaceOwner = workspace?.ownerId === viewerId;
+  const viewingRevision = Boolean(options.revisionId);
   const common = {
     viewerId,
     project: {
@@ -67,9 +73,11 @@ export async function resolveStudioSession(
       currentRevisionId: project.currentRevisionId,
     },
     capabilities: {
-      canEdit: Boolean(workspace && workspaceOwner),
-      canPublish: Boolean(workspace && owner && !workspace.contributionId),
-      canSubmit: Boolean(workspace?.contributionId),
+      canEdit: Boolean(!viewingRevision && workspace && workspaceOwner),
+      canPublish: Boolean(
+        !viewingRevision && workspace && owner && !workspace.contributionId,
+      ),
+      canSubmit: Boolean(!viewingRevision && workspace?.contributionId),
       canStartContribution: Boolean(
         revision && !owner && project.openToContributions,
       ),
@@ -82,7 +90,18 @@ export async function resolveStudioSession(
     },
   };
   let descriptor: StudioSessionDescriptor;
-  if (workspace?.contributionId) {
+  if (viewingRevision) {
+    descriptor = parseStudioSessionDescriptor({
+      mode: "memberRevision",
+      ...common,
+      manifest: revision!.manifest,
+      authority: {
+        kind: "revision",
+        revisionId: revision!.revisionId,
+        revisionNumber: revision!.revisionNumber,
+      },
+    });
+  } else if (workspace?.contributionId) {
     descriptor = parseStudioSessionDescriptor({
       mode: "contributionWorkspace",
       ...common,

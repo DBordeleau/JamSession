@@ -273,6 +273,27 @@ test.describe("MIDI v3 collaboration", () => {
     });
     const acceptedRevisionId = String(accepted.revisionId);
 
+    await page.goto(`/studio/${fixture.projectId}`);
+    await expect(
+      page.getByText("Your draft predates revision 2"),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Revision 2 (latest)" }).click();
+    await page.waitForURL(
+      `/studio/${fixture.projectId}?revision=${acceptedRevisionId}`,
+    );
+    await expect(page.getByText("Viewing immutable revision 2")).toBeVisible();
+    await expect(page.getByText("Changed keys", { exact: true })).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.getByRole("button", { name: "Editable draft" }).click();
+    await page.waitForURL(`/studio/${fixture.projectId}`);
+    await expect(
+      page.getByText("Your draft predates revision 2"),
+    ).toBeVisible();
+    await expect(page.getByText("Keys", { exact: true })).toBeVisible({
+      timeout: 20_000,
+    });
+
     queryLocalDatabase(
       `update public.profiles set credit_name='Renamed contributor' where id='${contributorId}' returning id`,
     );

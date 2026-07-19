@@ -37,6 +37,8 @@ The client edits a canonical manifest-v3 workspace. `save_midi_workspace_v3` val
 
 A contribution workspace begins from an exact base project revision. Submission freezes one immutable arrangement version. Acceptance is stale-base aware and appends a project revision pointing to that exact accepted arrangement; it does not merge automatically. Forking copies project metadata and arrangement projections while retaining exact source project/revision and pattern-version lineage.
 
+An owner workspace remains a private mutable draft after acceptance. When its base predates the project's current revision, Studio identifies the stale base and offers an explicit read-only view of the latest immutable revision; switching views never replaces or silently merges the private draft.
+
 ### Public reads and discovery
 
 Public project pages, preview, history, attribution, and discovery read arrangement versions and exact MIDI pattern versions. Pattern creator snapshots and CC BY 4.0 lineage survive profile renames and deletion. Public pattern-library listing is explicit and separate from project publication; LIB-01 distinguishes commercially reusable CC BY 4.0 listings from reference-only/no-reuse listings through a bounded safe projection while direct pattern reads remain project/member/owner scoped.
