@@ -22,7 +22,17 @@ The application environment contains only the public Supabase URL/publishable ke
 5. Promote only that deployment, then verify `https://open-midi.vercel.app/` resolves to the resulting production deployment.
 6. Check public routes, protected redirects, `/test-auth` returning 404, representative MIDI preview responses, and Vercel runtime errors/log status.
 
-This repository is connected to Vercel. Merging PR #66 into the configured Vercel production branch is therefore expected to create another production deployment. After merge, the operator must wait for that deployment to become ready, record its exact source commit and deployment ID, confirm the production alias resolves to it, and repeat the narrow production smoke in step 6 before considering the merged state verified.
+For changes that can affect navigation request fanout, add one bounded $0 observation after the narrow smoke:
+
+1. Confirm the exact commit, deployment ID, readiness, and production alias.
+2. Use a fixed observation window and group sanitized request counts separately as Edge Requests, Function Invocations, cache hits, and middleware.
+3. Run one controlled private-browser sign-in â†’ Studio â†’ project-open journey, then leave the ready Studio untouched for 60 seconds.
+4. Confirm that rendering global navigation does not request unrelated destinations before pointer/keyboard intent and that idle Studio produces no application request loop.
+5. Record direct Supabase requests and browser-local MIDI activity separately; never record credentials, cookies, emails, full query strings, manifests, or private identifiers.
+
+The detailed policy, provisional request budgets, and baseline limitations are recorded in the [PERF-01 evidence](../technical-design/evidence/perf-01-production-request-fanout.md). Hobby observability limitations must be reported rather than hidden or supplemented with a paid processor.
+
+This repository is connected to Vercel. Every merge into the configured production branch can create a production deployment. After merge, the operator must wait for that deployment to become ready, record its exact source commit and deployment ID, confirm the production alias resolves to it, and repeat the applicable narrow production smoke before considering the merged state verified.
 
 Creating or promoting an application deployment does not mutate Supabase schema, data, migration history, Auth/provider configuration, or imported seed state. Those remain separate hosted mutations requiring their own exact target checks and authority.
 

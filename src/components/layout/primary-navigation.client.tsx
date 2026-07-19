@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { IntentPrefetchLink } from "@/components/navigation/intent-prefetch-link.client";
 
 const links = [
   {
@@ -61,14 +61,14 @@ export function PrimaryNavigation() {
   const items = links.map((link) => {
     const current = link.active(pathname);
     return (
-      <Link
+      <IntentPrefetchLink
         key={link.href}
         href={link.href}
         aria-current={current ? "page" : undefined}
         className={`rounded-full px-3 py-2 font-medium whitespace-nowrap transition-colors ${current ? "bg-surface-raised text-ink shadow-sm" : "text-muted hover:text-accent"}`}
       >
         {link.label}
-      </Link>
+      </IntentPrefetchLink>
     );
   });
   return (
@@ -79,12 +79,12 @@ export function PrimaryNavigation() {
         </summary>
         <nav aria-label="Primary mobile" className="mt-2 grid gap-1">
           {items}
-          <Link
+          <IntentPrefetchLink
             href="/settings/profile"
             className="text-muted rounded-full px-3 py-2 font-medium"
           >
             Account
-          </Link>
+          </IntentPrefetchLink>
         </nav>
       </details>
       <nav

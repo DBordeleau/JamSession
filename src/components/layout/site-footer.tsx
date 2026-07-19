@@ -11,34 +11,47 @@ export function SiteFooter() {
           with the right people.
         </p>
         <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2">
-          <Link className="hover:text-ink" href="/">
+          <Link className="hover:text-ink" href="/" prefetch={false}>
             Home
           </Link>
-          <Link className="hover:text-ink" href="/explore">
+          <Link className="hover:text-ink" href="/explore" prefetch={false}>
             Explore
           </Link>
-          <Link className="hover:text-ink" href="/challenges">
+          <Link className="hover:text-ink" href="/challenges" prefetch={false}>
             Challenges
           </Link>
-          <Link className="hover:text-ink" href="/projects">
+          <Link className="hover:text-ink" href="/projects" prefetch={false}>
             My projects
           </Link>
-          <Link className="hover:text-ink" href="/projects/new">
+          <Link
+            className="hover:text-ink"
+            href="/projects/new"
+            prefetch={false}
+          >
             New project
           </Link>
-          <Link className="hover:text-ink" href="/contributions">
+          <Link
+            className="hover:text-ink"
+            href="/contributions"
+            prefetch={false}
+          >
             Contributions
           </Link>
-          <Link className="hover:text-ink" href="/community-rules">
+          <Link
+            className="hover:text-ink"
+            href="/community-rules"
+            prefetch={false}
+          >
             Community rules
           </Link>
-          <Link className="hover:text-ink" href="/reports">
+          <Link className="hover:text-ink" href="/reports" prefetch={false}>
             Reports
           </Link>
           <AuthAwareLink
             signedOut={{ href: "/sign-in", label: "Sign in" }}
             signedIn={{ href: "/settings/profile", label: "Account" }}
             className="hover:text-ink"
+            prefetch={false}
           />
         </nav>
       </Container>

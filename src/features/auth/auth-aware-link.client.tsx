@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { type LinkProps } from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -15,12 +15,15 @@ export function AuthAwareLink({
   signedIn,
   className,
   icon,
+  prefetch,
 }: Readonly<{
   signedOut: LinkState;
   signedIn: LinkState;
   className?: string;
   /** Optional leading icon rendered before the label (same for both states). */
   icon?: ReactNode;
+  /** Optional policy override for low-intent surfaces such as the footer. */
+  prefetch?: Extract<LinkProps["prefetch"], false>;
 }>) {
   const [isSignedIn, setIsSignedIn] = useState(false);
   const pathname = usePathname();
@@ -52,7 +55,7 @@ export function AuthAwareLink({
 
   const state = isSignedIn ? signedIn : signedOut;
   return (
-    <Link href={state.href} className={className}>
+    <Link href={state.href} className={className} prefetch={prefetch}>
       {icon}
       {state.label}
     </Link>

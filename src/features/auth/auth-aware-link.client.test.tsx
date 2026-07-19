@@ -1,5 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import type { ComponentProps } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthAwareLink } from "./auth-aware-link.client";
 
 const getClaims = vi.fn();
@@ -18,6 +19,17 @@ vi.mock("@/lib/supabase/browser", () => ({
     },
   }),
 }));
+vi.mock("next/link", () => ({
+  default: ({
+    prefetch,
+    ...props
+  }: ComponentProps<"a"> & { prefetch?: unknown }) => (
+    <a
+      {...props}
+      data-prefetch={prefetch === false ? "false" : "unspecified"}
+    />
+  ),
+}));
 
 const states = {
   signedOut: { href: "/sign-in", label: "Sign in" },
@@ -30,6 +42,7 @@ describe("AuthAwareLink", () => {
     unsubscribe.mockReset();
     authChange = undefined;
   });
+  afterEach(cleanup);
 
   it("progressively replaces sign in with the authenticated destination", async () => {
     getClaims.mockResolvedValue({
@@ -64,6 +77,25 @@ describe("AuthAwareLink", () => {
 
     await waitFor(() =>
       expect(screen.getByRole("link", { name: "Account" })).toBeVisible(),
+    );
+  });
+
+  it("forwards the footer no-prefetch policy across Auth states", async () => {
+    getClaims.mockResolvedValue({
+      data: { claims: { sub: "viewer-id" } },
+      error: null,
+    });
+    render(<AuthAwareLink {...states} prefetch={false} />);
+
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "data-prefetch",
+      "false",
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: "Account" })).toHaveAttribute(
+        "data-prefetch",
+        "false",
+      ),
     );
   });
 });

@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { IntentPrefetchLink } from "@/components/navigation/intent-prefetch-link.client";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { PrimaryNavigation } from "./primary-navigation.client";
 
@@ -53,12 +53,12 @@ export function HeaderNav() {
     return (
       <>
         <PrimaryNavigation />
-        <Link
+        <IntentPrefetchLink
           href="/settings/profile"
           className="cta-gradient text-accent-contrast order-2 hidden min-h-11 shrink-0 items-center rounded-full px-4 text-sm font-semibold transition-transform hover:-translate-y-px sm:order-3 sm:inline-flex"
         >
           Account
-        </Link>
+        </IntentPrefetchLink>
       </>
     );
   }
@@ -70,21 +70,21 @@ export function HeaderNav() {
         className="order-3 flex w-full min-w-0 items-center gap-1 overflow-x-auto text-sm sm:order-2 sm:w-auto"
       >
         {sectionLinks.map((link) => (
-          <Link
+          <IntentPrefetchLink
             key={link.href}
             href={link.href}
             className="text-muted hover:text-accent rounded-full px-3 py-2 font-medium whitespace-nowrap transition-colors"
           >
             {link.label}
-          </Link>
+          </IntentPrefetchLink>
         ))}
       </nav>
-      <Link
+      <IntentPrefetchLink
         href="/sign-in"
         className="border-strong text-ink hover:border-accent hover:text-accent order-2 inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-semibold transition-colors sm:order-3 sm:px-5"
       >
         Sign in
-      </Link>
+      </IntentPrefetchLink>
     </>
   );
 }
