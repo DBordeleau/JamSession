@@ -1,4 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PrimaryNavigation } from "./primary-navigation.client";
@@ -6,6 +7,23 @@ import { PrimaryNavigation } from "./primary-navigation.client";
 const usePathname = vi.fn();
 
 vi.mock("next/navigation", () => ({ usePathname: () => usePathname() }));
+vi.mock("next/link", () => ({
+  default: ({
+    prefetch,
+    ...props
+  }: ComponentProps<"a"> & { prefetch?: unknown }) => (
+    <a
+      {...props}
+      data-prefetch={
+        prefetch === false
+          ? "false"
+          : prefetch === null
+            ? "default"
+            : "unspecified"
+      }
+    />
+  ),
+}));
 
 describe("PrimaryNavigation", () => {
   beforeEach(() => usePathname.mockReturnValue("/"));
@@ -28,6 +46,22 @@ describe("PrimaryNavigation", () => {
       ).toBe(true);
     expect(screen.getByText("Menu")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Uploads" })).toBeNull();
+  });
+
+  it("prefetches desktop and mobile destinations only after intent", () => {
+    render(<PrimaryNavigation />);
+
+    const studioLinks = screen.getAllByRole("link", { name: "Studio" });
+    const accountLink = screen.getByRole("link", { name: "Account" });
+    expect(
+      [...studioLinks, accountLink].every(
+        (link) => link.getAttribute("data-prefetch") === "false",
+      ),
+    ).toBe(true);
+
+    fireEvent.focus(studioLinks[0]);
+    expect(studioLinks[0]).toHaveAttribute("data-prefetch", "default");
+    expect(studioLinks[1]).toHaveAttribute("data-prefetch", "false");
   });
 
   it("marks Studio separately from project routes and project creation", () => {

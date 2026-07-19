@@ -725,579 +725,592 @@ export function ArrangerWorkspace(props: Props) {
       </header>
 
       <div className="flex min-h-0 min-w-0 flex-1">
-      <div className="relative flex min-h-0 min-w-0 flex-1">
-        <div
-          ref={scrollRef}
-          className="min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain"
-        >
+        <div className="relative flex min-h-0 min-w-0 flex-1">
           <div
-            className="relative min-w-max"
-            style={{ width: timelineWidth + CHANNEL_PX }}
+            ref={scrollRef}
+            className="min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain"
           >
-            <div className="border-subtle bg-surface/85 sticky top-0 z-30 grid h-11 grid-cols-[17rem_1fr] border-b backdrop-blur-md">
-              <div className="border-subtle bg-surface/85 sticky left-0 z-40 flex items-center border-r px-3 backdrop-blur-md">
-                <span className="text-muted font-mono text-[10px] tracking-widest uppercase">
-                  Channels
-                </span>
-              </div>
-              <div
-                className="relative cursor-col-resize touch-none"
-                style={{ width: timelineWidth }}
-                role="slider"
-                tabIndex={0}
-                aria-label="Arrangement playhead"
-                aria-valuemin={0}
-                aria-valuemax={rulerDurationTicks}
-                aria-valuenow={props.playheadTick}
-                onKeyDown={(event) => {
-                  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight")
-                    return;
-                  event.preventDefault();
-                  event.stopPropagation();
-                  props.onSeek(
-                    Math.max(
-                      0,
-                      Math.min(
-                        rulerDurationTicks,
-                        props.playheadTick +
-                          (event.key === "ArrowLeft" ? -1 : 1),
-                      ),
-                    ),
-                  );
-                }}
-                onPointerDown={(event) => {
-                  if (event.button !== 0) return;
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                  setRulerPointerId(event.pointerId);
-                  seekFromRuler(event);
-                }}
-                onPointerMove={(event) => {
-                  if (rulerPointerId === event.pointerId) seekFromRuler(event);
-                }}
-                onPointerUp={(event) => {
-                  if (rulerPointerId !== event.pointerId) return;
-                  seekFromRuler(event);
-                  setRulerPointerId(null);
-                }}
-                onPointerCancel={() => setRulerPointerId(null)}
-                onLostPointerCapture={() => setRulerPointerId(null)}
-              >
-                {marks.map((mark) => (
-                  <span
-                    aria-hidden
-                    key={mark.tick}
-                    className={`border-subtle absolute top-0 h-full border-l text-left font-mono text-[10px] ${mark.beat === 1 ? "text-ink" : "text-muted"}`}
-                    style={{ left: ticksToPixels(mark.tick, scale) }}
-                  >
-                    <span className="ml-1">
-                      {mark.beat === 1 ? mark.bar : mark.beat}
-                    </span>
+            <div
+              className="relative min-w-max"
+              style={{ width: timelineWidth + CHANNEL_PX }}
+            >
+              <div className="border-subtle bg-surface/85 sticky top-0 z-30 grid h-11 grid-cols-[17rem_1fr] border-b backdrop-blur-md">
+                <div className="border-subtle bg-surface/85 sticky left-0 z-40 flex items-center border-r px-3 backdrop-blur-md">
+                  <span className="text-muted font-mono text-[10px] tracking-widest uppercase">
+                    Channels
                   </span>
-                ))}
-              </div>
-            </div>
-
-            {view.tracks.length === 0 && !props.pendingMidiLane ? (
-              <div className="sticky left-68 grid min-h-40 max-w-[calc(100vw-19rem)] place-items-center px-8 text-center">
-                <div>
-                  <h3 className="text-xl font-semibold">
-                    Bring in your first MIDI part.
-                  </h3>
-                  <p className="text-muted mt-2">
-                    Use Add / import to place an immutable take on this
-                    timeline.
-                  </p>
+                </div>
+                <div
+                  className="relative cursor-col-resize touch-none"
+                  style={{ width: timelineWidth }}
+                  role="slider"
+                  tabIndex={0}
+                  aria-label="Arrangement playhead"
+                  aria-valuemin={0}
+                  aria-valuemax={rulerDurationTicks}
+                  aria-valuenow={props.playheadTick}
+                  onKeyDown={(event) => {
+                    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight")
+                      return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    props.onSeek(
+                      Math.max(
+                        0,
+                        Math.min(
+                          rulerDurationTicks,
+                          props.playheadTick +
+                            (event.key === "ArrowLeft" ? -1 : 1),
+                        ),
+                      ),
+                    );
+                  }}
+                  onPointerDown={(event) => {
+                    if (event.button !== 0) return;
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                    setRulerPointerId(event.pointerId);
+                    seekFromRuler(event);
+                  }}
+                  onPointerMove={(event) => {
+                    if (rulerPointerId === event.pointerId)
+                      seekFromRuler(event);
+                  }}
+                  onPointerUp={(event) => {
+                    if (rulerPointerId !== event.pointerId) return;
+                    seekFromRuler(event);
+                    setRulerPointerId(null);
+                  }}
+                  onPointerCancel={() => setRulerPointerId(null)}
+                  onLostPointerCapture={() => setRulerPointerId(null)}
+                >
+                  {marks.map((mark) => (
+                    <span
+                      aria-hidden
+                      key={mark.tick}
+                      className={`border-subtle absolute top-0 h-full border-l text-left font-mono text-[10px] ${mark.beat === 1 ? "text-ink" : "text-muted"}`}
+                      style={{ left: ticksToPixels(mark.tick, scale) }}
+                    >
+                      <span className="ml-1">
+                        {mark.beat === 1 ? mark.bar : mark.beat}
+                      </span>
+                    </span>
+                  ))}
                 </div>
               </div>
-            ) : view.tracks.length > 0 ? (
-              <ol aria-label="Arrangement tracks">
-                {view.tracks.map((track, trackIndex) => {
-                  const selected = selection?.trackId === track.trackId;
-                  return (
-                    <motion.li
-                      key={track.trackId}
-                      initial={reduce ? false : { opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{
-                        duration: reduce ? 0 : 0.3,
-                        ease: [0.2, 0.8, 0.2, 1],
-                      }}
-                      className={`border-subtle grid h-44 grid-cols-[17rem_1fr] border-b ${selected ? "bg-surface-soft" : ""} ${trackDrag?.targetIndex === trackIndex || clipDrag?.targetTrackId === track.trackId ? "ring-accent ring-2 ring-inset" : ""}`}
-                    >
-                      <div className="border-subtle bg-surface/85 sticky left-0 z-20 border-r p-2.5 pl-4 backdrop-blur-md">
-                        <span
-                          aria-hidden
-                          className="absolute top-2.5 bottom-2.5 left-1 w-1 rounded-full"
-                          style={{
-                            background:
-                              TRACK_HUES[trackIndex % TRACK_HUES.length],
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="focus-visible:ring-accent w-full rounded text-left focus-visible:ring-2"
-                          onClick={() =>
-                            setSelection({
-                              kind: "track",
-                              trackId: track.trackId,
-                            })
-                          }
-                          aria-label={`Select track ${track.name}. ${track.kind}. ${track.creditName}.`}
-                        >
-                          <span className="block truncate text-sm font-semibold">
-                            {track.name}
-                          </span>
-                          <span className="text-muted block truncate text-[11px]">
-                            {track.instrument} · {track.creditName}
-                          </span>
-                          <span className="text-accent-2 mt-1 block text-[10px] font-semibold uppercase">
-                            Ready · note summary
-                          </span>
-                        </button>
-                        <div className="mt-1 grid grid-cols-2 gap-2">
-                          <label className="text-muted text-[9px] font-semibold uppercase">
-                            Gain
-                            <input
-                              aria-label={`${track.name} compact gain`}
-                              className="accent-accent block h-3 w-full"
-                              type="range"
-                              min={-60}
-                              max={6}
-                              step={0.5}
-                              disabled={!props.editable}
-                              value={track.gainDb}
-                              onChange={(event) =>
-                                props.onTrackPatch(track.trackId, {
-                                  gainDb: Number(event.target.value),
-                                })
-                              }
-                            />
-                          </label>
-                          <label className="text-muted text-[9px] font-semibold uppercase">
-                            Pan
-                            <input
-                              aria-label={`${track.name} compact pan`}
-                              className="accent-accent block h-3 w-full"
-                              type="range"
-                              min={-1}
-                              max={1}
-                              step={0.1}
-                              disabled={!props.editable}
-                              value={track.pan}
-                              onChange={(event) =>
-                                props.onTrackPatch(track.trackId, {
-                                  pan: Number(event.target.value),
-                                })
-                              }
-                            />
-                          </label>
-                        </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                          <MixerButton
-                            label={`Mute ${track.name}`}
-                            active={track.muted}
-                            disabled={!props.editable}
+
+              {view.tracks.length === 0 && !props.pendingMidiLane ? (
+                <div className="sticky left-68 grid min-h-40 max-w-[calc(100vw-19rem)] place-items-center px-8 text-center">
+                  <div>
+                    <h3 className="text-xl font-semibold">
+                      Bring in your first MIDI part.
+                    </h3>
+                    <p className="text-muted mt-2">
+                      Use Add / import to place an immutable take on this
+                      timeline.
+                    </p>
+                  </div>
+                </div>
+              ) : view.tracks.length > 0 ? (
+                <ol aria-label="Arrangement tracks">
+                  {view.tracks.map((track, trackIndex) => {
+                    const selected = selection?.trackId === track.trackId;
+                    return (
+                      <motion.li
+                        key={track.trackId}
+                        initial={reduce ? false : { opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{
+                          duration: reduce ? 0 : 0.3,
+                          ease: [0.2, 0.8, 0.2, 1],
+                        }}
+                        className={`border-subtle grid h-44 grid-cols-[17rem_1fr] border-b ${selected ? "bg-surface-soft" : ""} ${trackDrag?.targetIndex === trackIndex || clipDrag?.targetTrackId === track.trackId ? "ring-accent ring-2 ring-inset" : ""}`}
+                      >
+                        <div className="border-subtle bg-surface/85 sticky left-0 z-20 border-r p-2.5 pl-4 backdrop-blur-md">
+                          <span
+                            aria-hidden
+                            className="absolute top-2.5 bottom-2.5 left-1 w-1 rounded-full"
+                            style={{
+                              background:
+                                TRACK_HUES[trackIndex % TRACK_HUES.length],
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className="focus-visible:ring-accent w-full rounded text-left focus-visible:ring-2"
                             onClick={() =>
-                              props.onTrackPatch(track.trackId, {
-                                muted: !track.muted,
+                              setSelection({
+                                kind: "track",
+                                trackId: track.trackId,
                               })
                             }
+                            aria-label={`Select track ${track.name}. ${track.kind}. ${track.creditName}.`}
                           >
-                            M
-                          </MixerButton>
-                          <MixerButton
-                            label={`Solo ${track.name}`}
-                            active={track.soloed}
-                            disabled={!props.editable}
-                            onClick={() =>
-                              props.onTrackPatch(track.trackId, {
-                                soloed: !track.soloed,
-                              })
-                            }
-                          >
-                            S
-                          </MixerButton>
-                          <button
-                            className={channelButton}
-                            type="button"
-                            aria-label={`Drag ${track.name} to reorder`}
-                            title="Drag to reorder"
-                            disabled={!props.editable}
-                            onPointerDown={(event) =>
-                              beginTrackDrag(event, track.trackId, trackIndex)
-                            }
-                            onPointerMove={previewTrackDrag}
-                            onPointerUp={commitTrackDrag}
-                          >
-                            <FiMove />
+                            <span className="block truncate text-sm font-semibold">
+                              {track.name}
+                            </span>
+                            <span className="text-muted block truncate text-[11px]">
+                              {track.instrument} · {track.creditName}
+                            </span>
+                            <span className="text-accent-2 mt-1 block text-[10px] font-semibold uppercase">
+                              Ready · note summary
+                            </span>
                           </button>
-                          <button
-                            className={channelButton}
-                            type="button"
-                            aria-label={`Move ${track.name} up`}
-                            disabled={!props.editable || trackIndex === 0}
-                            onClick={() => props.onMoveTrack(track.trackId, -1)}
-                          >
-                            <FiChevronUp />
-                          </button>
-                          <button
-                            className={channelButton}
-                            type="button"
-                            aria-label={`Move ${track.name} down`}
-                            disabled={
-                              !props.editable ||
-                              trackIndex === view.tracks.length - 1
-                            }
-                            onClick={() => props.onMoveTrack(track.trackId, 1)}
-                          >
-                            <FiChevronDown />
-                          </button>
-                          {track.kind === "midi" && (
+                          <div className="mt-1 grid grid-cols-2 gap-2">
+                            <label className="text-muted text-[9px] font-semibold uppercase">
+                              Gain
+                              <input
+                                aria-label={`${track.name} compact gain`}
+                                className="accent-accent block h-3 w-full"
+                                type="range"
+                                min={-60}
+                                max={6}
+                                step={0.5}
+                                disabled={!props.editable}
+                                value={track.gainDb}
+                                onChange={(event) =>
+                                  props.onTrackPatch(track.trackId, {
+                                    gainDb: Number(event.target.value),
+                                  })
+                                }
+                              />
+                            </label>
+                            <label className="text-muted text-[9px] font-semibold uppercase">
+                              Pan
+                              <input
+                                aria-label={`${track.name} compact pan`}
+                                className="accent-accent block h-3 w-full"
+                                type="range"
+                                min={-1}
+                                max={1}
+                                step={0.1}
+                                disabled={!props.editable}
+                                value={track.pan}
+                                onChange={(event) =>
+                                  props.onTrackPatch(track.trackId, {
+                                    pan: Number(event.target.value),
+                                  })
+                                }
+                              />
+                            </label>
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <MixerButton
+                              label={`Mute ${track.name}`}
+                              active={track.muted}
+                              disabled={!props.editable}
+                              onClick={() =>
+                                props.onTrackPatch(track.trackId, {
+                                  muted: !track.muted,
+                                })
+                              }
+                            >
+                              M
+                            </MixerButton>
+                            <MixerButton
+                              label={`Solo ${track.name}`}
+                              active={track.soloed}
+                              disabled={!props.editable}
+                              onClick={() =>
+                                props.onTrackPatch(track.trackId, {
+                                  soloed: !track.soloed,
+                                })
+                              }
+                            >
+                              S
+                            </MixerButton>
                             <button
                               className={channelButton}
                               type="button"
-                              aria-label={`Duplicate ${track.name}`}
-                              title="Duplicate track"
+                              aria-label={`Drag ${track.name} to reorder`}
+                              title="Drag to reorder"
                               disabled={!props.editable}
-                              onClick={() => duplicateMidiTrack(track.trackId)}
-                            >
-                              <FiLayers />
-                            </button>
-                          )}
-                          <button
-                            className={`${channelButton} hover:border-danger hover:text-danger`}
-                            type="button"
-                            aria-label={`Remove ${track.name}`}
-                            title="Remove track"
-                            disabled={!props.editable}
-                            onClick={() => props.onRemoveTrack(track.trackId)}
-                          >
-                            <FiTrash2 />
-                          </button>
-                        </div>
-                      </div>
-                      <div
-                        className="relative overflow-hidden"
-                        style={{ width: timelineWidth }}
-                        data-arranger-track-id={track.trackId}
-                      >
-                        {marks.map((mark) => (
-                          <span
-                            aria-hidden
-                            key={mark.tick}
-                            className={`border-subtle absolute inset-y-0 border-l ${mark.beat === 1 ? "opacity-60" : "opacity-25"}`}
-                            style={{ left: ticksToPixels(mark.tick, scale) }}
-                          />
-                        ))}
-                        {track.clips.map((clip) => {
-                          const previewTick =
-                            clipDrag?.clipId === clip.clipId
-                              ? clipDrag.previewTick
-                              : clip.startTick;
-                          const left = ticksToPixels(previewTick, scale);
-                          const width = Math.max(
-                            12,
-                            ticksToPixels(clip.durationTicks, scale),
-                          );
-                          const hue =
-                            TRACK_HUES[trackIndex % TRACK_HUES.length];
-                          const clipSelected =
-                            selection?.kind === "clip" &&
-                            selection.clipId === clip.clipId;
-                          return (
-                            <button
-                              type="button"
-                              key={clip.clipId}
-                              data-clip-id={clip.clipId}
-                              className="focus-visible:ring-accent absolute top-4 h-36 overflow-hidden rounded-xl border text-left shadow-[0_4px_16px_rgb(0_0_0/0.38)] transition-[filter] hover:brightness-110 focus-visible:ring-2"
-                              style={{
-                                left,
-                                width,
-                                borderColor: hue,
-                                background:
-                                  "linear-gradient(170deg, rgb(48 33 56 / 0.96), rgb(32 22 39 / 0.96))",
-                                boxShadow: clipSelected
-                                  ? `0 0 0 1.5px ${hue}, 0 4px 18px rgb(0 0 0 / 0.48)`
-                                  : undefined,
-                              }}
-                              aria-label={`MIDI clip on ${track.name}, ${formatMusicalPosition(clip.startTick, view.timeSignature)}, duration ${clip.durationTicks} ticks, credited to ${clip.creditName}.`}
-                              onClick={() =>
-                                setSelection({
-                                  kind: "clip",
-                                  trackId: track.trackId,
-                                  clipId: clip.clipId,
-                                })
-                              }
-                              onContextMenu={(event) => {
-                                event.preventDefault();
-                                setSelection({
-                                  kind: "clip",
-                                  trackId: track.trackId,
-                                  clipId: clip.clipId,
-                                });
-                                setContextMenu({
-                                  x: event.clientX,
-                                  y: event.clientY,
-                                });
-                              }}
-                              onDoubleClick={() => {
-                                props.onEditMidiClip(
-                                  track.trackId,
-                                  clip.clipId,
-                                );
-                              }}
                               onPointerDown={(event) =>
-                                beginClipDrag(
-                                  event,
-                                  track.trackId,
-                                  clip.clipId,
-                                  clip.startTick,
-                                )
+                                beginTrackDrag(event, track.trackId, trackIndex)
                               }
-                              onPointerMove={previewClipDrag}
-                              onPointerUp={commitClipDrag}
-                              onPointerCancel={cancelClipDrag}
-                              onLostPointerCapture={cancelClipDrag}
+                              onPointerMove={previewTrackDrag}
+                              onPointerUp={commitTrackDrag}
                             >
-                              <span
-                                className="absolute top-1.5 left-2.5 z-10 max-w-[calc(100%-1rem)] truncate font-mono text-[9px] font-semibold tracking-widest uppercase"
-                                style={{ color: hue }}
-                              >
-                                {track.name}
-                              </span>
-                              <MidiNotes
-                                notes={clip.notes}
-                                clipStart={clip.startTick}
-                                clipDuration={clip.durationTicks}
-                                hue={hue}
-                              />
+                              <FiMove />
                             </button>
-                          );
-                        })}
-                      </div>
-                    </motion.li>
-                  );
-                })}
-              </ol>
-            ) : null}
-            {props.pendingMidiLane && (
-              <div className="border-accent bg-surface-soft sticky left-0 z-20 grid min-h-32 w-[min(100%,calc(100vw-2rem))] grid-cols-[17rem_minmax(30rem,1fr)] border-y border-dashed">
-                <div className="border-subtle bg-surface-soft sticky left-0 z-30 flex flex-col justify-center border-r p-3">
-                  <label className="text-muted text-[10px] font-semibold tracking-wide uppercase">
-                    Pending MIDI track
+                            <button
+                              className={channelButton}
+                              type="button"
+                              aria-label={`Move ${track.name} up`}
+                              disabled={!props.editable || trackIndex === 0}
+                              onClick={() =>
+                                props.onMoveTrack(track.trackId, -1)
+                              }
+                            >
+                              <FiChevronUp />
+                            </button>
+                            <button
+                              className={channelButton}
+                              type="button"
+                              aria-label={`Move ${track.name} down`}
+                              disabled={
+                                !props.editable ||
+                                trackIndex === view.tracks.length - 1
+                              }
+                              onClick={() =>
+                                props.onMoveTrack(track.trackId, 1)
+                              }
+                            >
+                              <FiChevronDown />
+                            </button>
+                            {track.kind === "midi" && (
+                              <button
+                                className={channelButton}
+                                type="button"
+                                aria-label={`Duplicate ${track.name}`}
+                                title="Duplicate track"
+                                disabled={!props.editable}
+                                onClick={() =>
+                                  duplicateMidiTrack(track.trackId)
+                                }
+                              >
+                                <FiLayers />
+                              </button>
+                            )}
+                            <button
+                              className={`${channelButton} hover:border-danger hover:text-danger`}
+                              type="button"
+                              aria-label={`Remove ${track.name}`}
+                              title="Remove track"
+                              disabled={!props.editable}
+                              onClick={() => props.onRemoveTrack(track.trackId)}
+                            >
+                              <FiTrash2 />
+                            </button>
+                          </div>
+                        </div>
+                        <div
+                          className="relative overflow-hidden"
+                          style={{ width: timelineWidth }}
+                          data-arranger-track-id={track.trackId}
+                        >
+                          {marks.map((mark) => (
+                            <span
+                              aria-hidden
+                              key={mark.tick}
+                              className={`border-subtle absolute inset-y-0 border-l ${mark.beat === 1 ? "opacity-60" : "opacity-25"}`}
+                              style={{ left: ticksToPixels(mark.tick, scale) }}
+                            />
+                          ))}
+                          {track.clips.map((clip) => {
+                            const previewTick =
+                              clipDrag?.clipId === clip.clipId
+                                ? clipDrag.previewTick
+                                : clip.startTick;
+                            const left = ticksToPixels(previewTick, scale);
+                            const width = Math.max(
+                              12,
+                              ticksToPixels(clip.durationTicks, scale),
+                            );
+                            const hue =
+                              TRACK_HUES[trackIndex % TRACK_HUES.length];
+                            const clipSelected =
+                              selection?.kind === "clip" &&
+                              selection.clipId === clip.clipId;
+                            return (
+                              <button
+                                type="button"
+                                key={clip.clipId}
+                                data-clip-id={clip.clipId}
+                                className="focus-visible:ring-accent absolute top-4 h-36 overflow-hidden rounded-xl border text-left shadow-[0_4px_16px_rgb(0_0_0/0.38)] transition-[filter] hover:brightness-110 focus-visible:ring-2"
+                                style={{
+                                  left,
+                                  width,
+                                  borderColor: hue,
+                                  background:
+                                    "linear-gradient(170deg, rgb(48 33 56 / 0.96), rgb(32 22 39 / 0.96))",
+                                  boxShadow: clipSelected
+                                    ? `0 0 0 1.5px ${hue}, 0 4px 18px rgb(0 0 0 / 0.48)`
+                                    : undefined,
+                                }}
+                                aria-label={`MIDI clip on ${track.name}, ${formatMusicalPosition(clip.startTick, view.timeSignature)}, duration ${clip.durationTicks} ticks, credited to ${clip.creditName}.`}
+                                onClick={() =>
+                                  setSelection({
+                                    kind: "clip",
+                                    trackId: track.trackId,
+                                    clipId: clip.clipId,
+                                  })
+                                }
+                                onContextMenu={(event) => {
+                                  event.preventDefault();
+                                  setSelection({
+                                    kind: "clip",
+                                    trackId: track.trackId,
+                                    clipId: clip.clipId,
+                                  });
+                                  setContextMenu({
+                                    x: event.clientX,
+                                    y: event.clientY,
+                                  });
+                                }}
+                                onDoubleClick={() => {
+                                  props.onEditMidiClip(
+                                    track.trackId,
+                                    clip.clipId,
+                                  );
+                                }}
+                                onPointerDown={(event) =>
+                                  beginClipDrag(
+                                    event,
+                                    track.trackId,
+                                    clip.clipId,
+                                    clip.startTick,
+                                  )
+                                }
+                                onPointerMove={previewClipDrag}
+                                onPointerUp={commitClipDrag}
+                                onPointerCancel={cancelClipDrag}
+                                onLostPointerCapture={cancelClipDrag}
+                              >
+                                <span
+                                  className="absolute top-1.5 left-2.5 z-10 max-w-[calc(100%-1rem)] truncate font-mono text-[9px] font-semibold tracking-widest uppercase"
+                                  style={{ color: hue }}
+                                >
+                                  {track.name}
+                                </span>
+                                <MidiNotes
+                                  notes={clip.notes}
+                                  clipStart={clip.startTick}
+                                  clipDuration={clip.durationTicks}
+                                  hue={hue}
+                                />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </motion.li>
+                    );
+                  })}
+                </ol>
+              ) : null}
+              {props.pendingMidiLane && (
+                <div className="border-accent bg-surface-soft sticky left-0 z-20 grid min-h-32 w-[min(100%,calc(100vw-2rem))] grid-cols-[17rem_minmax(30rem,1fr)] border-y border-dashed">
+                  <div className="border-subtle bg-surface-soft sticky left-0 z-30 flex flex-col justify-center border-r p-3">
+                    <label className="text-muted text-[10px] font-semibold tracking-wide uppercase">
+                      Pending MIDI track
+                      <input
+                        className={`${field} mt-1`}
+                        aria-label="Pending track name"
+                        value={props.pendingMidiLane.name}
+                        maxLength={120}
+                        autoFocus
+                        onChange={(event) =>
+                          props.onPendingMidiLaneNameChange(event.target.value)
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="relative flex min-w-[30rem] items-center justify-center gap-2 px-6">
+                    <button
+                      type="button"
+                      className="cta-gradient text-accent-contrast min-h-11 rounded-full px-4 text-sm font-semibold disabled:opacity-50"
+                      disabled={!props.pendingMidiLane.name.trim()}
+                      onClick={props.onOpenPendingPianoRoll}
+                    >
+                      Open piano roll
+                    </button>
+                    <button
+                      type="button"
+                      className={`${button} gap-2`}
+                      disabled={!props.pendingMidiLane.name.trim()}
+                      onClick={() => pendingImportRef.current?.click()}
+                    >
+                      <FiUpload /> Import .mid
+                    </button>
                     <input
-                      className={`${field} mt-1`}
-                      aria-label="Pending track name"
-                      value={props.pendingMidiLane.name}
-                      maxLength={120}
-                      autoFocus
-                      onChange={(event) =>
-                        props.onPendingMidiLaneNameChange(event.target.value)
-                      }
+                      ref={pendingImportRef}
+                      className="sr-only"
+                      type="file"
+                      accept=".mid,.midi,audio/midi,audio/x-midi"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) props.onImportPendingMidi(file);
+                        event.currentTarget.value = "";
+                      }}
                     />
-                  </label>
-                </div>
-                <div className="relative flex min-w-[30rem] items-center justify-center gap-2 px-6">
-                  <button
-                    type="button"
-                    className="cta-gradient text-accent-contrast min-h-11 rounded-full px-4 text-sm font-semibold disabled:opacity-50"
-                    disabled={!props.pendingMidiLane.name.trim()}
-                    onClick={props.onOpenPendingPianoRoll}
-                  >
-                    Open piano roll
-                  </button>
-                  <button
-                    type="button"
-                    className={`${button} gap-2`}
-                    disabled={!props.pendingMidiLane.name.trim()}
-                    onClick={() => pendingImportRef.current?.click()}
-                  >
-                    <FiUpload /> Import .mid
-                  </button>
-                  <input
-                    ref={pendingImportRef}
-                    className="sr-only"
-                    type="file"
-                    accept=".mid,.midi,audio/midi,audio/x-midi"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) props.onImportPendingMidi(file);
-                      event.currentTarget.value = "";
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className={`${button} gap-2`}
-                    disabled={
-                      !props.pendingMidiLane.name.trim() ||
-                      clipboard?.kind !== "midi"
-                    }
-                    onClick={() => {
-                      if (!props.pendingMidiLane || clipboard?.kind !== "midi")
-                        return;
-                      const clipId = crypto.randomUUID();
-                      const applied = props.onCommand({
-                        type: "materializeMidiTrack",
-                        trackId: props.pendingMidiLane.trackId,
-                        name: props.pendingMidiLane.name,
-                        clipboard,
-                        newClipId: clipId,
-                        startTick: props.playheadTick,
-                      });
-                      if (applied) {
-                        setSelection({
-                          kind: "clip",
-                          trackId: props.pendingMidiLane.trackId,
-                          clipId,
-                        });
-                        props.onClosePendingMidiLane();
+                    <button
+                      type="button"
+                      className={`${button} gap-2`}
+                      disabled={
+                        !props.pendingMidiLane.name.trim() ||
+                        clipboard?.kind !== "midi"
                       }
-                    }}
-                  >
-                    <FiCopy /> Paste compatible clip
-                  </button>
-                  <button
-                    type="button"
-                    className={iconButton}
-                    aria-label="Close pending track"
-                    onClick={props.onClosePendingMidiLane}
-                  >
-                    <FiX />
-                  </button>
+                      onClick={() => {
+                        if (
+                          !props.pendingMidiLane ||
+                          clipboard?.kind !== "midi"
+                        )
+                          return;
+                        const clipId = crypto.randomUUID();
+                        const applied = props.onCommand({
+                          type: "materializeMidiTrack",
+                          trackId: props.pendingMidiLane.trackId,
+                          name: props.pendingMidiLane.name,
+                          clipboard,
+                          newClipId: clipId,
+                          startTick: props.playheadTick,
+                        });
+                        if (applied) {
+                          setSelection({
+                            kind: "clip",
+                            trackId: props.pendingMidiLane.trackId,
+                            clipId,
+                          });
+                          props.onClosePendingMidiLane();
+                        }
+                      }}
+                    >
+                      <FiCopy /> Paste compatible clip
+                    </button>
+                    <button
+                      type="button"
+                      className={iconButton}
+                      aria-label="Close pending track"
+                      onClick={props.onClosePendingMidiLane}
+                    >
+                      <FiX />
+                    </button>
+                  </div>
                 </div>
+              )}
+              <div className="border-subtle bg-surface sticky left-0 z-20 grid h-16 w-[min(100%,calc(100vw-2rem))] grid-cols-[17rem_minmax(30rem,1fr)] border-b">
+                <button
+                  type="button"
+                  className="border-subtle text-accent hover:bg-surface-soft disabled:text-muted sticky left-0 flex items-center gap-2 border-r px-4 text-sm font-semibold disabled:opacity-60"
+                  disabled={!props.editable || props.pendingMidiLane !== null}
+                  onClick={props.onAddMidiLane}
+                >
+                  <FiPlus /> Add a track
+                </button>
+                <p className="text-muted flex items-center justify-center px-6 text-sm">
+                  {props.pendingMidiLane
+                    ? "Finish or close the pending lane before adding another."
+                    : "The next MIDI lane is ready here."}
+                </p>
               </div>
-            )}
-            <div className="border-subtle bg-surface sticky left-0 z-20 grid h-16 w-[min(100%,calc(100vw-2rem))] grid-cols-[17rem_minmax(30rem,1fr)] border-b">
-              <button
-                type="button"
-                className="border-subtle text-accent hover:bg-surface-soft disabled:text-muted sticky left-0 flex items-center gap-2 border-r px-4 text-sm font-semibold disabled:opacity-60"
-                disabled={!props.editable || props.pendingMidiLane !== null}
-                onClick={props.onAddMidiLane}
-              >
-                <FiPlus /> Add a track
-              </button>
-              <p className="text-muted flex items-center justify-center px-6 text-sm">
-                {props.pendingMidiLane
-                  ? "Finish or close the pending lane before adding another."
-                  : "The next MIDI lane is ready here."}
-              </p>
+              <div
+                aria-hidden
+                className="bg-ink pointer-events-none absolute top-0 bottom-0 z-10 w-px"
+                style={{ left: CHANNEL_PX + playheadLeft }}
+              />
             </div>
-            <div
-              aria-hidden
-              className="bg-ink pointer-events-none absolute top-0 bottom-0 z-10 w-px"
-              style={{ left: CHANNEL_PX + playheadLeft }}
-            />
+          </div>
+          <div className="border-subtle bg-surface-raised/75 absolute right-4 bottom-4 z-40 flex items-center gap-1.5 rounded-full border px-2 py-1.5 shadow-xl backdrop-blur-md">
+            <button
+              type="button"
+              className={iconButton}
+              aria-label="Zoom out"
+              onClick={() =>
+                setPixelsPerQuarter((value) => clampZoom(value / 1.5))
+              }
+            >
+              <FiMinus />
+            </button>
+            <span className="text-muted w-12 text-center font-mono text-xs">
+              {Math.round(
+                (pixelsPerQuarter / DEFAULT_PIXELS_PER_QUARTER) * 100,
+              )}
+              %
+            </span>
+            <button
+              type="button"
+              className={iconButton}
+              aria-label="Zoom in"
+              onClick={() =>
+                setPixelsPerQuarter((value) => clampZoom(value * 1.5))
+              }
+            >
+              <FiPlus />
+            </button>
+            <button
+              type="button"
+              aria-pressed={follow}
+              className={`${iconButton} ${follow ? "border-accent text-accent" : ""}`}
+              aria-label="Follow playhead"
+              onClick={() => setFollow((value) => !value)}
+            >
+              <FiCrosshair />
+            </button>
           </div>
         </div>
-        <div className="border-subtle bg-surface-raised/75 absolute right-4 bottom-4 z-40 flex items-center gap-1.5 rounded-full border px-2 py-1.5 shadow-xl backdrop-blur-md">
-          <button
-            type="button"
-            className={iconButton}
-            aria-label="Zoom out"
-            onClick={() =>
-              setPixelsPerQuarter((value) => clampZoom(value / 1.5))
-            }
-          >
-            <FiMinus />
-          </button>
-          <span className="text-muted w-12 text-center font-mono text-xs">
-            {Math.round((pixelsPerQuarter / DEFAULT_PIXELS_PER_QUARTER) * 100)}%
-          </span>
-          <button
-            type="button"
-            className={iconButton}
-            aria-label="Zoom in"
-            onClick={() =>
-              setPixelsPerQuarter((value) => clampZoom(value * 1.5))
-            }
-          >
-            <FiPlus />
-          </button>
-          <button
-            type="button"
-            aria-pressed={follow}
-            className={`${iconButton} ${follow ? "border-accent text-accent" : ""}`}
-            aria-label="Follow playhead"
-            onClick={() => setFollow((value) => !value)}
-          >
-            <FiCrosshair />
-          </button>
-        </div>
-      </div>
-      <aside
-        className="border-subtle bg-surface-raised/40 hidden w-80 shrink-0 flex-col gap-2 overflow-y-auto border-l p-4 backdrop-blur-md xl:flex"
-        aria-label="Clip inspector"
-      >
-        <p className="text-accent font-mono text-[10px] tracking-widest uppercase">
-          Clip
-        </p>
-        {selectedClip && selectedTrack && !contextMenu ? (
-          <ClipInspector
-            key={selectedClip.clipId}
-            clip={selectedClip}
-            track={selectedTrack}
-            editable={props.editable}
-            midiVersions={props.midiVersions}
-            onPatch={(patch, group) =>
-              props.onCommand(
-                {
-                  type: "patchClip",
-                  trackId: selectedTrack.trackId,
-                  clipId: selectedClip.clipId,
-                  patch,
-                },
-                `${selectedClip.clipId}:${group}`,
-              )
-            }
-            onReplace={(versionId) =>
-              props.onReplaceVersion(
-                selectedTrack.trackId,
-                selectedClip.clipId,
-                versionId,
-              )
-            }
-            onEdit={() =>
-              props.onEditMidiClip(selectedTrack.trackId, selectedClip.clipId)
-            }
-            canPaste={clipboard?.kind === selectedTrack.kind}
-            onCopy={() =>
-              setClipboard(
-                copyArrangementClip(
-                  props.manifest,
+        <aside
+          className="border-subtle bg-surface-raised/40 hidden w-80 shrink-0 flex-col gap-2 overflow-y-auto border-l p-4 backdrop-blur-md xl:flex"
+          aria-label="Clip inspector"
+        >
+          <p className="text-accent font-mono text-[10px] tracking-widest uppercase">
+            Clip
+          </p>
+          {selectedClip && selectedTrack && !contextMenu ? (
+            <ClipInspector
+              key={selectedClip.clipId}
+              clip={selectedClip}
+              track={selectedTrack}
+              editable={props.editable}
+              midiVersions={props.midiVersions}
+              onPatch={(patch, group) =>
+                props.onCommand(
+                  {
+                    type: "patchClip",
+                    trackId: selectedTrack.trackId,
+                    clipId: selectedClip.clipId,
+                    patch,
+                  },
+                  `${selectedClip.clipId}:${group}`,
+                )
+              }
+              onReplace={(versionId) =>
+                props.onReplaceVersion(
                   selectedTrack.trackId,
                   selectedClip.clipId,
-                ),
-              )
-            }
-            onPaste={() => {
-              if (!clipboard) return;
-              props.onCommand({
-                type: "pasteClip",
-                targetTrackId: selectedTrack.trackId,
-                clipboard,
-                newClipId: crypto.randomUUID(),
-                startTick: props.playheadTick,
-              });
-            }}
-            onDelete={() => {
-              props.onCommand({
-                type: "deleteMidiClip",
-                trackId: selectedTrack.trackId,
-                clipId: selectedClip.clipId,
-              });
-              setSelection({
-                kind: "track",
-                trackId: selectedTrack.trackId,
-              });
-            }}
-          />
-        ) : (
-          <p className="text-muted text-sm leading-6">
-            Select a clip on the timeline to inspect its exact start, length,
-            loop, and pattern version here.
-          </p>
-        )}
-      </aside>
+                  versionId,
+                )
+              }
+              onEdit={() =>
+                props.onEditMidiClip(selectedTrack.trackId, selectedClip.clipId)
+              }
+              canPaste={clipboard?.kind === selectedTrack.kind}
+              onCopy={() =>
+                setClipboard(
+                  copyArrangementClip(
+                    props.manifest,
+                    selectedTrack.trackId,
+                    selectedClip.clipId,
+                  ),
+                )
+              }
+              onPaste={() => {
+                if (!clipboard) return;
+                props.onCommand({
+                  type: "pasteClip",
+                  targetTrackId: selectedTrack.trackId,
+                  clipboard,
+                  newClipId: crypto.randomUUID(),
+                  startTick: props.playheadTick,
+                });
+              }}
+              onDelete={() => {
+                props.onCommand({
+                  type: "deleteMidiClip",
+                  trackId: selectedTrack.trackId,
+                  clipId: selectedClip.clipId,
+                });
+                setSelection({
+                  kind: "track",
+                  trackId: selectedTrack.trackId,
+                });
+              }}
+            />
+          ) : (
+            <p className="text-muted text-sm leading-6">
+              Select a clip on the timeline to inspect its exact start, length,
+              loop, and pattern version here.
+            </p>
+          )}
+        </aside>
       </div>
       {typeof document !== "undefined" &&
         createPortal(

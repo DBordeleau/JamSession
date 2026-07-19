@@ -1,7 +1,7 @@
 # OpenMIDI MVP roadmap
 
 Status: Post-pivot MVP deployed as an invite-only beta
-Current checkpoint: RELEASE-03 complete
+Current checkpoint: RELEASE-03 complete; PERF-01 request-fanout control complete
 Hosted state: all 16 migrations recorded; approved seed and production deployment live
 
 ## Release target
@@ -150,6 +150,14 @@ Status: Complete. Three compact original projects, seven reviewed manifest-v3 pa
 Verify the retained hosted schema against the repository and inspect the linked migration ledger. If SQL Editor executions are missing from history, reconcile the ledger through a separately reviewed, authorized, non-schema procedure before any later migration. Then configure Vercel against the retained hosted Supabase project, configure exact site/OAuth callback URLs and secrets, run the approved beta seed dry run/import, deploy the avatar function if required, and run the production smoke path. Do not blindly replay schema SQL or repeat the destructive RELEASE-01 cleanup. Document rollback/disable procedures and verify that no musical Storage or source-audio infrastructure returns.
 
 Status: Complete. The retained project ledger was reconciled to all 16 reviewed versions without replaying schema SQL, the existing Google OAuth client and exact production origins were configured, the approved RELEASE-02 seed imported as 7 patterns/3 projects/1 challenge and then resolved entirely as `REUSE`, and the invite-only beta was promoted to `https://open-midi.vercel.app/`. Production smoke, usage baseline, fixes, and rollback are recorded in the [RELEASE-03 evidence](technical-design/evidence/release-03-hosted-rollout.md). Merging later code still never changes hosted data or configuration automatically.
+
+## Post-release interruptions
+
+### PERF-01 â€” Bound production navigation request fanout
+
+Prevent shared-header and authenticated primary-navigation links from prefetching merely because they enter the viewport, then restore normal Next.js prefetch after pointer or keyboard intent. Keep the shared footer cold, preserve the signed-out-first Auth-independent shell, and leave authorization, Studio lifecycle, and data freshness unchanged.
+
+Status: Complete. Global header navigation now uses one typed intent-prefetch Link primitive, footer links explicitly disable prefetch, and focused tests cover mouse, pointer, keyboard, responsive navigation, Auth transitions, event forwarding, and anchor props. No repeated content-card link changed without causal evidence. The directional baseline, category boundaries, $0 post-merge measurement, expected traffic, and rollback are recorded in the [PERF-01 evidence](technical-design/evidence/perf-01-production-request-fanout.md).
 
 ## Release gates
 

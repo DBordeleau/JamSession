@@ -17,6 +17,8 @@ The historical PR 01–20, OPT-01–OPT-05, MIDI-01–MIDI-07, and STUDIO-01–S
 5. For cross-feature browser behavior, start the reduced Auth stack and run `npm run test:e2e:local` once. The default path covers identity, MIDI Studio save/publish/preview, contribution acceptance, and fork lineage without Storage or Edge Runtime.
 6. Run `git diff --check` and review generated artifacts, secrets, and unrelated changes.
 
+Global application chrome must not spend production request budget solely because a Next.js link entered the viewport. Authenticated primary navigation and shared-header destinations begin with prefetch disabled and restore the framework default only after pointer or keyboard intent; always-visible footer destinations remain no-prefetch. Preserve signed-out-first rendering and fresh authorization. For request-fanout changes, verify the deterministic Link prop contract locally, then use one fixed-window, categorized production observation that keeps Edge Requests, Function Invocations, cache hits, middleware, direct Supabase traffic, and browser-local work distinct.
+
 The two-attempt ceiling applies to an unchanged environment blocker. A concrete fixture, selector, query, or harness correction permits one validation run of the corrected path.
 
 ## Post-pivot MVP sequence
@@ -31,7 +33,7 @@ DIFF-01 through DIFF-03, FEEDBACK-01, LIB-01 through LIB-03, CHALLENGE-01 throug
 
 Library, challenge, badge, and release slices remain dependency-ordered. RELEASE-03 verified the retained hosted schema, reconciled the linked ledger to all 16 repository versions without replaying schema SQL, configured the approved production origin, imported the deterministic seed, and deployed the invite-only beta. The [RELEASE-03 evidence](evidence/release-03-hosted-rollout.md) is the authority for exact deployment, smoke, baseline, and rollback state.
 
-The [RELEASE-01 evidence](evidence/release-01-openmidi-identity-reset.md) records the identity reset and preservation boundary. The [RELEASE-02 evidence](evidence/release-02-seeded-beta-hardening.md) records seed preparation, and the [RELEASE-03 evidence](evidence/release-03-hosted-rollout.md) records the completed hosted rollout.
+The [RELEASE-01 evidence](evidence/release-01-openmidi-identity-reset.md) records the identity reset and preservation boundary. The [RELEASE-02 evidence](evidence/release-02-seeded-beta-hardening.md) records seed preparation, the [RELEASE-03 evidence](evidence/release-03-hosted-rollout.md) records the completed hosted rollout, and the [PERF-01 evidence](evidence/perf-01-production-request-fanout.md) records the post-release global-navigation request-fanout control and operational measurement contract.
 
 See the tracked [roadmap](../ROADMAP.md) for slice outcomes, ordering, and release gates.
 

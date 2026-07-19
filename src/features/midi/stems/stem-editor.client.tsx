@@ -2520,8 +2520,7 @@ export function MidiStemEditor({
               PIANO_KEY_WIDTH +
               (note.startTick / MIDI_PPQ) * pixelsPerBeat -
               viewport.scrollLeft;
-            if (x < PIANO_KEY_WIDTH - 2 || x > viewport.width + 24)
-              return null;
+            if (x < PIANO_KEY_WIDTH - 2 || x > viewport.width + 24) return null;
             const shownVelocity =
               velocityDrag?.noteId === note.noteId
                 ? velocityDrag.velocity

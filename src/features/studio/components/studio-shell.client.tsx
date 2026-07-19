@@ -216,185 +216,185 @@ export function StudioShell({
   return (
     <StudioShellContext.Provider value={context}>
       <div className="studio-glass flex min-h-0 flex-1 flex-col overflow-hidden">
-      <header className="border-subtle relative z-40 flex min-h-11 flex-wrap items-center gap-1 border-b px-2 py-1.5">
-        <button
-          type="button"
-          onClick={() => requestNavigation("/studio")}
-          aria-label="OpenMIDI Studio"
-          title="OpenMIDI Studio"
-          className="hover:bg-surface-raised rounded-control mr-1 flex min-h-9 items-center gap-2 px-2 font-bold tracking-tight transition-colors"
-        >
-          <span
-            aria-hidden
-            className="h-2.5 w-2.5 rounded-full"
-            style={{
-              background:
-                "linear-gradient(140deg,var(--color-accent),var(--color-accent-2))",
-              boxShadow: "0 0 12px rgb(255 175 120 / 0.6)",
-            }}
-          />
-          <span className="hidden text-sm sm:inline">Studio</span>
-        </button>
-
-        <div className="relative" data-project-menu>
+        <header className="border-subtle relative z-40 flex min-h-11 flex-wrap items-center gap-1 border-b px-2 py-1.5">
           <button
             type="button"
-            onClick={() => setProjectMenuOpen((open) => !open)}
-            disabled={!initialProjects || Boolean(switchTarget)}
-            aria-haspopup="menu"
-            aria-expanded={projectMenuOpen}
-            aria-label={`Project menu — ${projectLabel}`}
-            title="Projects"
-            className="border-strong hover:border-accent hover:text-accent rounded-control flex min-h-9 min-w-0 items-center gap-2 border px-3 text-sm font-semibold transition-colors disabled:opacity-50"
+            onClick={() => requestNavigation("/studio")}
+            aria-label="OpenMIDI Studio"
+            title="OpenMIDI Studio"
+            className="hover:bg-surface-raised rounded-control mr-1 flex min-h-9 items-center gap-2 px-2 font-bold tracking-tight transition-colors"
           >
-            <FiFolder aria-hidden className="text-muted shrink-0" />
-            <span className="max-w-56 truncate">{projectLabel}</span>
-            <FiChevronDown
+            <span
               aria-hidden
-              className={`text-muted shrink-0 transition-transform ${projectMenuOpen ? "rotate-180" : ""}`}
+              className="h-2.5 w-2.5 rounded-full"
+              style={{
+                background:
+                  "linear-gradient(140deg,var(--color-accent),var(--color-accent-2))",
+                boxShadow: "0 0 12px rgb(255 175 120 / 0.6)",
+              }}
             />
+            <span className="hidden text-sm sm:inline">Studio</span>
           </button>
-          <AnimatePresence>
-            {projectMenuOpen && (
-              <motion.div
-                role="menu"
-                aria-label="Projects"
-                initial={
-                  reduce ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }
-                }
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={
-                  reduce ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }
-                }
-                transition={{
-                  duration: reduce ? 0 : 0.16,
-                  ease: [0.2, 0.8, 0.2, 1],
-                }}
-                className="border-strong bg-surface rounded-control absolute top-11 left-0 z-50 w-80 max-w-[calc(100vw-2rem)] origin-top-left border p-2 shadow-2xl"
-              >
-                <ProjectMenuButton
-                  icon={<FiPlus aria-hidden />}
-                  accent
-                  disabled={
-                    !projectOptions || !createAction || Boolean(switchTarget)
+
+          <div className="relative" data-project-menu>
+            <button
+              type="button"
+              onClick={() => setProjectMenuOpen((open) => !open)}
+              disabled={!initialProjects || Boolean(switchTarget)}
+              aria-haspopup="menu"
+              aria-expanded={projectMenuOpen}
+              aria-label={`Project menu — ${projectLabel}`}
+              title="Projects"
+              className="border-strong hover:border-accent hover:text-accent rounded-control flex min-h-9 min-w-0 items-center gap-2 border px-3 text-sm font-semibold transition-colors disabled:opacity-50"
+            >
+              <FiFolder aria-hidden className="text-muted shrink-0" />
+              <span className="max-w-56 truncate">{projectLabel}</span>
+              <FiChevronDown
+                aria-hidden
+                className={`text-muted shrink-0 transition-transform ${projectMenuOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            <AnimatePresence>
+              {projectMenuOpen && (
+                <motion.div
+                  role="menu"
+                  aria-label="Projects"
+                  initial={
+                    reduce ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }
                   }
-                  onClick={() => {
-                    setProjectMenuOpen(false);
-                    setPanel("creator");
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={
+                    reduce ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }
+                  }
+                  transition={{
+                    duration: reduce ? 0 : 0.16,
+                    ease: [0.2, 0.8, 0.2, 1],
                   }}
+                  className="border-strong bg-surface rounded-control absolute top-11 left-0 z-50 w-80 max-w-[calc(100vw-2rem)] origin-top-left border p-2 shadow-2xl"
                 >
-                  New project
-                </ProjectMenuButton>
-                <div className="border-subtle my-2 border-t" />
-                <p className="text-muted px-3 pb-1 font-mono text-[10px] tracking-widest uppercase">
-                  {projects.length ? "Switch to" : "Projects"}
-                </p>
-                <div className="max-h-64 overflow-y-auto">
-                  {projects.length ? (
-                    projects.slice(0, 8).map((project) => {
-                      const current = project.id === activeProjectId;
-                      return (
-                        <button
-                          key={project.id}
-                          type="button"
-                          role="menuitem"
-                          disabled={current || Boolean(switchTarget)}
-                          onClick={() => openProject(`/studio/${project.id}`)}
-                          className="hover:bg-surface-raised rounded-control flex min-h-10 w-full items-center gap-2 px-3 text-left text-sm transition-colors disabled:cursor-default"
-                        >
-                          <span
-                            className="text-accent w-4 shrink-0"
-                            aria-hidden
-                          >
-                            {current ? <FiCheck /> : null}
-                          </span>
-                          <span className="min-w-0 flex-1 truncate">
-                            {project.title}
-                          </span>
-                          {current && (
-                            <span className="text-muted shrink-0 text-[10px] tracking-wide uppercase">
-                              Current
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <p className="text-muted px-3 py-2 text-sm">
-                      No projects yet.
-                    </p>
-                  )}
-                </div>
-                {initialProjects && (
                   <ProjectMenuButton
-                    icon={<FiFolder aria-hidden />}
-                    disabled={Boolean(switchTarget)}
+                    icon={<FiPlus aria-hidden />}
+                    accent
+                    disabled={
+                      !projectOptions || !createAction || Boolean(switchTarget)
+                    }
                     onClick={() => {
                       setProjectMenuOpen(false);
-                      setPanel("browser");
+                      setPanel("creator");
                     }}
                   >
-                    Browse all projects…
+                    New project
                   </ProjectMenuButton>
-                )}
-                {activeProjectId && (
-                  <>
-                    <div className="border-subtle my-2 border-t" />
+                  <div className="border-subtle my-2 border-t" />
+                  <p className="text-muted px-3 pb-1 font-mono text-[10px] tracking-widest uppercase">
+                    {projects.length ? "Switch to" : "Projects"}
+                  </p>
+                  <div className="max-h-64 overflow-y-auto">
+                    {projects.length ? (
+                      projects.slice(0, 8).map((project) => {
+                        const current = project.id === activeProjectId;
+                        return (
+                          <button
+                            key={project.id}
+                            type="button"
+                            role="menuitem"
+                            disabled={current || Boolean(switchTarget)}
+                            onClick={() => openProject(`/studio/${project.id}`)}
+                            className="hover:bg-surface-raised rounded-control flex min-h-10 w-full items-center gap-2 px-3 text-left text-sm transition-colors disabled:cursor-default"
+                          >
+                            <span
+                              className="text-accent w-4 shrink-0"
+                              aria-hidden
+                            >
+                              {current ? <FiCheck /> : null}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate">
+                              {project.title}
+                            </span>
+                            {current && (
+                              <span className="text-muted shrink-0 text-[10px] tracking-wide uppercase">
+                                Current
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <p className="text-muted px-3 py-2 text-sm">
+                        No projects yet.
+                      </p>
+                    )}
+                  </div>
+                  {initialProjects && (
                     <ProjectMenuButton
-                      icon={<FiExternalLink aria-hidden />}
+                      icon={<FiFolder aria-hidden />}
                       disabled={Boolean(switchTarget)}
                       onClick={() => {
                         setProjectMenuOpen(false);
-                        requestNavigation(`/projects/${activeProjectId}`);
+                        setPanel("browser");
                       }}
                     >
-                      View project page
+                      Browse all projects…
                     </ProjectMenuButton>
-                    <ProjectMenuButton
-                      icon={<FiX aria-hidden />}
-                      disabled={Boolean(switchTarget)}
-                      onClick={() => openProject("/studio")}
-                    >
-                      Close project
-                    </ProjectMenuButton>
-                  </>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                  )}
+                  {activeProjectId && (
+                    <>
+                      <div className="border-subtle my-2 border-t" />
+                      <ProjectMenuButton
+                        icon={<FiExternalLink aria-hidden />}
+                        disabled={Boolean(switchTarget)}
+                        onClick={() => {
+                          setProjectMenuOpen(false);
+                          requestNavigation(`/projects/${activeProjectId}`);
+                        }}
+                      >
+                        View project page
+                      </ProjectMenuButton>
+                      <ProjectMenuButton
+                        icon={<FiX aria-hidden />}
+                        disabled={Boolean(switchTarget)}
+                        onClick={() => openProject("/studio")}
+                      >
+                        Close project
+                      </ProjectMenuButton>
+                    </>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-        {editableSession && (
-          <button
-            type="button"
-            onClick={saveSession}
-            disabled={Boolean(saveDisabledReason)}
-            title={saveDisabledReason ?? "Save the arrangement"}
-            className="border-strong hover:border-accent hover:text-accent ml-1 inline-flex min-h-9 items-center gap-2 rounded-full border px-3 text-sm font-semibold transition-colors disabled:opacity-40"
+          {editableSession && (
+            <button
+              type="button"
+              onClick={saveSession}
+              disabled={Boolean(saveDisabledReason)}
+              title={saveDisabledReason ?? "Save the arrangement"}
+              className="border-strong hover:border-accent hover:text-accent ml-1 inline-flex min-h-9 items-center gap-2 rounded-full border px-3 text-sm font-semibold transition-colors disabled:opacity-40"
+            >
+              <FiSave aria-hidden /> Save
+            </button>
+          )}
+
+          <span
+            className="text-muted ml-auto hidden pr-1 text-xs sm:inline"
+            role="status"
           >
-            <FiSave aria-hidden /> Save
-          </button>
+            {switchTarget
+              ? "Switching…"
+              : activeProjectId
+                ? "Project session"
+                : "Blank session"}
+          </span>
+        </header>
+
+        {switchTarget && (
+          <p className="text-muted px-3 py-1" role="status" aria-live="polite">
+            Saving and closing this session before opening {switchTarget}…
+          </p>
         )}
 
-        <span
-          className="text-muted ml-auto hidden pr-1 text-xs sm:inline"
-          role="status"
-        >
-          {switchTarget
-            ? "Switching…"
-            : activeProjectId
-              ? "Project session"
-              : "Blank session"}
-        </span>
-      </header>
-
-      {switchTarget && (
-        <p className="text-muted px-3 py-1" role="status" aria-live="polite">
-          Saving and closing this session before opening {switchTarget}…
-        </p>
-      )}
-
-      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       </div>
 
       {panel === "browser" && (
