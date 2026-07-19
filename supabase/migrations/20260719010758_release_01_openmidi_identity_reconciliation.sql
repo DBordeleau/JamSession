@@ -1,81 +1,39 @@
 begin;
 
 -- This one-time prelaunch reset intentionally clears rows protected by normal
--- immutable, append-only, lifecycle, and discovery-maintenance triggers. Keep
--- the complete affected relation set in one place so every user trigger is
--- restored before this transaction can commit.
-create temporary table release_01_trigger_tables (
-  relation_name text primary key
-) on commit drop;
-
-insert into release_01_trigger_tables (relation_name)
-select relation_name
-from unnest(array[
-  'private.deletion_request_workspaces',
-  'private.moderation_actions',
-  'private.moderation_reports',
-  'private.content_holds',
-  'private.deletion_requests',
-  'public.profile_awards',
-  'private.challenge_award_issuance',
-  'public.challenge_result_community_favorites',
-  'public.challenge_result_placements',
-  'public.challenge_result_entries',
-  'private.challenge_featured_selection',
-  'private.challenge_featured_actions',
-  'private.challenge_moderation_actions',
-  'private.challenge_reports',
-  'private.challenge_vote_commands',
-  'private.challenge_entry_commands',
-  'private.challenge_admin_actions',
-  'public.challenge_votes',
-  'public.challenge_entries',
-  'public.challenge_results',
-  'public.challenge_judge_credits',
-  'public.challenge_versions',
-  'public.challenges',
-  'private.midi_library_moderation_actions',
-  'private.midi_library_reports',
-  'private.saved_midi_pattern_removals',
-  'public.saved_midi_patterns',
-  'private.midi_library_reuse_access',
-  'private.midi_library_reuses',
-  'public.midi_library_listing_tags',
-  'public.midi_pattern_external_credits',
-  'public.midi_library_listings',
-  'private.workspace_snapshots',
-  'public.workspace_clips',
-  'public.workspace_tracks',
-  'public.workspaces',
-  'public.contribution_reviews',
-  'public.revision_attributions',
-  'public.activity_events',
-  'public.project_genres',
-  'public.project_members',
-  'public.project_stats',
-  'public.project_tags',
-  'public.public_project_catalog',
-  'public.arrangement_clips',
-  'public.arrangement_tracks',
-  'public.projects',
-  'public.project_revisions',
-  'public.contributions',
-  'public.contribution_versions',
-  'public.arrangement_versions',
-  'public.midi_patterns',
-  'public.midi_pattern_versions',
-  'public.midi_pattern_notes'
-]) as candidate(relation_name)
-where to_regclass(relation_name) is not null;
-
+-- immutable, append-only, lifecycle, and discovery-maintenance triggers.
 do $release_01$
 declare
   relation_name text;
 begin
   for relation_name in
-    select trigger_table.relation_name
-    from release_01_trigger_tables as trigger_table
-    order by trigger_table.relation_name
+    select candidate.relation_name
+    from unnest(array[
+      'private.deletion_request_workspaces', 'private.moderation_actions',
+      'private.moderation_reports', 'private.content_holds', 'private.deletion_requests',
+      'public.profile_awards', 'private.challenge_award_issuance',
+      'public.challenge_result_community_favorites', 'public.challenge_result_placements',
+      'public.challenge_result_entries', 'private.challenge_featured_selection',
+      'private.challenge_featured_actions', 'private.challenge_moderation_actions',
+      'private.challenge_reports', 'private.challenge_vote_commands',
+      'private.challenge_entry_commands', 'private.challenge_admin_actions',
+      'public.challenge_votes', 'public.challenge_entries', 'public.challenge_results',
+      'public.challenge_judge_credits', 'public.challenge_versions', 'public.challenges',
+      'private.midi_library_moderation_actions', 'private.midi_library_reports',
+      'private.saved_midi_pattern_removals', 'public.saved_midi_patterns',
+      'private.midi_library_reuse_access', 'private.midi_library_reuses',
+      'public.midi_library_listing_tags', 'public.midi_pattern_external_credits',
+      'public.midi_library_listings', 'private.workspace_snapshots',
+      'public.workspace_clips', 'public.workspace_tracks', 'public.workspaces',
+      'public.contribution_reviews', 'public.revision_attributions', 'public.activity_events',
+      'public.project_genres', 'public.project_members', 'public.project_stats',
+      'public.project_tags', 'public.public_project_catalog', 'public.arrangement_clips',
+      'public.arrangement_tracks', 'public.projects', 'public.project_revisions',
+      'public.contributions', 'public.contribution_versions', 'public.arrangement_versions',
+      'public.midi_patterns', 'public.midi_pattern_versions', 'public.midi_pattern_notes'
+    ]) as candidate(relation_name)
+    where to_regclass(candidate.relation_name) is not null
+    order by candidate.relation_name
   loop
     execute format('alter table %s disable trigger user', relation_name);
   end loop;
@@ -84,31 +42,6 @@ $release_01$;
 
 -- Preserve identity, operator, feedback, avatar, and lookup-catalog state while
 -- removing prelaunch musical state and any audit rows that depend on it.
-create temporary table release_01_deletion_requests_to_remove
-on commit drop
-as
-with recursive impacted_requests as (
-  select request.id
-  from private.deletion_requests as request
-  where request.target_project_id is not null
-     or request.target_contribution_id is not null
-     or exists (
-       select 1
-       from private.deletion_request_workspaces as link
-       where link.deletion_request_id = request.id
-     )
-
-  union
-
-  select child.id
-  from private.deletion_requests as child
-  join impacted_requests as parent
-    on child.parent_request_id = parent.id
-)
-select id from impacted_requests;
-
-delete from private.deletion_request_workspaces;
-
 delete from private.moderation_actions as action
 using private.moderation_reports as report
 where action.report_id = report.id
@@ -125,8 +58,26 @@ delete from private.content_holds
 where target_project_id is not null
    or target_contribution_id is not null;
 
+with recursive removed_workspace_links as (
+  delete from private.deletion_request_workspaces
+  returning deletion_request_id
+),
+impacted_requests as (
+  select request.id
+  from private.deletion_requests as request
+  where request.target_project_id is not null
+     or request.target_contribution_id is not null
+     or request.id in (select link.deletion_request_id from removed_workspace_links as link)
+
+  union
+
+  select child.id
+  from private.deletion_requests as child
+  join impacted_requests as parent
+    on child.parent_request_id = parent.id
+)
 delete from private.deletion_requests as request
-using release_01_deletion_requests_to_remove as impacted
+using impacted_requests as impacted
 where request.id = impacted.id;
 
 do $release_01$
@@ -227,8 +178,7 @@ set current_revision_id = null,
     rights_attestation_version = null;
 
 update public.project_revisions
-set parent_revision_id = null,
-    expected_base_revision_id = null,
+set expected_base_revision_id = null,
     accepted_contribution_id = null,
     accepted_contribution_version_id = null;
 
@@ -364,9 +314,33 @@ declare
   relation_name text;
 begin
   for relation_name in
-    select trigger_table.relation_name
-    from release_01_trigger_tables as trigger_table
-    order by trigger_table.relation_name
+    select candidate.relation_name
+    from unnest(array[
+      'private.deletion_request_workspaces', 'private.moderation_actions',
+      'private.moderation_reports', 'private.content_holds', 'private.deletion_requests',
+      'public.profile_awards', 'private.challenge_award_issuance',
+      'public.challenge_result_community_favorites', 'public.challenge_result_placements',
+      'public.challenge_result_entries', 'private.challenge_featured_selection',
+      'private.challenge_featured_actions', 'private.challenge_moderation_actions',
+      'private.challenge_reports', 'private.challenge_vote_commands',
+      'private.challenge_entry_commands', 'private.challenge_admin_actions',
+      'public.challenge_votes', 'public.challenge_entries', 'public.challenge_results',
+      'public.challenge_judge_credits', 'public.challenge_versions', 'public.challenges',
+      'private.midi_library_moderation_actions', 'private.midi_library_reports',
+      'private.saved_midi_pattern_removals', 'public.saved_midi_patterns',
+      'private.midi_library_reuse_access', 'private.midi_library_reuses',
+      'public.midi_library_listing_tags', 'public.midi_pattern_external_credits',
+      'public.midi_library_listings', 'private.workspace_snapshots',
+      'public.workspace_clips', 'public.workspace_tracks', 'public.workspaces',
+      'public.contribution_reviews', 'public.revision_attributions', 'public.activity_events',
+      'public.project_genres', 'public.project_members', 'public.project_stats',
+      'public.project_tags', 'public.public_project_catalog', 'public.arrangement_clips',
+      'public.arrangement_tracks', 'public.projects', 'public.project_revisions',
+      'public.contributions', 'public.contribution_versions', 'public.arrangement_versions',
+      'public.midi_patterns', 'public.midi_pattern_versions', 'public.midi_pattern_notes'
+    ]) as candidate(relation_name)
+    where to_regclass(candidate.relation_name) is not null
+    order by candidate.relation_name
   loop
     execute format('alter table %s enable trigger user', relation_name);
   end loop;

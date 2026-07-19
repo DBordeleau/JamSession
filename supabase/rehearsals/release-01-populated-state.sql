@@ -81,10 +81,16 @@ insert into public.project_members(project_id,user_id,role,created_by) values
 insert into public.arrangement_versions(
   id,project_id,created_by,create_request_id,manifest_version,engine,engine_version,manifest,manifest_sha256,
   tempo_bpm,time_signature_numerator,time_signature_denominator,musical_key,ppq,duration_ticks
-) values(
+) values
+(
   'fa210000-0000-4000-8000-000000000001','fa200000-0000-4000-8000-000000000001',
   'fa000000-0000-4000-8000-000000000001','fa210000-0000-4000-8000-000000000002',3,
   'openmidi-midi','openmidi-midi-3_tone-15.1.22_presets-1','{}',repeat('d',64),120,4,4,'c-major',480,960
+),
+(
+  'fa210000-0000-4000-8000-000000000003','fa200000-0000-4000-8000-000000000001',
+  'fa000000-0000-4000-8000-000000000001','fa210000-0000-4000-8000-000000000004',3,
+  'openmidi-midi','openmidi-midi-3_tone-15.1.22_presets-1','{}',repeat('f',64),120,4,4,'c-major',480,960
 );
 insert into public.arrangement_tracks(
   arrangement_version_id,project_id,track_id,sort_order,name,preset_id,preset_version,gain_db,pan,muted,soloed
@@ -100,16 +106,24 @@ insert into public.arrangement_clips(
   'fa110000-0000-4000-8000-000000000001',0,960,0,false
 );
 insert into public.project_revisions(
-  id,project_id,revision_number,created_by,publish_request_id,manifest,manifest_version,engine,
+  id,project_id,revision_number,parent_revision_id,created_by,publish_request_id,manifest,manifest_version,engine,
   engine_version,manifest_sha256,duration_ms,arrangement_version_id
-) values(
-  'fa240000-0000-4000-8000-000000000001','fa200000-0000-4000-8000-000000000001',1,
+) values
+(
+  'fa240000-0000-4000-8000-000000000001','fa200000-0000-4000-8000-000000000001',1,null,
   'fa000000-0000-4000-8000-000000000001','fa240000-0000-4000-8000-000000000002','{}',3,
   'openmidi-midi','openmidi-midi-3_tone-15.1.22_presets-1',repeat('e',64),2000,
   'fa210000-0000-4000-8000-000000000001'
+),
+(
+  'fa240000-0000-4000-8000-000000000003','fa200000-0000-4000-8000-000000000001',2,
+  'fa240000-0000-4000-8000-000000000001','fa000000-0000-4000-8000-000000000001',
+  'fa240000-0000-4000-8000-000000000004','{}',3,
+  'openmidi-midi','openmidi-midi-3_tone-15.1.22_presets-1',repeat('a',64),2000,
+  'fa210000-0000-4000-8000-000000000003'
 );
 update public.projects
-set status='active',visibility='public',published_at=now(),current_revision_id='fa240000-0000-4000-8000-000000000001',
+set status='active',visibility='public',published_at=now(),current_revision_id='fa240000-0000-4000-8000-000000000003',
     open_to_contributions=true,
     rights_attestation_version='cc-by-4.0-reuse-attestation-v1'
 where id='fa200000-0000-4000-8000-000000000001';
