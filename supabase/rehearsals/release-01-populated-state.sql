@@ -2,6 +2,15 @@
 -- reconciliation against immutable and append-only musical history.
 begin;
 
+insert into public.reserved_usernames(username_normalized, reason) values
+(concat('ja','m_session'),'product identity'),
+(concat('ja','msession'),'product identity');
+update public.licenses
+set url=concat('https://','ja','m-session.example/licenses/all-rights-reserved')
+where code='all-rights-reserved';
+insert into private.signup_invitations(email_normalized,note)
+values(concat('ja','m-session-e2e@example.test'),'local and CI browser test actor');
+
 insert into auth.users(
   instance_id,id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at
 ) values

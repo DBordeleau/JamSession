@@ -1,7 +1,7 @@
 begin;
 reset role;
 create extension if not exists pgtap with schema extensions;
-select plan(20);
+select plan(21);
 
 select is(
   (select count(*) from private.midi_synth_presets
@@ -20,6 +20,30 @@ select is(
   (select count(*) from private.signup_invitations where email_normalized = 'openmidi-e2e@example.test'),
   1::bigint,
   'the deterministic local actor invitation uses the canonical identity'
+);
+
+select ok(
+  (select count(*) from public.reserved_usernames where reason = 'product identity') = 1
+  and exists(
+    select 1
+    from public.reserved_usernames
+    where reason = 'product identity'
+      and username_normalized = 'openmidi'
+  )
+  and exists(
+    select 1
+    from public.licenses
+    where code = 'all-rights-reserved'
+      and url = 'https://openmidi.example/licenses/all-rights-reserved'
+  )
+  and not exists(
+    select 1
+    from private.signup_invitations
+    where email_normalized like '%@example.test'
+      and note = 'local and CI browser test actor'
+      and email_normalized <> 'openmidi-e2e@example.test'
+  ),
+  'system-owned textual identity fields use only canonical OpenMIDI values'
 );
 
 select is((select count(*) from public.genres), 12::bigint, 'genre lookup catalog is preserved');

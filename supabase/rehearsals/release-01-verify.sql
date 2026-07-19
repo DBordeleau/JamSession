@@ -35,6 +35,31 @@ begin
     raise exception 'release_01_lookup_catalog_changed';
   end if;
 
+  if (select count(*) from public.reserved_usernames where reason='product identity') <> 1
+     or not exists(
+       select 1 from public.reserved_usernames
+       where reason='product identity' and username_normalized='openmidi'
+     )
+     or not exists(
+       select 1 from public.licenses
+       where code='all-rights-reserved'
+         and url='https://openmidi.example/licenses/all-rights-reserved'
+     )
+     or exists(
+       select 1 from private.signup_invitations
+       where email_normalized like '%@example.test'
+         and note='local and CI browser test actor'
+         and email_normalized<>'openmidi-e2e@example.test'
+     )
+     or not exists(
+       select 1 from private.signup_invitations
+       where email_normalized='openmidi-e2e@example.test'
+         and note='local and CI browser test actor'
+     )
+  then
+    raise exception 'release_01_system_identity_not_reconciled';
+  end if;
+
   if (select count(*) from public.discovery_state where singleton and version=42) <> 1
      or (select count(*) from public.discovery_state) <> 1
   then

@@ -259,6 +259,24 @@ delete from public.midi_pattern_notes;
 delete from public.midi_pattern_versions;
 delete from public.midi_patterns;
 
+with removed_product_identity as (
+  delete from public.reserved_usernames
+  where reason = 'product identity'
+  returning 1
+)
+insert into public.reserved_usernames(username_normalized, reason)
+select 'openmidi', 'product identity'
+where exists(select 1 from removed_product_identity);
+
+update public.licenses
+set url = 'https://openmidi.example/licenses/all-rights-reserved'
+where code = 'all-rights-reserved';
+
+delete from private.signup_invitations
+where email_normalized like '%@example.test'
+  and note = 'local and CI browser test actor'
+  and email_normalized <> 'openmidi-e2e@example.test';
+
 update private.midi_synth_presets
 set engine_version = 'openmidi-midi-3_tone-15.1.22_presets-1';
 
