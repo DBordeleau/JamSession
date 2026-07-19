@@ -129,7 +129,7 @@ Status: Complete in the repository. Private one-logical-vote authority, determin
 
 Add an extensible badge-definition catalog and immutable profile award records tied to exact challenge results, placements, recipients, and submitted revisions. Every displayed badge links to its completed challenge/result page. Launch with generic Winner, Community Favorite, and configurable Top Placement badges. Challenge-specific artwork/definitions may be added later without schema redesign.
 
-Status: Next. The post-CHALLENGE pulse is complete and `local/implementation-plans/033-challenge-achievements-profile-awards.md` is worker-ready against the merged immutable result schema. XP, levels, streaks, and purchasable status remain deferred.
+Status: Complete in the repository. Three stable badge identities point to append-only versioned presentations, while immutable awards snapshot the exact recipient, result, entry, revision, badge version, and display context. Initial finalization and corrections issue the complete Winner, all Community Favorite ties, and remaining Top Placement set transactionally from normalized current-result authority. Superseded award rows remain private evidence; the bounded profile projection shows only current visible results with canonical challenge/result/entry links. The BADGE migration remains repository-only, and XP, levels, streaks, participation awards, user-created badges, uploads, and purchasable status remain deferred. RELEASE-01 is next.
 
 ## Wave E — Release and deployment
 

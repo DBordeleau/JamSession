@@ -15,6 +15,10 @@ import {
 } from "@/features/navigation/cursor";
 import { getDiscoveryVersion } from "@/server/repositories/discovery";
 import { z } from "zod";
+import {
+  publicProfileAwardSchema,
+  type PublicProfileAward,
+} from "@/features/awards/contract";
 
 const publicProjectSchema = z.object({
   projectId: z.string().uuid(),
@@ -146,6 +150,43 @@ function validProfileCursor(input: {
   )
     throw new Error("profile_cursor_stale");
   return cursor;
+}
+
+export async function listPublicProfileAwards(
+  profileId: string,
+  after?: string,
+): Promise<PublicProfilePage<PublicProfileAward>> {
+  const cursor = decodeNavigationCursor(after);
+  if (
+    after &&
+    (!cursor ||
+      cursor.kind !== "profile-awards" ||
+      cursor.subject !== profileId)
+  )
+    throw new Error("profile_cursor_stale");
+  const supabase = createSupabaseAnonymousClient();
+  const { data, error } = await supabase.rpc("list_public_profile_awards", {
+    p_profile_id: profileId,
+    p_after_awarded_at: cursor?.timestamp,
+    p_after_id: cursor?.id,
+  });
+  if (error) throw new Error("public_profile_awards_unavailable");
+  const rows = z.array(publicProfileAwardSchema).parse(data);
+  const items = rows.slice(0, 12);
+  const last = rows.length > 12 ? items.at(-1) : null;
+  return {
+    items,
+    nextCursor: last
+      ? encodeNavigationCursor({
+          v: 1,
+          kind: "profile-awards",
+          subject: profileId,
+          filter: "",
+          timestamp: last.awardedAt,
+          id: last.id,
+        })
+      : null,
+  };
 }
 
 export async function listPublicProfileProjects(
