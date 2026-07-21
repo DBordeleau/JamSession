@@ -18,7 +18,7 @@ export function FeaturedChallengeCard({
   if (!featured)
     return (
       <section
-        className="dash-card rounded-card p-6"
+        className="dash-card rounded-card p-4 sm:p-6"
         aria-labelledby="featured-challenge-heading"
       >
         <p className="text-accent font-mono text-[11px] tracking-[0.2em] uppercase">
@@ -26,7 +26,7 @@ export function FeaturedChallengeCard({
         </p>
         <h3
           id="featured-challenge-heading"
-          className="mt-2 text-2xl font-bold tracking-[-0.03em]"
+          className="mt-2 text-xl font-bold tracking-[-0.03em] sm:text-2xl"
         >
           The next constraint is being tuned
         </h3>
@@ -63,7 +63,7 @@ export function FeaturedChallengeCard({
 
   return (
     <section
-      className="dash-card rounded-card p-6"
+      className="dash-card rounded-card p-4 sm:p-6"
       aria-labelledby="featured-challenge-heading"
     >
       <p className="text-accent-2 font-mono text-[11px] tracking-[0.2em] uppercase">
@@ -71,27 +71,32 @@ export function FeaturedChallengeCard({
       </p>
       <h3
         id="featured-challenge-heading"
-        className="mt-2 text-2xl font-bold tracking-[-0.03em]"
+        className="mt-2 text-xl font-bold tracking-[-0.03em] sm:text-2xl"
       >
         {challenge.title}
       </h3>
-      <p className="text-muted mt-2">{challenge.prompt}</p>
-      {rules.length > 0 && (
-        <ul className="mt-4 flex flex-wrap gap-2">
-          {rules.map((rule) => (
-            <li
-              key={rule}
-              className="border-subtle text-muted rounded-full border px-2.5 py-0.5 text-xs"
-            >
-              {rule.replace(/\.$/, "")}
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="mt-6 flex flex-wrap gap-3">
-        <ButtonLink href={`/challenges/${challenge.slug}`} prefetch={false}>
-          Open featured challenge
-        </ButtonLink>
+      <p className="text-muted mt-2 text-sm sm:text-base">{challenge.prompt}</p>
+      {/* On a phone the constraints and the action share one line; from `sm`
+          up the wrapper is a plain block, so the stacked desktop rhythm (ul
+          mt-4, action mt-6) is exactly what it was. */}
+      <div className="mt-3 flex flex-wrap items-center gap-3 sm:mt-0 sm:block">
+        {rules.length > 0 && (
+          <ul className="flex flex-wrap gap-2 sm:mt-4">
+            {rules.map((rule) => (
+              <li
+                key={rule}
+                className="border-subtle text-muted rounded-full border px-2.5 py-0.5 text-xs"
+              >
+                {rule.replace(/\.$/, "")}
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="ml-auto flex flex-wrap gap-3 sm:mt-6 sm:ml-0">
+          <ButtonLink href={`/challenges/${challenge.slug}`} prefetch={false}>
+            Open featured challenge
+          </ButtonLink>
+        </div>
       </div>
     </section>
   );

@@ -45,7 +45,7 @@ export default async function DashboardPage() {
 
   return (
     <main id="main-content">
-      <Container className="py-8 sm:py-10">
+      <Container className="py-6 sm:py-10">
         <Reveal>
           <ResumeBand resume={dashboard.resume} />
         </Reveal>
@@ -54,7 +54,7 @@ export default async function DashboardPage() {
           <StateRail review={dashboard.review} counts={dashboard.counts} />
         </Reveal>
 
-        <div className="mt-10 grid gap-8 lg:grid-cols-12 lg:gap-6">
+        <div className="mt-7 grid gap-6 sm:mt-10 sm:gap-8 lg:grid-cols-12 lg:gap-6">
           <Reveal
             as="section"
             delay={0.1}
@@ -96,7 +96,7 @@ export default async function DashboardPage() {
           </Reveal>
         </div>
 
-        <div className="mt-10 grid gap-8 lg:grid-cols-12 lg:gap-6">
+        <div className="mt-7 grid gap-6 sm:mt-10 sm:gap-8 lg:grid-cols-12 lg:gap-6">
           <Reveal
             as="section"
             delay={0.18}
@@ -129,7 +129,7 @@ export default async function DashboardPage() {
         <Reveal
           as="section"
           delay={0.3}
-          className="dash-card rounded-card mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4"
+          className="dash-card rounded-card mt-7 flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:mt-10 sm:px-5 sm:py-4"
           aria-labelledby="beta-heading"
         >
           <h2 id="beta-heading" className="font-semibold">
@@ -149,7 +149,7 @@ export default async function DashboardPage() {
           <Reveal
             as="section"
             delay={0.34}
-            className="dash-card rounded-card mt-4 p-6"
+            className="dash-card rounded-card mt-4 p-4 sm:p-6"
             aria-labelledby="beta-invite-heading"
           >
             <p className="text-accent font-mono text-[11px] tracking-[0.2em] uppercase">

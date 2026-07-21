@@ -235,6 +235,33 @@ Three rules the page depends on:
   rather than a piano roll, because the payload carries no note data — a drawn
   roll would be decoration pretending to be information.
 
+**Dashboard on a phone** — the same page at higher density, roughly half the
+scroll height. Every mobile change is a base utility with an `sm:` restore, so
+the pointer layout is byte-identical; keep it that way when editing.
+
+- The state rail is **two columns from the smallest screen** (`grid-cols-2 …
+lg:grid-cols-4`). Left at one column it cost about half a screen for four
+  numbers. Its "Open review queue →" row is `sr-only sm:not-sr-only` rather than
+  `hidden` — it names the destination, so it must stay in the accessibility tree.
+- Rows past the third are `hidden sm:flex` / `hidden sm:grid`
+  (`MOBILE_ROWS` in `launcher-lists.tsx`). Desktop still shows five. On a phone
+  rows four and five are never on screen with anything else, so hiding them lets
+  a thumb reach the next _section_ instead of the next row.
+- Row actions shorten to "Studio" / "Editor" below `sm` but carry an
+  `aria-label` of the full "Open in studio" / "Open in editor". The accessible
+  name contains the visible label, which is what WCAG 2.5.3 requires — do not
+  invert this into an icon-only control.
+- Clip cards fold to two lines by moving the length bar inline beside the action
+  and the measurements up beside the name. The alternate pieces use
+  `hidden`/`sm:hidden` rather than conditional rendering: `display: none`
+  removes a node from the accessibility tree, so only the visible one is
+  announced.
+
+Explicitly rejected: tabs or a carousel over Projects/Clips (hides a section
+behind a tap on a page whose whole job is one-press navigation) and icon-only
+row actions (the label is what makes the row's second destination
+discoverable).
+
 **Console deck** — a mixer-style panel: track rows (`name · contributor`, compact
 note-timing summary, M/S chips). Chips light up coral (`M`) / gold (`S`) when active
 with a dark foreground.

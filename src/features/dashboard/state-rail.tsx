@@ -32,21 +32,24 @@ function Tile({
   return (
     <IntentPrefetchLink
       href={href}
-      className="dash-card dash-card-action rounded-card group relative block p-5"
+      className="dash-card dash-card-action rounded-card group relative block p-3.5 sm:p-5"
     >
       <p className="text-accent font-mono text-[10.5px] tracking-[0.2em] uppercase">
         {label}
       </p>
-      <p className="mt-2 flex items-baseline gap-2">
+      <p className="mt-1.5 flex items-baseline gap-2 sm:mt-2">
         <span
-          className={`text-3xl leading-none font-bold tracking-[-0.04em] tabular-nums ${figure}`}
+          className={`text-2xl leading-none font-bold tracking-[-0.04em] tabular-nums sm:text-3xl ${figure}`}
         >
           {value.count}
           {value.hasMore ? "+" : ""}
         </span>
         <span className="text-muted text-sm">{unit}</span>
       </p>
-      <span className="text-muted group-hover:text-accent mt-3 flex items-center gap-1.5 text-sm font-semibold transition-colors">
+      {/* The whole tile is the link, so on a phone this row is redundant chrome
+          — but it is the only thing naming the destination, so it stays in the
+          accessibility tree rather than being display:none. */}
+      <span className="text-muted group-hover:text-accent sr-only text-sm font-semibold transition-colors sm:not-sr-only sm:mt-3 sm:flex sm:items-center sm:gap-1.5">
         {action}
         <FiArrowRight
           aria-hidden="true"
@@ -73,7 +76,9 @@ export function StateRail({
   return (
     <nav
       aria-label="Needs your attention"
-      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      // Two columns from the smallest screen up. Left at one column, four
+      // numbers cost roughly half a phone screen.
+      className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4"
     >
       <Tile
         label="Needs review"

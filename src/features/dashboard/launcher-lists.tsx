@@ -4,6 +4,14 @@ import { MIDI_V3_PPQ } from "@/features/midi/domain-v3";
 import type { DashboardData } from "./types";
 
 /**
+ * Rows past this index are hidden below `sm`. On a phone the fourth and fifth
+ * row are never on screen alongside anything else, so hiding them lets a thumb
+ * reach the next *section* instead of the next row — and "View all" is right
+ * there in the header. Desktop still shows the full five.
+ */
+const MOBILE_ROWS = 3;
+
+/**
  * A quiet navigation link whose arrow slides independently on hover. Used for
  * every "go somewhere" affordance that is not a button, so they all behave the
  * same way.
@@ -117,8 +125,10 @@ export function EmptyState({
  */
 export function ProjectRows({
   projects,
+  mobileRows = MOBILE_ROWS,
 }: {
   projects: DashboardData["ownedProjects"];
+  mobileRows?: number;
 }) {
   if (!projects.length)
     return (
@@ -129,16 +139,18 @@ export function ProjectRows({
 
   return (
     <ul className="grid gap-2.5">
-      {projects.map((project) => (
+      {projects.map((project, index) => (
         <li
           key={project.projectId}
-          className="dash-card dash-card-action rounded-card group relative flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center"
+          className={`dash-card dash-card-action rounded-card group relative flex items-center gap-3 px-4 py-3 sm:px-5 sm:py-4 ${index >= mobileRows ? "hidden sm:flex" : ""}`}
         >
           <div className="min-w-0 flex-1">
-            <span className="flex flex-wrap items-center gap-2">
+            <span className="flex min-w-0 flex-wrap items-center gap-2">
               <IntentPrefetchLink
                 href={`/projects/${project.projectId}`}
-                className="group-hover:text-accent text-[17px] font-semibold tracking-[-0.02em] transition-colors after:absolute after:inset-0 after:rounded-[inherit]"
+                // Truncated only on a phone, where the row is one line. From
+                // `sm` up a long title wraps exactly as it did before.
+                className="group-hover:text-accent truncate text-[17px] font-semibold tracking-[-0.02em] transition-colors after:absolute after:inset-0 after:rounded-[inherit] sm:overflow-visible sm:whitespace-normal"
               >
                 {project.title}
               </IntentPrefetchLink>
@@ -168,11 +180,15 @@ export function ProjectRows({
               </time>
             </p>
           </div>
+          {/* The accessible name stays "Open in studio" at every width, and it
+              contains the shortened visible label, so WCAG 2.5.3 holds. */}
           <IntentPrefetchLink
             href={`/studio/${project.projectId}`}
+            aria-label="Open in studio"
             className="border-strong hover:border-accent hover:text-accent relative z-10 inline-flex min-h-10 shrink-0 items-center rounded-full border px-4 text-sm font-semibold transition-colors"
           >
-            Open in studio
+            <span className="sm:hidden">Studio</span>
+            <span className="hidden sm:inline">Open in studio</span>
           </IntentPrefetchLink>
         </li>
       ))}
@@ -186,7 +202,13 @@ export function ProjectRows({
  * drawn-from-nothing roll would be a lie. The bar is real: clip length relative
  * to the longest clip in the list.
  */
-export function ClipRows({ clips }: { clips: DashboardData["recentClips"] }) {
+export function ClipRows({
+  clips,
+  mobileRows = MOBILE_ROWS,
+}: {
+  clips: DashboardData["recentClips"];
+  mobileRows?: number;
+}) {
   if (!clips.length)
     return (
       <EmptyState href="/studio" action="Open the studio">
@@ -198,12 +220,13 @@ export function ClipRows({ clips }: { clips: DashboardData["recentClips"] }) {
 
   return (
     <ul className="grid gap-2.5">
-      {clips.map((clip) => {
+      {clips.map((clip, index) => {
         const beats = Math.max(Math.round(clip.durationTicks / MIDI_V3_PPQ), 1);
+        const fill = `${(clip.durationTicks / longest) * 100}%`;
         return (
           <li
             key={clip.patternVersionId}
-            className="dash-card dash-card-action rounded-card group relative grid gap-3 px-5 py-4"
+            className={`dash-card dash-card-action rounded-card group relative grid gap-2 px-4 py-3 sm:gap-3 sm:px-5 sm:py-4 ${index >= mobileRows ? "hidden sm:grid" : ""}`}
           >
             <div className="flex flex-wrap items-baseline gap-2">
               <b className="text-[15px] font-semibold tracking-[-0.015em]">
@@ -212,31 +235,48 @@ export function ClipRows({ clips }: { clips: DashboardData["recentClips"] }) {
               <span className="text-accent-2 font-mono text-[11px]">
                 v{clip.versionNumber}
               </span>
-              <span className="text-muted ml-auto truncate font-mono text-[11px]">
+              {/* A phone gets the measurements here so the chips row can go;
+                  a wider screen has room for the project instead. Only one is
+                  ever displayed, so only one reaches assistive technology. */}
+              <span className="text-muted ml-auto truncate font-mono text-[11px] sm:hidden">
+                {beats} beats · {clip.noteCount} notes
+              </span>
+              <span className="text-muted ml-auto hidden truncate font-mono text-[11px] sm:inline">
                 {clip.projectTitle}
               </span>
             </div>
             <div
               aria-hidden="true"
-              className="bg-surface-soft/80 border-subtle h-1.5 overflow-hidden rounded-full border"
+              className="bg-surface-soft/80 border-subtle hidden h-1.5 overflow-hidden rounded-full border sm:block"
             >
               <div
                 className="from-accent-2 to-accent h-full rounded-full bg-linear-to-r"
-                style={{ width: `${(clip.durationTicks / longest) * 100}%` }}
+                style={{ width: fill }}
               />
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="border-subtle text-muted rounded-full border px-2.5 py-0.5 font-mono text-[10.5px] tracking-widest uppercase">
+              <span
+                aria-hidden="true"
+                className="bg-surface-soft/80 border-subtle h-1.5 flex-1 overflow-hidden rounded-full border sm:hidden"
+              >
+                <span
+                  className="from-accent-2 to-accent block h-full rounded-full bg-linear-to-r"
+                  style={{ width: fill }}
+                />
+              </span>
+              <span className="border-subtle text-muted hidden rounded-full border px-2.5 py-0.5 font-mono text-[10.5px] tracking-widest uppercase sm:inline">
                 {beats} beats
               </span>
-              <span className="border-subtle text-muted rounded-full border px-2.5 py-0.5 font-mono text-[10.5px] tracking-widest uppercase">
+              <span className="border-subtle text-muted hidden rounded-full border px-2.5 py-0.5 font-mono text-[10.5px] tracking-widest uppercase sm:inline">
                 {clip.noteCount} notes
               </span>
               <IntentPrefetchLink
                 href={`/studio/${clip.projectId}?editClip=${clip.clipId}`}
+                aria-label="Open in editor"
                 className="border-strong hover:border-accent hover:text-accent relative z-10 ml-auto inline-flex min-h-10 items-center rounded-full border px-4 text-sm font-semibold transition-colors"
               >
-                Open in editor
+                <span className="sm:hidden">Editor</span>
+                <span className="hidden sm:inline">Open in editor</span>
               </IntentPrefetchLink>
             </div>
           </li>

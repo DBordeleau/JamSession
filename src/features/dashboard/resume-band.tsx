@@ -17,9 +17,17 @@ const LANE_TINTS = [
   "from-berry to-accent-2",
 ] as const;
 
-function Chip({ children }: { children: React.ReactNode }) {
+function Chip({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <span className="border-subtle text-muted rounded-full border px-2.5 py-0.5 font-mono text-[10.5px] tracking-widest uppercase">
+    <span
+      className={`border-subtle text-muted rounded-full border px-2.5 py-0.5 font-mono text-[10.5px] tracking-widest uppercase ${className}`}
+    >
       {children}
     </span>
   );
@@ -44,11 +52,11 @@ function ArrangementPreview({ resume }: { resume: Resume }) {
     );
 
   return (
-    <div className="border-subtle rounded-control bg-surface-soft/80 grid gap-1.5 border p-2.5">
+    <div className="border-subtle rounded-control bg-surface-soft/80 grid gap-1.5 border p-2 sm:p-2.5">
       {tracks.map((track, index) => (
         <div
           key={track.trackId}
-          className="grid grid-cols-[minmax(0,5.5rem)_minmax(0,1fr)] items-center gap-2"
+          className="grid grid-cols-[minmax(0,3.75rem)_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[minmax(0,5.5rem)_minmax(0,1fr)]"
         >
           <span
             className="text-muted truncate font-mono text-[10px] tracking-[0.08em] uppercase"
@@ -56,7 +64,7 @@ function ArrangementPreview({ resume }: { resume: Resume }) {
           >
             {track.name}
           </span>
-          <span className="relative block h-6 rounded-md bg-white/3">
+          <span className="relative block h-5 rounded-md bg-white/3 sm:h-6">
             {track.clips.map((clip) => (
               <IntentPrefetchLink
                 key={clip.clipId}
@@ -124,7 +132,7 @@ export function ResumeBand({ resume }: { resume: DashboardData["resume"] }) {
 
   return (
     <section
-      className="dash-card dash-card-lit rounded-card relative grid gap-6 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:items-center"
+      className="dash-card dash-card-lit rounded-card relative grid gap-4 p-4 sm:gap-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:items-center"
       aria-labelledby="resume-heading"
     >
       <div>
@@ -133,23 +141,23 @@ export function ResumeBand({ resume }: { resume: DashboardData["resume"] }) {
         </p>
         <h1
           id="resume-heading"
-          className="mt-2 text-3xl font-bold tracking-[-0.035em] sm:text-4xl"
+          className="mt-2 text-2xl font-bold tracking-[-0.035em] sm:text-4xl"
         >
           {title}
         </h1>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2 sm:mt-4">
           {resume.contributionId && <Chip>Contribution</Chip>}
           <Chip>{resume.tracks.length} tracks</Chip>
-          <Chip>{bars} bars</Chip>
+          <Chip className="hidden sm:inline">{bars} bars</Chip>
           <Chip>{Math.round(resume.tempoBpm)} BPM</Chip>
-          <Chip>
+          <Chip className="hidden sm:inline">
             {resume.timeSignatureNumerator}/{resume.timeSignatureDenominator}
           </Chip>
           {resume.musicalKey && (
             <Chip>{formatMusicalKeyShort(resume.musicalKey)}</Chip>
           )}
         </div>
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-4 flex flex-wrap gap-2 sm:mt-6 sm:gap-3">
           <ButtonLink href={studioHref} prefetch={false}>
             Resume in studio
           </ButtonLink>
