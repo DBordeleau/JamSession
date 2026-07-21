@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { FiHeadphones, FiPlus } from "react-icons/fi";
 import { BrandMark } from "@/components/layout/brand-mark";
 import { Reveal } from "@/components/ui/reveal.client";
 import { AuthAwareLink } from "@/features/auth/auth-aware-link.client";
+import { getViewerEntryPath } from "@/features/auth/destination";
+import { getOptionalViewer } from "@/features/auth/guards";
 import { describeChallengeConstraintsV1 } from "@/features/challenges/constraint-v1";
 import { hasSupabasePublicEnvConfiguration } from "@/lib/env/public";
 import { getFeaturedChallenge } from "@/server/repositories/challenges";
@@ -78,9 +81,12 @@ function RollNotes({
 }
 
 export default async function Home() {
-  const featured = hasSupabasePublicEnvConfiguration()
-    ? await getFeaturedChallenge()
-    : null;
+  const hasSupabase = hasSupabasePublicEnvConfiguration();
+  if (hasSupabase) {
+    const viewer = await getOptionalViewer();
+    if (viewer) redirect(getViewerEntryPath(viewer));
+  }
+  const featured = hasSupabase ? await getFeaturedChallenge() : null;
   const featuredChallenge = featured?.challenge ?? null;
   return (
     <div className={styles.root} data-landing-scroll>
@@ -106,7 +112,7 @@ export default async function Home() {
             </div>
             <AuthAwareLink
               signedOut={{ href: "/sign-in", label: "Sign In" }}
-              signedIn={{ href: "/projects", label: "Open app" }}
+              signedIn={{ href: "/dashboard", label: "Open app" }}
               className={`${styles.btn} ${styles.btnGhost} ${styles.btnSm}`}
             />
           </div>

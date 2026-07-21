@@ -97,11 +97,20 @@ test.describe("identity vertical slice", () => {
     await page.getByLabel("Credit name").fill("E2E Credit");
     await page.getByLabel("Bio").fill("A safe public test biography.");
     await page.getByRole("button", { name: "Complete profile" }).click();
-    await expect(page.getByText("Profile saved.")).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard$/);
+
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/dashboard$/);
 
     // Project destinations now live behind the header's avatar account menu.
-    await page.getByRole("button", { name: "Account menu" }).click();
-    await page.getByRole("link", { name: "My projects" }).click();
+    const accountTrigger = page.getByRole("button", { name: "Account menu" });
+    await accountTrigger.click();
+    const accountPanelId = await accountTrigger.getAttribute("aria-controls");
+    if (!accountPanelId) throw new Error("Account menu panel did not open.");
+    await page
+      .locator(`[id="${accountPanelId}"]`)
+      .getByRole("link", { name: "My projects" })
+      .click();
     await page.getByRole("link", { name: "New project" }).first().click();
     await page.getByLabel("Title").fill("E2E collaboration draft");
     await page.getByLabel("Description").fill("A private project test.");

@@ -5,6 +5,9 @@ import Home from "./page";
 vi.mock("@/server/repositories/challenges", () => ({
   getFeaturedChallenge: vi.fn().mockResolvedValue(null),
 }));
+vi.mock("@/features/auth/guards", () => ({
+  getOptionalViewer: vi.fn().mockResolvedValue(null),
+}));
 
 beforeAll(() => {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");

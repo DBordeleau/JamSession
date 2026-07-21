@@ -29,6 +29,8 @@ Local synthesized audio is ephemeral and downloadable; it is never uploaded, sha
 
 Supabase Auth owns email and provider identity. A Before User Created hook checks private invitations. The Auth insert trigger creates an incomplete private profile. Username claiming and profile completion are authorized database commands. Public reads use the security-invoker `public_profiles` projection; lifecycle and activity fields remain private.
 
+The root route is the signed-out marketing entry. A verified active viewer who requests `/` is redirected to `/dashboard`; an incomplete active viewer is sent through `/onboarding`, and suspended or deleted viewers remain outside the application shell. OAuth callbacks always resume through that onboarding gate, so arbitrary protected-route `next` values cannot replace the dashboard as the normal post-sign-in destination. Completing onboarding redirects to `/dashboard`, while later profile edits continue returning to profile settings.
+
 ### Studio and publication
 
 The client edits a canonical manifest-v3 workspace. `save_midi_workspace_v3` validates the complete manifest, replaces normalized workspace tracks/clips, advances optimistic `lock_version`, and records one of at most 20 Postgres recovery snapshots. Publication freezes an immutable arrangement version and normalized projections, then appends a project-revision wrapper in the same transaction.

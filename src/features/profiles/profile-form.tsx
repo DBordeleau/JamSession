@@ -8,6 +8,7 @@ const fieldClass =
 
 export function ProfileForm({
   profile,
+  returnTo,
 }: {
   profile: {
     username: string | null;
@@ -15,6 +16,7 @@ export function ProfileForm({
     creditName: string | null;
     bio: string | null;
   };
+  returnTo?: "/dashboard";
 }) {
   const [state, action, pending] = useActionState<ProfileFormState, FormData>(
     saveProfileAction,
@@ -26,6 +28,7 @@ export function ProfileForm({
       className="mt-8 space-y-6"
       aria-describedby={state.message ? "form-error" : undefined}
     >
+      {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
       {state.message && (
         <p
           id="form-error"

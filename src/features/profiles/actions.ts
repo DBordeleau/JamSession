@@ -41,5 +41,10 @@ export async function saveProfileAction(
   const saved = data[0];
   if (saved?.username) revalidatePath(`/@${saved.username}`);
   revalidatePath("/settings/profile");
-  redirect("/settings/profile?saved=1");
+  const returnTo =
+    formData.get("returnTo") === "/dashboard"
+      ? "/dashboard"
+      : "/settings/profile?saved=1";
+  revalidatePath(returnTo);
+  redirect(returnTo);
 }

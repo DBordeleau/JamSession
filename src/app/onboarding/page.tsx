@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { Container } from "@/components/layout/container";
+import { getViewerEntryPath } from "@/features/auth/destination";
 import { requireViewer } from "@/features/auth/guards";
 import { ProfileForm } from "@/features/profiles/profile-form";
 
 export default async function OnboardingPage() {
   const profile = await requireViewer("/onboarding");
-  if (profile.profileCompletedAt) redirect("/settings/profile");
+  const destination = getViewerEntryPath(profile);
+  if (destination !== "/onboarding") redirect(destination);
   return (
     <main id="main-content">
       <Container className="py-16">
@@ -18,7 +20,7 @@ export default async function OnboardingPage() {
             Choose your identity deliberately. Google profile details are never
             copied into your public profile.
           </p>
-          <ProfileForm profile={profile} />
+          <ProfileForm profile={profile} returnTo="/dashboard" />
         </section>
       </Container>
     </main>

@@ -1,4 +1,7 @@
-const ALLOWED_DESTINATIONS = ["/onboarding", "/settings/profile"];
+// Authentication always resumes through onboarding. That route sends an
+// incomplete profile through setup and a completed profile to the dashboard.
+// Do not let arbitrary protected-route `next` values fragment that contract.
+const ALLOWED_DESTINATIONS = ["/onboarding"];
 
 export function sanitizeNextPath(
   value: string | null | undefined,
