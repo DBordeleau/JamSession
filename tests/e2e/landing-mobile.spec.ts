@@ -6,7 +6,7 @@ import { devices, expect, test } from "@playwright/test";
  * drops snapping, because proximity snap resolves after a thumb lifts and reads
  * as the page overriding the reader.
  */
-test.use({ ...devices["iPhone 13"] });
+test.use({ ...devices["Pixel 5"] });
 
 test.describe("landing on a phone", () => {
   test("scrolls the document instead of a nested snapping port", async ({
