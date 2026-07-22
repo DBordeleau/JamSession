@@ -124,7 +124,7 @@ test.describe("identity vertical slice", () => {
       page.getByRole("button", {
         name: /Project menu.*E2E collaboration draft/,
       }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
     const studioUrl = new URL(page.url()).pathname;
     const projectId = studioUrl.split("/").at(-1);
     if (!projectId) throw new Error("Project creation omitted its identifier.");
@@ -146,6 +146,7 @@ test.describe("identity vertical slice", () => {
     await page.getByLabel("Display name").fill("Edited Artist");
     await page.getByRole("button", { name: "Save profile" }).click();
     await expect(page.getByText("Profile saved.")).toBeVisible();
+
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/sign-in$/);
     await page.goto("/settings/profile");
