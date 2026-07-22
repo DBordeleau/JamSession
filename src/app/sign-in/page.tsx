@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { signInWithGoogle } from "@/features/auth/actions";
 import { sanitizeNextPath } from "@/features/auth/redirect";
+import { hasSupabasePublicEnvConfiguration } from "@/lib/env/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { BrandMark } from "@/components/layout/brand-mark";
 import { SignInModal } from "./_components/sign-in-modal.client";
@@ -34,9 +35,11 @@ export default async function SignInPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const next = sanitizeNextPath((await searchParams).next, "/onboarding");
-  const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.auth.getClaims();
-  if (data?.claims?.sub) redirect("/onboarding");
+  if (hasSupabasePublicEnvConfiguration()) {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase.auth.getClaims();
+    if (data?.claims?.sub) redirect("/onboarding");
+  }
 
   return (
     <main id="main-content">
