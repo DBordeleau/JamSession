@@ -153,6 +153,24 @@ For each task:
 
 Prefer a working vertical slice over speculative abstraction. Do not silently repair unrelated issues or reformat unrelated files. Preserve user changes in a dirty working tree.
 
+### Orchestrated top-level implementation tasks
+
+When the user asks the current planner/orchestrator task for a prompt to start an implementation worker, use this repository-default workflow unless the user explicitly asks for a copyable prompt only:
+
+1. Draft the proposed worker scope internally, summarize what will be delegated, and ask the user for explicit approval before creating anything. Do not create a task from the initial prompt request alone.
+2. After approval, create a separate top-level Codex task for this saved project in an isolated worktree. Do not use a collaboration subagent for the implementation. Start from the repository default branch unless the accepted plan or user names another exact green starting state.
+3. Include the orchestrator task's exact thread ID in the worker prompt. Require the worker to use the Codex top-level task messaging tool to notify that orchestrator directly; a final response visible only inside the worker task is not a sufficient handoff.
+4. The worker sends an event to the orchestrator only when:
+   - a genuine blocker requires user or planner direction after safe in-scope alternatives are exhausted;
+   - implementation is committed, pushed, and a PR is open and ready for orchestrator review; or
+   - requested review repairs have been completed and pushed for re-review.
+5. The orchestrator sends messages to the worker only for the initial assignment or concrete requested repairs/clarifications. Neither task polls the other, repeatedly reads unchanged task state, or sends status-check messages. The worker's direct completion/blocker message is the event that resumes orchestration.
+6. On a completion event, the orchestrator reviews the actual PR, diff, migration contract, tests, and current CI state. If changes are needed, send one focused repair request to the same worker task and wait for its next completion event. Do not create a replacement worker for ordinary review fixes.
+7. When the work meets the plan, return to the user in the orchestrator task with the actual commit message(s), PR title, PR body, PR URL, verification results, and any required migration/deployment handoff. Do not merge unless the user separately authorizes merging.
+8. If the user declines task creation, provide the copyable prompt instead. If top-level task tooling is unavailable, explain that limitation and fall back to the prompt without silently substituting a subagent.
+
+For a PR containing a hosted migration, the worker must stop at the repository's user-operated migration gate and message the orchestrator with the exact reviewed migration handoff. The orchestrator reviews it before asking the user to run SQL. The PR remains unmerged until the user confirms the required SQL Editor execution, postflight, and linked migration-history reconciliation.
+
 ## TypeScript and Next.js conventions
 
 - Use TypeScript strict mode. Avoid `any`; validate `unknown` at trust boundaries.
