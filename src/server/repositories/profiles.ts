@@ -7,6 +7,7 @@ import type {
   AcceptedContributionHistoryItem,
   PublicProfile,
   PublicProfilePage,
+  PublicProfileProject,
   ViewerProfile,
 } from "@/features/profiles/types";
 import {
@@ -218,7 +219,7 @@ export async function listPublicProfileAwards(
 export async function listPublicProfileProjects(
   profileId: string,
   after?: string,
-): Promise<PublicProfilePage<z.infer<typeof publicProjectSchema>>> {
+): Promise<PublicProfilePage<PublicProfileProject>> {
   const discoveryVersion = await getDiscoveryVersion();
   const cursor = validProfileCursor({
     value: after,

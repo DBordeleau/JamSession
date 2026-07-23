@@ -90,8 +90,10 @@ describe("profile award cards", () => {
   it("shows a useful empty state when hidden or absent awards are excluded", () => {
     cleanup();
     render(<AwardGallery awards={[]} nextHref={null} />);
-    expect(screen.getByRole("heading", { name: "Awards" })).toBeVisible();
-    expect(screen.getByText(/No current challenge awards yet/)).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Earned in the room" }),
+    ).toBeVisible();
+    expect(screen.getByText("No challenge awards yet.")).toBeVisible();
     expect(screen.queryByRole("article")).not.toBeInTheDocument();
   });
 });
