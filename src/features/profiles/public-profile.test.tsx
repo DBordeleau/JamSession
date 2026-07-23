@@ -77,6 +77,8 @@ describe("public profile presentation", () => {
             projectId: "70000000-0000-4000-8000-000000000001",
             title: "Midnight Discovery Signal",
             publishedAt: "2026-07-20T18:00:00.000Z",
+            currentRevisionId: "71000000-0000-4000-8000-000000000001",
+            durationMs: 8_000,
           },
         ]}
         contributions={[
@@ -109,7 +111,7 @@ describe("public profile presentation", () => {
     );
 
     const work = screen.getByRole("region", {
-      name: "Public MIDI projects",
+      name: "Public Projects",
     });
     expect(
       within(work).getByRole("link", { name: "Midnight Discovery Signal" }),
@@ -119,7 +121,7 @@ describe("public profile presentation", () => {
     ).toBeInTheDocument();
 
     const collaboration = screen.getByRole("region", {
-      name: "Accepted contributions",
+      name: "Accepted Contributions",
     });
     expect(
       within(collaboration).getByRole("link", {
@@ -129,7 +131,7 @@ describe("public profile presentation", () => {
     expect(within(collaboration).getByText("Revision 4")).toBeInTheDocument();
 
     const recognition = screen.getByRole("region", {
-      name: "Earned in the room",
+      name: "Trophy Case",
     });
     expect(
       within(recognition).getByRole("heading", {
@@ -139,6 +141,14 @@ describe("public profile presentation", () => {
     expect(
       screen.queryByText(/followers|following|likes|XP|level/i),
     ).not.toBeInTheDocument();
+    for (const removedLabel of [
+      "Artist profile",
+      "Body of work",
+      "In the mix",
+      "Published MIDI project",
+      "Challenge recognition",
+    ])
+      expect(screen.queryByText(removedLabel)).not.toBeInTheDocument();
   });
 
   it("treats a sparse profile and stale cursor as deliberate, accessible states", () => {
@@ -167,7 +177,9 @@ describe("public profile presentation", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "No challenge awards yet." }),
+      screen.getByText(
+        "Awards earned in completed challenges will appear here.",
+      ),
     ).toBeInTheDocument();
   });
 });

@@ -38,6 +38,8 @@ export type PublicProfileProject = {
   projectId: string;
   title: string;
   publishedAt: string;
+  currentRevisionId: string;
+  durationMs: number;
 };
 
 export type AcceptedContributionHistoryItem = {

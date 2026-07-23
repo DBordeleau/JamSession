@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { FiFlag, FiFolder, FiGitPullRequest } from "react-icons/fi";
 import { Avatar } from "@/components/ui/avatar";
-import { Reveal } from "@/components/ui/reveal.client";
-import { AwardGallery } from "@/features/awards/award-gallery";
+import { TrophyCase } from "@/features/awards/trophy-case";
 import type { PublicProfileAward } from "@/features/awards/contract";
 import { ProfileContributionCard } from "./profile-contribution-card";
 import { ProfileEmptyState } from "./profile-empty-state";
+import { ProfileOwnerAction } from "./profile-owner-action.client";
 import { ProfileProjectCard } from "./profile-project-card";
 import type {
   AcceptedContributionHistoryItem,
@@ -34,21 +34,21 @@ export function PublicProfileView({
 }) {
   return (
     <article className="mx-auto max-w-6xl">
-      <Reveal as="header">
-        <div className="dash-card dash-card-lit rounded-card border-subtle relative overflow-hidden border p-5 sm:p-7 lg:p-8">
-          <div
-            aria-hidden="true"
-            className="bg-accent/10 absolute -top-20 -right-20 size-64 rounded-full blur-3xl"
-          />
-          <div
-            aria-hidden="true"
-            className="bg-berry/10 absolute -bottom-28 left-1/3 size-64 rounded-full blur-3xl"
-          />
-          <div className="relative grid items-center gap-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-8">
-            <div className="border-strong bg-surface/50 relative flex size-32 items-center justify-center rounded-full border shadow-[0_1.5rem_3rem_-1.5rem_rgb(0_0_0_/_80%)] sm:size-36">
+      <header className="dash-card dash-card-lit rounded-card border-subtle relative overflow-hidden border p-4 sm:p-5 lg:p-6">
+        <div
+          aria-hidden="true"
+          className="bg-accent/8 absolute -top-16 -right-16 size-48 rounded-full blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="bg-berry/8 absolute -bottom-20 left-1/3 size-48 rounded-full blur-3xl"
+        />
+        <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)] lg:items-start lg:gap-6">
+          <div className="grid min-w-0 gap-4 min-[23rem]:grid-cols-[auto_minmax(0,1fr)] min-[23rem]:items-start sm:items-center sm:gap-5">
+            <div className="border-strong bg-surface/45 relative flex size-28 items-center justify-center rounded-full border p-1.5 shadow-[0_1.25rem_2.5rem_-1.5rem_rgb(0_0_0_/_75%)]">
               <div
                 aria-hidden="true"
-                className="from-accent/50 to-accent-2/30 absolute inset-2 rounded-full bg-linear-to-br opacity-60 blur-xl"
+                className="from-accent/35 to-accent-2/20 absolute inset-1.5 rounded-full bg-linear-to-br opacity-50 blur-md"
               />
               <div className="relative flex">
                 <Avatar
@@ -60,38 +60,36 @@ export function PublicProfileView({
             </div>
 
             <div className="min-w-0">
-              <p className="text-accent-2 font-mono text-[11px] tracking-[0.2em] uppercase">
-                Artist profile
-              </p>
-              <h1 className="mt-2 text-3xl font-bold tracking-[-0.035em] text-balance sm:text-4xl lg:text-5xl">
+              <h1 className="text-3xl font-bold tracking-[-0.035em] text-balance sm:text-4xl">
                 {profile.displayName}
               </h1>
-              <p className="text-accent mt-2 text-base font-semibold sm:text-lg">
+              <p className="text-accent mt-1 text-base font-semibold sm:text-lg">
                 @{profile.username}
               </p>
 
               {profile.bio ? (
-                <p className="text-ink/90 mt-5 max-w-[58ch] text-base leading-7 whitespace-pre-wrap sm:text-lg sm:leading-8">
+                <p className="text-ink/90 mt-3 max-w-[54ch] text-sm leading-6 whitespace-pre-wrap sm:text-base sm:leading-7">
                   {profile.bio}
                 </p>
               ) : (
-                <p className="text-muted mt-5 max-w-[52ch] text-sm leading-6">
-                  Their public work, collaborations, and challenge recognition
-                  live here.
+                <p className="text-muted mt-3 max-w-[48ch] text-sm leading-6">
+                  Public projects, collaborations, and challenge awards live
+                  here.
                 </p>
               )}
 
-              <div className="border-subtle mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 border-t pt-5">
-                <p className="min-w-0 text-sm">
+              <div className="border-subtle mt-4 flex flex-wrap items-end gap-3 border-t pt-4">
+                <p className="mr-auto min-w-0 text-sm">
                   <span className="text-muted block font-mono text-[10px] tracking-[0.16em] uppercase">
                     MIDI credits
                   </span>
-                  <span className="mt-1 block font-semibold break-words">
+                  <span className="mt-0.5 block font-semibold break-words">
                     {profile.creditName}
                   </span>
                 </p>
+                <ProfileOwnerAction profileUsername={profile.username} />
                 <Link
-                  className="border-strong text-muted hover:border-accent hover:text-accent inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors sm:ml-auto"
+                  className="border-strong text-muted hover:border-accent hover:text-accent inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors"
                   href={`/reports/new?kind=profile&id=${profile.id}&label=${encodeURIComponent(`@${profile.username}`)}`}
                 >
                   <FiFlag aria-hidden="true" />
@@ -100,39 +98,30 @@ export function PublicProfileView({
               </div>
             </div>
           </div>
+
+          <TrophyCase awards={awards} nextHref={awardNextHref} />
         </div>
-      </Reveal>
+      </header>
 
       {cursorStale && (
-        <Reveal delay={0.04}>
-          <p
-            role="status"
-            className="border-accent bg-surface/80 rounded-card mt-5 border px-5 py-4"
-          >
-            This profile changed while you were browsing. Showing the newest
-            results.
-          </p>
-        </Reveal>
+        <p
+          role="status"
+          className="border-accent bg-surface/80 rounded-card mt-4 border px-5 py-4"
+        >
+          This profile changed while you were browsing. Showing the newest
+          results.
+        </p>
       )}
 
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
-        <Reveal
-          as="section"
-          delay={0.06}
-          aria-labelledby="profile-projects-heading"
-        >
-          <div className="mb-4 flex flex-wrap items-end justify-between gap-3 px-1">
-            <div>
-              <p className="text-accent font-mono text-[11px] tracking-[0.2em] uppercase">
-                Body of work
-              </p>
-              <h2
-                id="profile-projects-heading"
-                className="mt-2 text-2xl font-bold tracking-[-0.025em] sm:text-3xl"
-              >
-                Public MIDI projects
-              </h2>
-            </div>
+        <section aria-labelledby="profile-projects-heading">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-3 px-1">
+            <h2
+              id="profile-projects-heading"
+              className="text-2xl font-bold tracking-[-0.025em] sm:text-3xl"
+            >
+              Public Projects
+            </h2>
             {projects.length > 0 && (
               <p className="text-muted text-sm">
                 Published arrangements, ready to hear.
@@ -141,16 +130,11 @@ export function PublicProfileView({
           </div>
 
           {projects.length > 0 ? (
-            <ul className="grid gap-4">
-              {projects.map((project, index) => (
-                <Reveal
-                  as="li"
-                  key={project.projectId}
-                  delay={0.1 + Math.min(index, 8) * 0.05}
-                  className="flex"
-                >
+            <ul className="grid gap-3">
+              {projects.map((project) => (
+                <li key={project.projectId} className="flex">
                   <ProfileProjectCard project={project} />
-                </Reveal>
+                </li>
               ))}
             </ul>
           ) : (
@@ -162,42 +146,30 @@ export function PublicProfileView({
           )}
           {projectNextHref && (
             <Link
-              className="border-strong hover:border-accent hover:text-accent mt-5 inline-flex min-h-11 items-center rounded-full border px-5 font-semibold transition-colors"
+              className="border-strong hover:border-accent hover:text-accent mt-4 inline-flex min-h-11 items-center rounded-full border px-5 font-semibold transition-colors"
               href={projectNextHref}
             >
               Next projects
             </Link>
           )}
-        </Reveal>
+        </section>
 
-        <Reveal
-          as="section"
-          delay={0.12}
-          aria-labelledby="profile-contributions-heading"
-        >
-          <div className="mb-4 px-1">
-            <p className="text-accent font-mono text-[11px] tracking-[0.2em] uppercase">
-              In the mix
-            </p>
+        <section aria-labelledby="profile-contributions-heading">
+          <div className="mb-3 px-1">
             <h2
               id="profile-contributions-heading"
-              className="mt-2 text-2xl font-bold tracking-[-0.025em] sm:text-3xl"
+              className="text-2xl font-bold tracking-[-0.025em] sm:text-3xl"
             >
-              Accepted contributions
+              Accepted Contributions
             </h2>
           </div>
 
           {contributions.length > 0 ? (
-            <ul className="grid gap-4">
-              {contributions.map((contribution, index) => (
-                <Reveal
-                  as="li"
-                  key={contribution.revisionId}
-                  delay={0.16 + Math.min(index, 8) * 0.05}
-                  className="flex"
-                >
+            <ul className="grid gap-3">
+              {contributions.map((contribution) => (
+                <li key={contribution.revisionId} className="flex">
                   <ProfileContributionCard contribution={contribution} />
-                </Reveal>
+                </li>
               ))}
             </ul>
           ) : (
@@ -209,18 +181,14 @@ export function PublicProfileView({
           )}
           {contributionNextHref && (
             <Link
-              className="border-strong hover:border-accent hover:text-accent mt-5 inline-flex min-h-11 items-center rounded-full border px-5 font-semibold transition-colors"
+              className="border-strong hover:border-accent hover:text-accent mt-4 inline-flex min-h-11 items-center rounded-full border px-5 font-semibold transition-colors"
               href={contributionNextHref}
             >
               Next contributions
             </Link>
           )}
-        </Reveal>
+        </section>
       </div>
-
-      <Reveal delay={0.18} className="mt-6">
-        <AwardGallery awards={awards} nextHref={awardNextHref} />
-      </Reveal>
     </article>
   );
 }
