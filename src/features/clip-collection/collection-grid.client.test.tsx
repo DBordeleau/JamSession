@@ -1,4 +1,11 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ComponentProps, ElementType, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getStudioClipDetailAction } from "@/features/studio/clip-collection/actions";
@@ -195,6 +202,63 @@ describe("clip collection grid", () => {
 
     expect(await screen.findByTestId("library-preview")).toBeInTheDocument();
     expect(disconnect).toHaveBeenCalled();
+  });
+
+  it("does not re-arm automatic loading after failures and retries only on request", async () => {
+    const owned = item("01");
+    const callbacks: Array<
+      (entries: Array<{ isIntersecting: boolean }>) => void
+    > = [];
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        constructor(
+          callback: (entries: Array<{ isIntersecting: boolean }>) => void,
+        ) {
+          callbacks.push(callback);
+        }
+        observe = vi.fn();
+        disconnect = vi.fn();
+      },
+    );
+    vi.mocked(getStudioClipDetailAction).mockResolvedValue({
+      ok: false,
+      code: "source_unavailable",
+    });
+
+    render(
+      <ClipCollectionGrid
+        items={[owned]}
+        selectedSource="owned"
+        workspaces={[]}
+      />,
+    );
+
+    expect(callbacks).toHaveLength(1);
+    await act(async () => {
+      callbacks[0]?.([{ isIntersecting: true }]);
+    });
+
+    const firstRetry = await screen.findByRole("button", {
+      name: "Retry preview",
+    });
+    expect(getStudioClipDetailAction).toHaveBeenCalledOnce();
+    expect(callbacks).toHaveLength(1);
+
+    fireEvent.click(firstRetry);
+    await waitFor(() =>
+      expect(getStudioClipDetailAction).toHaveBeenCalledTimes(2),
+    );
+    const secondRetry = await screen.findByRole("button", {
+      name: "Retry preview",
+    });
+    expect(callbacks).toHaveLength(1);
+
+    fireEvent.click(secondRetry);
+    await waitFor(() =>
+      expect(getStudioClipDetailAction).toHaveBeenCalledTimes(3),
+    );
+    expect(callbacks).toHaveLength(1);
   });
 
   it("ignores stale detail after the collection changes", async () => {

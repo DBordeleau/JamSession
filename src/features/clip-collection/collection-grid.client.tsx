@@ -162,48 +162,63 @@ function CollectionPreview({
 }) {
   const container = useRef<HTMLDivElement>(null);
   const requestToken = useRef(0);
+  const automaticAttempted = useRef(false);
+  const requestInFlight = useRef(false);
   const [detail, setDetail] = useState<StudioClipDetail | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
 
-  const loadDetail = useCallback(async () => {
-    if (!item.canImport || status === "loading" || detail) return;
-    const token = ++requestToken.current;
-    setStatus("loading");
-    setMessage(null);
-    const response = await getStudioClipDetailAction({
-      patternVersionId: item.patternVersionId,
-    });
-    if (token !== requestToken.current) return;
-    if (!response.ok) {
-      setStatus("error");
-      setMessage(studioClipFailureMessage(response.code));
-      return;
-    }
-    if (!response.detail.pattern || !response.detail.metadata.preset) {
-      setStatus("error");
-      setMessage(
-        studioClipAvailabilityMessage(response.detail.metadata) ??
-          "This exact clip is not available for preview.",
-      );
-      return;
-    }
-    setDetail(response.detail);
-    setStatus("idle");
-  }, [detail, item.canImport, item.patternVersionId, status]);
+  const loadDetail = useCallback(
+    async (automatic = false) => {
+      if (
+        !item.canImport ||
+        requestInFlight.current ||
+        detail ||
+        (automatic && automaticAttempted.current)
+      ) {
+        return;
+      }
+      if (automatic) automaticAttempted.current = true;
+      requestInFlight.current = true;
+      const token = ++requestToken.current;
+      setStatus("loading");
+      setMessage(null);
+      const response = await getStudioClipDetailAction({
+        patternVersionId: item.patternVersionId,
+      });
+      if (token !== requestToken.current) return;
+      requestInFlight.current = false;
+      if (!response.ok) {
+        setStatus("error");
+        setMessage(studioClipFailureMessage(response.code));
+        return;
+      }
+      if (!response.detail.pattern || !response.detail.metadata.preset) {
+        setStatus("error");
+        setMessage(
+          studioClipAvailabilityMessage(response.detail.metadata) ??
+            "This exact clip is not available for preview.",
+        );
+        return;
+      }
+      setDetail(response.detail);
+      setStatus("idle");
+    },
+    [detail, item.canImport, item.patternVersionId],
+  );
 
   useEffect(() => {
     if (!item.canImport || detail) return;
     const target = container.current;
     if (!target || typeof IntersectionObserver === "undefined") {
-      void loadDetail();
+      void loadDetail(true);
       return;
     }
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
         observer.disconnect();
-        void loadDetail();
+        void loadDetail(true);
       },
       { rootMargin: "240px 0px" },
     );
@@ -214,6 +229,7 @@ function CollectionPreview({
   useEffect(
     () => () => {
       requestToken.current += 1;
+      requestInFlight.current = false;
     },
     [],
   );
