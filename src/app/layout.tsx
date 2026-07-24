@@ -6,6 +6,7 @@ import { ConditionalHeader } from "@/components/layout/conditional-header.client
 import { ConditionalMobileNav } from "@/components/layout/conditional-mobile-nav.client";
 import { SkipLink } from "@/components/layout/skip-link";
 import { ViewerIdentityProvider } from "@/components/layout/viewer-identity-provider.client";
+import { DetailNavigationPresentation } from "@/features/discovery/detail-navigation-presentation.client";
 
 import "./globals.css";
 
@@ -35,6 +36,7 @@ export default function RootLayout({
             <div className="flex-1">{children}</div>
             <ConditionalFooter />
             <ConditionalMobileNav />
+            <DetailNavigationPresentation />
           </div>
           {/* The route template fades every parallel route through opacity,
               which temporarily creates its own stacking context. Give that
