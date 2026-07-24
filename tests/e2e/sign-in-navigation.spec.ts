@@ -27,9 +27,14 @@ test("intercepts landing sign-in with focus, history, and request containment", 
   const dialog = page.getByRole("dialog", {
     name: "Open beta coming soon!",
   });
+  const modalLayer = page.locator("[data-sign-in-layer]");
   const close = page.getByRole("button", { name: "Close sign in" });
   const google = page.getByRole("button", { name: "Continue with Google" });
   await expect(dialog).toBeVisible();
+  await expect(modalLayer).toHaveCSS("position", "fixed");
+  await expect(modalLayer).toHaveCSS("z-index", "50");
+  await expect(modalLayer).toHaveCSS("isolation", "isolate");
+  await expect(modalLayer).toHaveCSS("opacity", "1");
   await expect(
     page.getByRole("heading", { level: 1, name: "The song is the source." }),
   ).toBeVisible();

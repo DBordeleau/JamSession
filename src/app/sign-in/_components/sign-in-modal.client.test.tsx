@@ -127,11 +127,19 @@ describe("SignInModal", () => {
 
   it("dismisses from the backdrop without treating card interaction as dismissal", async () => {
     renderModal("intercepted");
+    const layer = document.querySelector("[data-sign-in-layer]");
     const backdrop = document.querySelector("[data-sign-in-backdrop]");
     const dialog = screen.getByRole("dialog", {
       name: "Open beta coming soon!",
     });
+    expect(layer).not.toBeNull();
     expect(backdrop).not.toBeNull();
+    expect(layer).toHaveClass("z-50", "isolate");
+    expect(layer).toHaveAttribute("data-motion-initial", "false");
+    expect(backdrop).toHaveAttribute(
+      "data-motion-initial",
+      JSON.stringify({ opacity: 0 }),
+    );
 
     fireEvent.pointerDown(dialog);
     expect(dialog).toBeInTheDocument();

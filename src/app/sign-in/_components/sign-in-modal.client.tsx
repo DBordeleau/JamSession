@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import { FiX } from "react-icons/fi";
@@ -96,13 +95,6 @@ export function SignInModal({
     }
   }, []);
 
-  const dismissBackdrop = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (event.target === event.currentTarget) close();
-    },
-    [close],
-  );
-
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
@@ -116,14 +108,23 @@ export function SignInModal({
       {open && (
         <motion.div
           key="sign-in"
-          data-sign-in-backdrop
-          className="bg-canvas/70 fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain p-4 backdrop-blur-md sm:p-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: reduceMotion ? 0 : 0.24 }}
-          onPointerDown={dismissBackdrop}
+          data-sign-in-layer
+          className="fixed inset-0 isolate z-50 flex items-center justify-center overflow-y-auto overscroll-contain p-4 sm:p-6"
+          initial={false}
         >
+          {/* Keep the structural layer fully above the landing from its first
+              frame. Fading the backdrop and card as one opacity group lets
+              Chromium temporarily composite the animated hero above the glass. */}
+          <motion.div
+            data-sign-in-backdrop
+            aria-hidden="true"
+            className="bg-canvas/70 fixed inset-0 backdrop-blur-md"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.24 }}
+            onPointerDown={close}
+          />
           <motion.div
             ref={dialogRef}
             role="dialog"
@@ -133,7 +134,7 @@ export function SignInModal({
             onKeyDown={trapFocus}
             // The same glass the nav sheets and dashboard cards use, so signing
             // in looks like the room the visitor is about to walk into.
-            className="dash-card dash-card-lit rounded-card relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto p-7 sm:max-h-[calc(100dvh-3rem)] sm:p-9"
+            className="dash-card dash-card-lit rounded-card relative z-10 my-auto max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto p-7 sm:max-h-[calc(100dvh-3rem)] sm:p-9"
             initial={
               reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 14 }
             }

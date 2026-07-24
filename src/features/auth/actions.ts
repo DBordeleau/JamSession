@@ -25,5 +25,5 @@ export async function signInWithGoogle(formData: FormData) {
 export async function signOut() {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
-  redirect("/sign-in");
+  redirect("/");
 }
