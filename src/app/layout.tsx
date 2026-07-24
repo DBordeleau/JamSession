@@ -29,13 +29,20 @@ export default function RootLayout({
       <body className="min-h-dvh">
         <Aurora />
         <ViewerIdentityProvider>
-          <div className="relative z-10 flex min-h-dvh flex-col">
+          <div data-app-shell className="relative z-10 flex min-h-dvh flex-col">
             <SkipLink />
             <ConditionalHeader />
             <div className="flex-1">{children}</div>
-            {modal}
             <ConditionalFooter />
             <ConditionalMobileNav />
+          </div>
+          {/* The route template fades every parallel route through opacity,
+              which temporarily creates its own stacking context. Give that
+              entire context permanent root-level authority above the app
+              shell so intercepted overlays cannot begin behind landing
+              animations and then snap forward when the fade completes. */}
+          <div data-intercepted-overlay-root className="relative z-50">
+            {modal}
           </div>
         </ViewerIdentityProvider>
       </body>

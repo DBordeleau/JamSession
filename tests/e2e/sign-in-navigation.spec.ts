@@ -27,6 +27,7 @@ test("intercepts landing sign-in with focus, history, and request containment", 
   const dialog = page.getByRole("dialog", {
     name: "Open beta coming soon!",
   });
+  const overlayRoot = page.locator("[data-intercepted-overlay-root]");
   const modalLayer = page.locator("[data-sign-in-layer]");
   const close = page.getByRole("button", { name: "Close sign in" });
   const google = page.getByRole("button", { name: "Continue with Google" });
@@ -35,6 +36,24 @@ test("intercepts landing sign-in with focus, history, and request containment", 
   await expect(modalLayer).toHaveCSS("z-index", "50");
   await expect(modalLayer).toHaveCSS("isolation", "isolate");
   await expect(modalLayer).toHaveCSS("opacity", "1");
+  await expect(overlayRoot).toHaveCSS("z-index", "50");
+  expect(
+    await modalLayer.evaluate(
+      (element) =>
+        element.closest("[data-app-shell]") === null &&
+        element.closest("[data-intercepted-overlay-root]") !== null,
+    ),
+  ).toBe(true);
+  expect(
+    await dialog.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      const topmost = document.elementFromPoint(
+        bounds.left + bounds.width / 2,
+        bounds.top + bounds.height / 2,
+      );
+      return topmost === element || element.contains(topmost);
+    }),
+  ).toBe(true);
   await expect(
     page.getByRole("heading", { level: 1, name: "The song is the source." }),
   ).toBeVisible();
