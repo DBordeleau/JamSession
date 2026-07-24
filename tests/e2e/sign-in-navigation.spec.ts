@@ -29,6 +29,8 @@ test("intercepts landing sign-in with focus, history, and request containment", 
   });
   const overlayRoot = page.locator("[data-intercepted-overlay-root]");
   const modalLayer = page.locator("[data-sign-in-layer]");
+  const backdrop = page.locator("[data-sign-in-backdrop]");
+  const backdropTint = page.locator("[data-sign-in-backdrop-tint]");
   const close = page.getByRole("button", { name: "Close sign in" });
   const google = page.getByRole("button", { name: "Continue with Google" });
   await expect(dialog).toBeVisible();
@@ -37,6 +39,15 @@ test("intercepts landing sign-in with focus, history, and request containment", 
   await expect(modalLayer).toHaveCSS("isolation", "isolate");
   await expect(modalLayer).toHaveCSS("opacity", "1");
   await expect(overlayRoot).toHaveCSS("z-index", "50");
+  await expect(backdrop).not.toHaveCSS("backdrop-filter", "none");
+  await expect(backdrop).toHaveCSS("opacity", "1");
+  await expect(backdropTint).toHaveCSS("pointer-events", "none");
+  expect(
+    await backdrop.evaluate((element) => {
+      const routeTemplate = element.closest("[data-route-template]");
+      return routeTemplate ? getComputedStyle(routeTemplate).opacity : null;
+    }),
+  ).toBe("1");
   expect(
     await modalLayer.evaluate(
       (element) =>

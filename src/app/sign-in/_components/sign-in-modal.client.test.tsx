@@ -129,14 +129,18 @@ describe("SignInModal", () => {
     renderModal("intercepted");
     const layer = document.querySelector("[data-sign-in-layer]");
     const backdrop = document.querySelector("[data-sign-in-backdrop]");
+    const backdropTint = document.querySelector("[data-sign-in-backdrop-tint]");
     const dialog = screen.getByRole("dialog", {
       name: "Open beta coming soon!",
     });
     expect(layer).not.toBeNull();
     expect(backdrop).not.toBeNull();
+    expect(backdropTint).not.toBeNull();
     expect(layer).toHaveClass("z-50", "isolate");
     expect(layer).toHaveAttribute("data-motion-initial", "false");
-    expect(backdrop).toHaveAttribute(
+    expect(backdrop).toHaveAttribute("data-motion-initial", "false");
+    expect(backdrop).toHaveClass("backdrop-blur-md");
+    expect(backdropTint).toHaveAttribute(
       "data-motion-initial",
       JSON.stringify({ opacity: 0 }),
     );

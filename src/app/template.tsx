@@ -14,6 +14,7 @@ export default function Template({
   const reduceMotion = useReducedMotion();
   return (
     <motion.div
+      data-route-template
       initial={reduceMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{

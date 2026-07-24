@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/*
+ * Parallel modal routes are already animated by their dialog surface. The
+ * global route-template fade would otherwise attenuate backdrop-filter during
+ * entry, making the card appear before the page reaches full blur.
+ */
+[data-intercepted-overlay-root] [data-route-template] {
+  opacity: 1 !important;
+}
+
 @layer components {
   .field-label {
     display: block;

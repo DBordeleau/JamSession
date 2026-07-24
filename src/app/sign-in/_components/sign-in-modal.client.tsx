@@ -112,18 +112,27 @@ export function SignInModal({
           className="fixed inset-0 isolate z-50 flex items-center justify-center overflow-y-auto overscroll-contain p-4 sm:p-6"
           initial={false}
         >
-          {/* Keep the structural layer fully above the landing from its first
-              frame. Fading the backdrop and card as one opacity group lets
-              Chromium temporarily composite the animated hero above the glass. */}
+          {/* Blur must be fully established on the first modal frame. Animating
+              opacity on the same element as backdrop-filter makes a cold
+              Chromium compositor visibly trail the card entrance. */}
           <motion.div
             data-sign-in-backdrop
             aria-hidden="true"
-            className="bg-canvas/70 fixed inset-0 backdrop-blur-md"
+            className="bg-canvas/5 fixed inset-0 backdrop-blur-md"
+            initial={false}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.18 }}
+            onPointerDown={close}
+          />
+          <motion.div
+            data-sign-in-backdrop-tint
+            aria-hidden="true"
+            className="bg-canvas/70 pointer-events-none fixed inset-0"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: reduceMotion ? 0 : 0.24 }}
-            onPointerDown={close}
           />
           <motion.div
             ref={dialogRef}
