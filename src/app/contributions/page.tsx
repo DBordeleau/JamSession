@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { FiCheckCircle, FiRotateCcw } from "react-icons/fi";
 import { Container } from "@/components/layout/container";
+import { Reveal } from "@/components/ui/reveal.client";
 import { requireViewer } from "@/features/auth/guards";
 import { ContributionList } from "@/features/contributions/contribution-list";
 import { listContributionsByAuthor } from "@/server/repositories/contributions";
@@ -31,30 +33,42 @@ export default async function ContributionsPage({
   );
   return (
     <main id="main-content">
-      <Container className="py-12 sm:py-16">
-        <p className="text-accent font-mono text-xs font-semibold tracking-[0.18em] uppercase">
-          Private proposals
-        </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
-          Contributions
-        </h1>
-        <p className="text-muted mt-3 max-w-2xl text-lg">
-          Continue private drafts, inspect immutable submissions, and track
-          proposals for projects you own.
-        </p>
+      <Container className="py-6 sm:py-10">
+        <Reveal as="header">
+          <p className="text-accent-2 font-mono text-[11px] tracking-[0.2em] uppercase">
+            Private proposals
+          </p>
+          <h1 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-balance sm:text-3xl">
+            Keep every idea.{" "}
+            <em className="text-accent font-serif font-medium">
+              Know where it landed.
+            </em>
+          </h1>
+          <p className="text-muted mt-2 max-w-[62ch] text-sm sm:text-base">
+            Continue private drafts, inspect exact submissions, and follow each
+            proposal back to its project.
+          </p>
+        </Reveal>
+
         {query.deleted === "1" && query.contributionId && (
           <div
             role="status"
-            className="border-accent rounded-control mt-6 border p-4"
+            className="dash-card rounded-card border-accent/45 mt-5 flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5"
           >
-            Contribution deleted. It remains recoverable for 30 days.
-            <form action={restoreContributionAction} className="mt-3">
+            <FiRotateCcw
+              aria-hidden="true"
+              className="text-accent shrink-0 text-lg"
+            />
+            <p className="text-sm">
+              Contribution deleted. It remains recoverable for 30 days.
+            </p>
+            <form action={restoreContributionAction} className="ml-auto">
               <input
                 type="hidden"
                 name="contributionId"
                 value={query.contributionId}
               />
-              <button className="text-accent font-semibold underline">
+              <button className="border-strong hover:border-accent hover:text-accent inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-semibold transition-colors">
                 Restore contribution
               </button>
             </form>
@@ -63,45 +77,77 @@ export default async function ContributionsPage({
         {query.restored === "1" && (
           <p
             role="status"
-            className="border-accent rounded-control mt-6 border p-4"
+            className="dash-card rounded-card border-accent/45 mt-5 flex items-center gap-3 px-4 py-3 text-sm sm:px-5"
           >
+            <FiCheckCircle aria-hidden="true" className="text-accent text-lg" />
             Contribution restored.
           </p>
         )}
         {query.restoreError === "1" && (
-          <p role="alert" className="text-danger mt-6">
+          <p
+            role="alert"
+            className="rounded-card border-danger/50 bg-danger/8 text-danger mt-5 border px-4 py-3 text-sm"
+          >
             That contribution can no longer be restored.
           </p>
         )}
-        <nav
-          aria-label="Contribution filters"
-          className="mt-6 flex flex-wrap gap-2"
-        >
-          {(
-            [
-              ["active", "Active"],
-              ["submitted", "Submitted"],
-              ["history", "History"],
-            ] as const
-          ).map(([value, label]) => (
-            <a
-              key={value}
-              aria-current={status === value ? "page" : undefined}
-              className={`min-h-11 rounded-full border px-4 py-2 font-semibold ${status === value ? "border-accent text-accent" : "border-strong text-muted"}`}
-              href={`/contributions?status=${value}`}
-            >
-              {label}
-            </a>
-          ))}
-        </nav>
-        <ContributionList contributions={contributions} />
-        {nextCursor && (
-          <a
-            className="border-strong mt-8 inline-flex min-h-11 items-center rounded-full border px-5 font-semibold"
-            href={`/contributions?status=${status}&after=${encodeURIComponent(nextCursor)}`}
+
+        <Reveal delay={0.06} className="mt-5 overflow-x-auto pb-1">
+          <nav
+            aria-label="Contribution filters"
+            className="dash-card rounded-card flex w-max items-center gap-1.5 p-1.5"
           >
-            Next contributions
-          </a>
+            {(
+              [
+                ["active", "Active"],
+                ["submitted", "Submitted"],
+                ["history", "History"],
+              ] as const
+            ).map(([value, label]) => (
+              <a
+                key={value}
+                aria-current={status === value ? "page" : undefined}
+                className={`inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-semibold transition-colors ${
+                  status === value
+                    ? "border-accent bg-accent/10 text-accent"
+                    : "text-muted hover:border-accent-2/45 hover:text-accent-2 border-transparent"
+                }`}
+                href={`/contributions?status=${value}`}
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
+        </Reveal>
+
+        {contributions.length > 0 && (
+          <Reveal
+            delay={0.1}
+            className="mt-6 flex flex-wrap items-baseline justify-between gap-3 px-1"
+          >
+            <p className="text-muted text-sm">
+              <span className="text-ink font-semibold">
+                {contributions.length} contribution
+                {contributions.length === 1 ? "" : "s"}
+              </span>{" "}
+              in this view
+            </p>
+            <p className="text-muted hidden text-sm sm:block">
+              Each card opens the exact project proposal.
+            </p>
+          </Reveal>
+        )}
+
+        <ContributionList contributions={contributions} filter={status} />
+        {nextCursor && (
+          <Reveal className="mt-8 text-center" delay={0.18}>
+            <a
+              className="border-strong hover:border-accent hover:text-accent inline-flex min-h-11 items-center rounded-full border px-6 font-semibold transition-colors"
+              href={`/contributions?status=${status}&after=${encodeURIComponent(nextCursor)}`}
+            >
+              Next contributions
+            </a>
+          </Reveal>
         )}
       </Container>
     </main>
