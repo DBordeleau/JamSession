@@ -87,6 +87,10 @@ import { useMidiPerformance } from "./use-midi-performance.client";
 export type MidiStemEditorHost = {
   tempoBpm: number;
   timeSignature: { numerator: number; denominator: number };
+  initialSaveState: {
+    status: MidiDraftSaveStatus;
+    message: string;
+  };
   onTransportStart: (countInSeconds: number) => void;
   onPlaybackTransportStart: (
     editorStartTick: number,
@@ -103,6 +107,7 @@ export type MidiStemEditorHost = {
     notes: MidiNoteV1[];
   }) => Promise<{
     ok: boolean;
+    code?: "conflict" | "storage";
     lockVersion: number;
     contentSha256: string;
   }>;
@@ -285,7 +290,7 @@ export function MidiStemEditor({
   const [recovery, setRecovery] = useState<MidiDraftRecovery | null>(null);
   const [saveState, dispatchSave] = useReducer(
     reduceMidiDraftSave,
-    initialMidiDraftSaveState,
+    host?.initialSaveState ?? initialMidiDraftSaveState,
   );
   const [playing, setPlaying] = useState(false);
   const [playheadTick, setPlayheadTick] = useState(0);
@@ -301,6 +306,7 @@ export function MidiStemEditor({
   const lockVersionRef = useRef(draft.lockVersion);
   const contentSha256Ref = useRef(draft.contentSha256);
   const savingRef = useRef(false);
+  const savePromiseRef = useRef<Promise<boolean> | null>(null);
   const dirtySinceRef = useRef<number | null>(null);
   const editGenerationRef = useRef(0);
   const [editGeneration, setEditGeneration] = useState(0);
@@ -549,48 +555,52 @@ export function MidiStemEditor({
     [draft.durationTicks, history, markEdited, preset],
   );
 
-  const performSave = useCallback(async () => {
-    if (savingRef.current || saveStatusRef.current === "conflict") return;
-    if (!navigator.onLine) {
-      dispatchSave({ type: "offline" });
-      return;
-    }
-    savingRef.current = true;
-    dispatchSave({ type: "save" });
-    const generation = editGenerationRef.current;
-    const content = {
-      name,
-      defaultPresetId: presetId,
-      defaultPresetVersion: 1 as const,
-      ppq: MIDI_PPQ,
-      durationTicks: draft.durationTicks,
-      notes: [...history.notes],
-    };
-    try {
-      const result = host?.persistDraft
-        ? await host.persistDraft(content)
-        : { ok: false, lockVersion: 0, contentSha256: "" };
-      if (!result.ok) {
-        dispatchSave({
-          type: "error",
-        });
-        return;
-      }
-      lockVersionRef.current = result.lockVersion;
-      contentSha256Ref.current = result.contentSha256;
-      if (generation === editGenerationRef.current) {
-        dirtySinceRef.current = null;
-        clearMidiDraftRecovery(draft.ownerId, draft.draftId);
-        dispatchSave({ type: "saved" });
-      } else {
+  const performSave = useCallback((): Promise<boolean> => {
+    if (savePromiseRef.current) return savePromiseRef.current;
+    if (saveStatusRef.current === "conflict") return Promise.resolve(false);
+    const pending = (async () => {
+      savingRef.current = true;
+      dispatchSave({ type: "save" });
+      const generation = editGenerationRef.current;
+      const content = {
+        name,
+        defaultPresetId: presetId,
+        defaultPresetVersion: 1 as const,
+        ppq: MIDI_PPQ,
+        durationTicks: draft.durationTicks,
+        notes: [...history.notes],
+      };
+      try {
+        const result = host?.persistDraft
+          ? await host.persistDraft(content)
+          : { ok: false, lockVersion: 0, contentSha256: "" };
+        if (!result.ok) {
+          dispatchSave({
+            type: result.code === "conflict" ? "conflict" : "error",
+          });
+          return false;
+        }
+        lockVersionRef.current = result.lockVersion;
+        contentSha256Ref.current = result.contentSha256;
+        if (generation === editGenerationRef.current) {
+          dirtySinceRef.current = null;
+          clearMidiDraftRecovery(draft.ownerId, draft.draftId);
+          dispatchSave({ type: "saved" });
+          return true;
+        }
         dispatchSave({ type: "edit" });
         setEditGeneration(editGenerationRef.current);
+        return false;
+      } catch {
+        dispatchSave({ type: "error" });
+        return false;
+      } finally {
+        savingRef.current = false;
+        savePromiseRef.current = null;
       }
-    } catch {
-      dispatchSave({ type: navigator.onLine ? "error" : "offline" });
-    } finally {
-      savingRef.current = false;
-    }
+    })();
+    savePromiseRef.current = pending;
+    return pending;
   }, [
     draft.draftId,
     draft.durationTicks,
@@ -1783,21 +1793,22 @@ export function MidiStemEditor({
   }
 
   async function publishVersion() {
-    if (saveState.status !== "saved") {
+    if (saveState.status !== "saved" && !(await performSave())) {
       setPublicationState({
         status: "error",
-        message: "Save the private draft before freezing a version.",
+        message:
+          "Save the draft on this device before applying it to the arrangement.",
       });
       return;
     }
     setPublicationState({
       status: "publishing",
-      message: "Freezing an immutable version…",
+      message: "Applying MIDI to the arrangement…",
     });
     if (!host) {
       setPublicationState({
         status: "error",
-        message: "Open this pattern in Studio before freezing a version.",
+        message: "Open this pattern in Studio before applying changes.",
       });
       return;
     }
@@ -1818,6 +1829,21 @@ export function MidiStemEditor({
       status: result.ok ? "published" : "error",
       message: result.message,
     });
+  }
+
+  async function closeEditor() {
+    stopPlayback();
+    stopAudition();
+    performance.stopRecording();
+    if (dirtySinceRef.current && !(await performSave())) {
+      setPublicationState({
+        status: "error",
+        message:
+          "The latest changes remain only in this tab. Retry device save before closing.",
+      });
+      return;
+    }
+    host?.onClose();
   }
 
   function updateSelectedNote(
@@ -1987,21 +2013,21 @@ export function MidiStemEditor({
               onClick={() => void publishVersion()}
               disabled={
                 publicationState.status === "publishing" ||
-                saveState.status !== "saved" ||
+                saveState.status === "conflict" ||
                 !name.trim()
               }
               className={secondaryButton}
             >
               <FiDisc aria-hidden />
               {publicationState.status === "publishing"
-                ? "Saving…"
+                ? "Applying…"
                 : (host?.finalizeLabel ?? "Save to My stems")}
             </button>
             {host && (
               <button
                 type="button"
                 className="border-strong hover:border-accent hover:text-accent min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors"
-                onClick={host.onClose}
+                onClick={() => void closeEditor()}
               >
                 Close MIDI editor
               </button>

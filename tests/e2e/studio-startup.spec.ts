@@ -50,10 +50,12 @@ test.describe("MIDI-only Studio v3", () => {
       await key.dispatchEvent("pointerup", { pointerId: 1 });
     }
     await page.getByRole("button", { name: "Stop recording" }).click();
-    await expect(page.getByText("Private draft saved.")).toBeVisible({
+    await expect(page.getByText("Saved on this device")).toBeVisible({
       timeout: 10_000,
     });
-    await page.getByRole("button", { name: "Freeze and add pattern" }).click();
+    await page
+      .getByRole("button", { name: "Add pattern to arrangement" })
+      .click();
     await expect(
       page.getByText(/Pattern version 1 is immutable and was added/).first(),
     ).toBeVisible({ timeout: 15_000 });
@@ -61,6 +63,64 @@ test.describe("MIDI-only Studio v3", () => {
     const keysClip = page.getByRole("button", {
       name: /MIDI clip on Warm keys,/,
     });
+    const versionCountBeforeDraft = patternVersionCountForTrack(
+      projectId,
+      "Warm keys",
+    );
+    await keysClip.first().dblclick();
+    await page.getByRole("button", { name: "Perform a take" }).click();
+    await page.getByLabel("One-bar count-in").uncheck();
+    await page.getByLabel("Metronome").uncheck();
+    await page.getByRole("button", { name: "Record", exact: true }).click();
+    const c5 = page.getByRole("button", {
+      name: "Play C5, MIDI note 72",
+    });
+    await c5.dispatchEvent("pointerdown", { pointerId: 2 });
+    await c5.dispatchEvent("pointerup", { pointerId: 2 });
+    await page.getByRole("button", { name: "Stop recording" }).click();
+    await expect(page.getByText("Saved on this device")).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "Close MIDI editor" }).click();
+    await expect(keysClip).toBeVisible();
+
+    await keysClip.first().dblclick();
+    await expect(
+      page.getByText("Device draft restored · based on pattern version 1"),
+    ).toBeVisible();
+    await expect(page.getByText(/3 of 2,048 notes/)).toBeVisible();
+    await page.getByRole("button", { name: "Close MIDI editor" }).click();
+    await page.reload();
+    await expect(keysClip).toBeVisible();
+    await keysClip.first().dblclick();
+    await expect(
+      page.getByText("Device draft restored · based on pattern version 1"),
+    ).toBeVisible();
+    expect(patternVersionCountForTrack(projectId, "Warm keys")).toBe(
+      versionCountBeforeDraft,
+    );
+
+    await page.getByRole("button", { name: "Apply changes" }).click();
+    await expect(
+      page.getByText(/Pattern version 2 is immutable and replaced/).first(),
+    ).toBeVisible({ timeout: 15_000 });
+    expect(patternVersionCountForTrack(projectId, "Warm keys")).toBe(
+      versionCountBeforeDraft + 1,
+    );
+
+    await keysClip.first().dblclick();
+    await page.getByRole("button", { name: "Apply changes" }).click();
+    await expect(
+      page
+        .getByText(
+          "The exact pattern version is already applied. No new version was created.",
+        )
+        .first(),
+    ).toBeVisible({ timeout: 15_000 });
+    expect(patternVersionCountForTrack(projectId, "Warm keys")).toBe(
+      versionCountBeforeDraft + 1,
+    );
+
     await keysClip.focus();
     await page.keyboard.press("Control+c");
     await page.keyboard.press("Control+v");
@@ -110,6 +170,11 @@ test.describe("MIDI-only Studio v3", () => {
     };
     page.on("framenavigated", trackNavigation);
 
+    const playhead = page.getByRole("slider", {
+      name: "Arrangement playhead",
+    });
+    await playhead.click({ position: { x: 96, y: 12 } });
+    await expect(playhead).toHaveAttribute("aria-valuenow", "480");
     await page.getByRole("button", { name: "Add from clips" }).click();
     const drawer = page.getByRole("dialog", { name: "Add from clips" });
     await expect(drawer).toBeVisible();
@@ -126,11 +191,15 @@ test.describe("MIDI-only Studio v3", () => {
     await expect
       .poll(() => studioActionRequests.length)
       .toBeGreaterThan(beforeSearch);
-    await expect(drawer.getByText("Warm keys", { exact: true })).toBeVisible();
+    await expect(
+      drawer.getByRole("heading", { name: "Warm keys" }).first(),
+    ).toBeVisible();
 
-    const preview = drawer.getByRole("button", {
-      name: "Preview Warm keys",
-    });
+    const preview = drawer
+      .getByRole("button", {
+        name: "Preview Warm keys",
+      })
+      .first();
     const beforePreview = studioActionRequests.length;
     await preview.click();
     await expect
@@ -140,13 +209,11 @@ test.describe("MIDI-only Studio v3", () => {
       drawer.getByRole("button", { name: "Pause Warm keys" }),
     ).toBeVisible();
 
-    const playhead = page.getByRole("slider", {
-      name: "Arrangement playhead",
-    });
-    await playhead.click({ position: { x: 96, y: 12 } });
-    await expect(playhead).toHaveAttribute("aria-valuenow", "480");
     const beforeImport = studioActionRequests.length;
-    await drawer.getByRole("button", { name: "Add as new track" }).click();
+    await drawer
+      .getByRole("button", { name: "Add as new track" })
+      .first()
+      .click();
     await expect(
       page.getByRole("button", {
         name: /MIDI clip on Warm keys, Bar 1 · Beat 2,/,
@@ -307,6 +374,30 @@ function queryLocalDatabase(sql: string) {
     ],
     { encoding: "utf8" },
   ).trim();
+}
+
+function patternVersionCountForTrack(projectId: string, trackName: string) {
+  const escapedTrackName = trackName.replaceAll("'", "''");
+  return Number(
+    queryLocalDatabase(`select count(*)
+      from public.midi_pattern_versions
+      where midi_pattern_id=(
+        select version.midi_pattern_id
+        from public.workspaces workspace
+        join public.workspace_tracks track
+          on track.workspace_id=workspace.id
+        join public.workspace_clips clip
+          on clip.workspace_id=track.workspace_id
+          and clip.track_id=track.track_id
+        join public.midi_pattern_versions version
+          on version.id=clip.midi_pattern_version_id
+        where workspace.project_id='${projectId}'
+          and workspace.status='active'
+          and track.name='${escapedTrackName}'
+        order by track.sort_order,clip.start_tick
+        limit 1
+      )`),
+  );
 }
 
 async function ensureStudioActorProfile() {

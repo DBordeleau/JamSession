@@ -29,7 +29,7 @@ export type MidiDraftSaveEvent =
 
 export const initialMidiDraftSaveState: MidiDraftSaveState = {
   status: "saved",
-  message: "Draft loaded from your private library.",
+  message: "Saved on this device",
 };
 
 export function reduceMidiDraftSave(
@@ -42,9 +42,9 @@ export function reduceMidiDraftSave(
         ? state
         : { status: "unsaved", message: "Unsaved changes" };
     case "save":
-      return { status: "saving", message: "Saving your private draft…" };
+      return { status: "saving", message: "Saving draft on this device…" };
     case "saved":
-      return { status: "saved", message: "Private draft saved." };
+      return { status: "saved", message: "Saved on this device" };
     case "offline":
       return {
         status: "offline",
@@ -58,7 +58,8 @@ export function reduceMidiDraftSave(
     case "conflict":
       return {
         status: "conflict",
-        message: "Another tab saved this draft first. Reload to recover.",
+        message:
+          "Another tab saved this device draft first. Reopen it to recover.",
       };
   }
 }

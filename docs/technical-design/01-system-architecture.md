@@ -35,6 +35,16 @@ The root route is the signed-out marketing entry. A verified active viewer who r
 
 The client edits a canonical manifest-v3 workspace. `save_midi_workspace_v3` validates the complete manifest, replaces normalized workspace tracks/clips, advances optimistic `lock_version`, and records one of at most 20 Postgres recovery snapshots. Publication freezes an immutable arrangement version and normalized projections, then appends a project-revision wrapper in the same transaction.
 
+The integrated MIDI editor has a separate browser-local draft boundary. One
+versioned, validated record is overwritten for each viewer/workspace clip or
+pending-track target, expires after 30 days, and is bounded to 20 records per
+viewer. It is device-local recovery rather than Postgres, workspace, or project
+history authority. Autosave, close, and reload never freeze a pattern version.
+Deliberate apply compares canonical MIDI content with the clip's exact current
+version, reuses it when identical, and creates one immutable version only for
+changed MIDI. The local draft and its retry-stable apply intent are cleared only
+after canonical workspace persistence succeeds.
+
 ### Contributions and forks
 
 A contribution workspace begins from an exact base project revision. Submission freezes one immutable arrangement version. Acceptance is stale-base aware and appends a project revision pointing to that exact accepted arrangement; it does not merge automatically. Forking copies project metadata and arrangement projections while retaining exact source project/revision and pattern-version lineage.

@@ -63,6 +63,7 @@ import type { MidiDraftSaveStatus } from "@/features/midi/stems/draft-autosave";
 import { StudioClipDrawer } from "../clip-collection/studio-clip-drawer.client";
 import type { StudioClipFailureCode } from "../clip-collection/actions";
 import type { ImportStudioClipResult } from "../clip-collection/schema";
+import { findLatestPendingMidiEditorDraft } from "../integrated-midi/midi-editor-device-draft.client";
 
 type Props = StudioLauncherProps;
 type SaveStatus =
@@ -133,7 +134,27 @@ export function MidiStudioSurface(props: Props) {
   const [pendingMidiLane, setPendingMidiLane] = useState<{
     trackId: string;
     name: string;
-  } | null>(null);
+    startTick?: number;
+    entry?: "blank" | "import";
+  } | null>(() => {
+    if (!editable) return null;
+    const recovered = findLatestPendingMidiEditorDraft({
+      viewerId: editable.viewerId,
+      projectId: props.projectId,
+      workspaceId: editable.workspaceId,
+    });
+    return recovered?.target.kind === "pending"
+      ? {
+          trackId: recovered.target.trackId,
+          name: recovered.target.name,
+          startTick: recovered.target.startTick,
+          entry: recovered.target.entryMode,
+        }
+      : null;
+  });
+  const pendingDraftRestoredAtMount = useRef(
+    pendingMidiLane?.startTick !== undefined,
+  );
   const [finalizedClip, setFinalizedClip] = useState<{
     trackId: string;
     clipId: string;
@@ -159,13 +180,6 @@ export function MidiStudioSurface(props: Props) {
   );
   const generation = useRef(0);
   const acknowledgedGeneration = useRef(0);
-  const finalizeIntentRef = useRef<{
-    draftId: string;
-    patternRequestId: string;
-    versionRequestId: string;
-    trackId: string;
-    clipId: string;
-  } | null>(null);
   const initialEditorHandled = useRef(false);
   const [lifecycle] = useState(
     () =>
@@ -195,6 +209,13 @@ export function MidiStudioSurface(props: Props) {
   );
 
   useEffect(() => {
+    if (pendingDraftRestoredAtMount.current)
+      setMessage(
+        "A pending MIDI draft was restored from this device. Open the piano roll to continue.",
+      );
+  }, []);
+
+  useEffect(() => {
     if (initialEditorHandled.current || !props.initialEditorClipId || !editable)
       return;
     const clipId = props.initialEditorClipId;
@@ -213,6 +234,7 @@ export function MidiStudioSurface(props: Props) {
       operation: "replace",
       trackId: track.trackId,
       clipId,
+      name: track.name,
       version,
       startTick: clip.startTick,
     });
@@ -690,7 +712,7 @@ export function MidiStudioSurface(props: Props) {
       (candidate) => candidate.trackId === trackId && candidate.kind === "midi",
     );
     const clip = track?.clips.find((candidate) => candidate.clipId === clipId);
-    if (!clip || !("midiStemVersionId" in clip)) {
+    if (!track || !clip || !("midiStemVersionId" in clip)) {
       setMessage("That exact MIDI clip is not available to edit.");
       return;
     }
@@ -706,6 +728,7 @@ export function MidiStudioSurface(props: Props) {
       operation: "replace",
       trackId,
       clipId,
+      name: track.name,
       version,
       startTick: clip.startTick,
     });
@@ -784,67 +807,90 @@ export function MidiStudioSurface(props: Props) {
 
   const finalizeIntegratedDraft = useCallback(
     async (input: FinalizePatternInput, target: IntegratedMidiTarget) => {
-      if (!editable || status !== "saved")
+      if (!editable)
         return {
           ok: false,
-          message: "Save the arrangement before applying this MIDI version.",
+          message: "This arrangement is not editable.",
         };
-      let intent = finalizeIntentRef.current;
-      if (!intent || intent.draftId !== input.draftId) {
-        intent = {
-          draftId: input.draftId,
-          patternRequestId: crypto.randomUUID(),
-          versionRequestId: crypto.randomUUID(),
-          trackId: target.trackId,
-          clipId:
-            target.operation === "replace"
-              ? target.clipId
-              : crypto.randomUUID(),
-        };
-        finalizeIntentRef.current = intent;
+      if (status !== "saved") {
+        const recovered = await persistRef.current(manifestRef.current);
+        if (!recovered)
+          return {
+            ok: false,
+            message:
+              "Save the arrangement before applying this MIDI version. The device draft is still available.",
+          };
       }
-      const result = await freezeStudioPatternAction({
-        patternRequestId: intent.patternRequestId,
-        versionRequestId: intent.versionRequestId,
-        name: input.content.name,
-        existingPatternId:
-          target.operation === "replace" &&
-          target.version.creatorId === props.viewerId
-            ? target.version.stemId
-            : null,
-        expectedVersionNumber:
-          target.operation === "replace" &&
-          target.version.creatorId === props.viewerId
-            ? target.version.version + 1
-            : 1,
-        sourcePatternVersionId:
-          target.operation === "replace" &&
-          target.version.creatorId !== props.viewerId
-            ? target.version.stemVersionId
-            : null,
-        content: {
-          ppq: input.content.ppq,
-          durationTicks: input.content.durationTicks,
-          notes: input.content.notes,
-        },
-      });
-      if (!result.ok)
+      const contentIsIdentical =
+        target.operation === "replace" &&
+        input.expectedContentSha256 === target.version.contentSha256;
+      let editorVersion =
+        target.operation === "replace" ? target.version : null;
+      let appliedVersionNumber =
+        target.operation === "replace" ? target.version.version : 0;
+      if (!contentIsIdentical) {
+        if (!input.patternRequestId || !input.versionRequestId)
+          return {
+            ok: false,
+            message:
+              "The apply intent is missing. Your device draft remains available.",
+          };
+        const result = await freezeStudioPatternAction({
+          patternRequestId: input.patternRequestId,
+          versionRequestId: input.versionRequestId,
+          name: input.content.name,
+          existingPatternId:
+            target.operation === "replace" &&
+            target.version.creatorId === props.viewerId
+              ? target.version.stemId
+              : null,
+          expectedVersionNumber:
+            target.operation === "replace" &&
+            target.version.creatorId === props.viewerId
+              ? target.version.version + 1
+              : 1,
+          sourcePatternVersionId:
+            target.operation === "replace" &&
+            target.version.creatorId !== props.viewerId
+              ? target.version.stemVersionId
+              : null,
+          content: {
+            ppq: input.content.ppq,
+            durationTicks: input.content.durationTicks,
+            notes: input.content.notes,
+          },
+        });
+        if (!result.ok)
+          return {
+            ok: false,
+            message:
+              "The MIDI could not be applied. Your device draft is ready to retry.",
+          };
+        editorVersion = toEditorPatternVersion({
+          ...result.version,
+          name: input.content.name,
+          presetId: input.content.presetId,
+          presetVersion: input.content.presetVersion,
+        });
+        appliedVersionNumber = result.version.version;
+        setMidiVersions((current) => [
+          editorVersion!,
+          ...current.filter(
+            (version) => version.stemVersionId !== editorVersion!.stemVersionId,
+          ),
+        ]);
+      }
+      if (!editorVersion)
         return {
           ok: false,
-          message: "The pattern could not be frozen. Retry when ready.",
+          message: "The exact MIDI version is unavailable.",
         };
-      const editorVersion = toEditorPatternVersion({
-        ...result.version,
-        name: input.content.name,
-        presetId: input.content.presetId,
-        presetVersion: input.content.presetVersion,
-      });
       const current = manifestRef.current;
       const next = parseWorkspaceManifestV2({
         ...current,
         durationTicks: Math.max(
           current.durationTicks,
-          target.startTick + result.version.durationTicks,
+          target.startTick + editorVersion.durationTicks,
         ),
         tracks:
           target.operation === "add"
@@ -852,7 +898,7 @@ export function MidiStudioSurface(props: Props) {
                 ...current.tracks,
                 {
                   kind: "midi" as const,
-                  trackId: intent.trackId,
+                  trackId: input.appliedTrackId,
                   name: input.content.name,
                   instrumentId: null,
                   presetId: input.content.presetId,
@@ -864,7 +910,7 @@ export function MidiStudioSurface(props: Props) {
                   sortOrder: current.tracks.length,
                   clips: [
                     {
-                      clipId: intent.clipId,
+                      clipId: input.appliedClipId,
                       midiStemVersionId: editorVersion.stemVersionId,
                       startTick: target.startTick,
                       durationTicks: editorVersion.durationTicks,
@@ -879,6 +925,7 @@ export function MidiStudioSurface(props: Props) {
                   ? track
                   : {
                       ...track,
+                      name: input.content.name,
                       presetId: input.content.presetId,
                       presetVersion: input.content.presetVersion,
                       clips: track.clips.map((clip) =>
@@ -895,32 +942,29 @@ export function MidiStudioSurface(props: Props) {
                     },
               ),
       });
-      historyRef.current = commitArrangementHistory(
-        historyRef.current,
-        next,
-        null,
-      );
-      manifestRef.current = next;
-      setManifest(next);
-      setMidiVersions((current) => [
-        editorVersion,
-        ...current.filter(
-          (version) => version.stemVersionId !== editorVersion.stemVersionId,
-        ),
-      ]);
-      generation.current += 1;
-      setStatus("dirty");
-      const saved = await persistRef.current(next);
-      if (!saved)
-        return {
-          ok: false,
-          message:
-            "The immutable pattern was created, but the arrangement needs to be saved again.",
-        };
-      setHistoryAvailability({
-        canUndo: historyRef.current.past.length > 0,
-        canRedo: historyRef.current.future.length > 0,
-      });
+      const manifestChanged = JSON.stringify(next) !== JSON.stringify(current);
+      if (manifestChanged) {
+        historyRef.current = commitArrangementHistory(
+          historyRef.current,
+          next,
+          null,
+        );
+        manifestRef.current = next;
+        setManifest(next);
+        generation.current += 1;
+        setStatus("dirty");
+        const saved = await persistRef.current(next);
+        if (!saved)
+          return {
+            ok: false,
+            message:
+              "The MIDI version is ready, but the arrangement still needs to save. Your device draft is retained.",
+          };
+        setHistoryAvailability({
+          canUndo: historyRef.current.past.length > 0,
+          canRedo: historyRef.current.future.length > 0,
+        });
+      }
       clearMidiLocalRecovery(editable.viewerId, editable.workspaceId);
       lifecycle.update({
         status: "saved",
@@ -928,22 +972,24 @@ export function MidiStudioSurface(props: Props) {
         acknowledgedGeneration: acknowledgedGeneration.current,
         recoveryAvailable: false,
       });
-      finalizeIntentRef.current = null;
       setComposerTarget(null);
       if (target.operation === "add") {
         setPendingMidiLane(null);
         setFinalizedClip({
-          trackId: intent.trackId,
-          clipId: intent.clipId,
+          trackId: input.appliedTrackId,
+          clipId: input.appliedClipId,
           token: Date.now(),
         });
       }
       setIntegratedDraftActive(false);
       setDraftSaveStatus("saved");
-      const outcome =
-        target.operation === "replace"
-          ? `Pattern version ${result.version.version} is immutable and replaced only the selected clip.`
-          : `Pattern version ${result.version.version} is immutable and was added to the arrangement.`;
+      const outcome = contentIsIdentical
+        ? manifestChanged
+          ? "The exact pattern version was reused and the track settings were applied."
+          : "The exact pattern version is already applied. No new version was created."
+        : target.operation === "replace"
+          ? `Pattern version ${appliedVersionNumber} is immutable and replaced only the selected clip.`
+          : `Pattern version ${appliedVersionNumber} is immutable and was added to the arrangement.`;
       setMessage(outcome);
       return { ok: true, message: outcome };
     },
@@ -1306,22 +1352,33 @@ export function MidiStudioSurface(props: Props) {
               }
               onOpenPendingPianoRoll={() => {
                 if (!pendingMidiLane?.name.trim()) return;
+                const startTick = pendingMidiLane.startTick ?? seekTick;
+                const entry = pendingMidiLane.entry ?? "blank";
+                setPendingMidiLane((current) =>
+                  current ? { ...current, startTick, entry } : current,
+                );
                 setEditorOrigin("50% 32%");
                 setComposerTarget({
                   operation: "add",
-                  startTick: seekTick,
+                  startTick,
                   trackId: pendingMidiLane.trackId,
                   name: pendingMidiLane.name.trim(),
-                  entry: "blank",
+                  entry,
                 });
                 setDraftSaveStatus("saved");
               }}
               onImportPendingMidi={(file) => {
                 if (!pendingMidiLane?.name.trim()) return;
+                const startTick = pendingMidiLane.startTick ?? seekTick;
+                setPendingMidiLane((current) =>
+                  current
+                    ? { ...current, startTick, entry: "import" }
+                    : current,
+                );
                 setEditorOrigin("50% 32%");
                 setComposerTarget({
                   operation: "add",
-                  startTick: seekTick,
+                  startTick,
                   trackId: pendingMidiLane.trackId,
                   name: pendingMidiLane.name.trim(),
                   entry: "import",
@@ -1334,7 +1391,6 @@ export function MidiStudioSurface(props: Props) {
                 setPendingMidiLane(null);
                 setComposerTarget(null);
                 setIntegratedDraftActive(false);
-                finalizeIntentRef.current = null;
               }}
               finalizedClip={finalizedClip}
               canUndo={historyAvailability.canUndo}
@@ -1504,6 +1560,8 @@ export function MidiStudioSurface(props: Props) {
                   key={`${composerTarget.operation}:${composerTarget.operation === "replace" ? composerTarget.clipId : composerTarget.trackId}`}
                   target={composerTarget}
                   ownerId={props.viewerId}
+                  projectId={props.projectId}
+                  workspaceId={editable.workspaceId}
                   tempoBpm={manifest.tempoBpm}
                   timeSignature={manifest.timeSignature}
                   onClose={() => {
@@ -1511,7 +1569,6 @@ export function MidiStudioSurface(props: Props) {
                     setComposerTarget(null);
                     setIntegratedDraftActive(false);
                     setDraftSaveStatus("saved");
-                    finalizeIntentRef.current = null;
                     if (status === "saved")
                       acknowledgedGeneration.current = generation.current;
                     lifecycle.update({
@@ -1520,6 +1577,14 @@ export function MidiStudioSurface(props: Props) {
                       acknowledgedGeneration: acknowledgedGeneration.current,
                       recoveryAvailable: status !== "saved",
                     });
+                  }}
+                  onDiscard={() => {
+                    stopProjectTransport();
+                    if (composerTarget.operation === "add")
+                      setPendingMidiLane(null);
+                    setComposerTarget(null);
+                    setIntegratedDraftActive(false);
+                    setDraftSaveStatus("saved");
                   }}
                   onTransportStart={startProjectTransport}
                   onTransportStop={stopProjectTransport}
