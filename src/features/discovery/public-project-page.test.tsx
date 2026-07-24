@@ -1,5 +1,11 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_AVATAR_OPTIONS } from "@/features/profiles/avatar/contract";
 import type { PublicRevisionHistoryItem } from "@/server/repositories/public-midi";
 import type { PublicProjectDetail } from "@/server/repositories/public-projects";
@@ -73,6 +79,28 @@ const project = {
 } satisfies PublicProjectDetail;
 
 describe("public project detail presentation", () => {
+  afterEach(cleanup);
+
+  it("returns visitors to project discovery", () => {
+    render(
+      <PublicProjectPage
+        project={project}
+        lineage={{
+          source: null,
+          sourceUnavailable: false,
+          directForks: [],
+          hasMoreDirectForks: false,
+        }}
+        history={[]}
+        canCollaborate={false}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Explore projects" }),
+    ).toHaveAttribute("href", "/explore");
+  });
+
   it("uses configured local avatars and initials fallback for detail credits", async () => {
     const { container } = render(
       <PublicProjectPage

@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import Link from "next/link";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DetailNavigationPresentation } from "@/features/discovery/detail-navigation-presentation.client";
@@ -45,8 +51,8 @@ describe("DetailNavigationPresentation", () => {
     expect(screen.queryByText("My projects")).not.toBeInTheDocument();
   });
 
-  it("shows the pattern-specific presentation and ignores modified clicks", () => {
-    render(
+  it("shows the pattern-specific presentation and ignores modified clicks", async () => {
+    const { rerender } = render(
       <>
         <DetailNavigationPresentation />
         <Link
@@ -67,6 +73,26 @@ describe("DetailNavigationPresentation", () => {
       "Loading MIDI pattern details…",
     );
     expect(screen.queryByText("Find a pattern")).not.toBeInTheDocument();
+
+    const overlay =
+      screen.getByRole("status").parentElement?.parentElement?.parentElement;
+    expect(overlay).toHaveClass("bg-canvas");
+    expect(overlay).toHaveAttribute(
+      "data-detail-navigation-overlay",
+      "/library/ea000000-0000-4000-8000-000000000001",
+    );
+
+    usePathname.mockReturnValue(
+      "/library/ea000000-0000-4000-8000-000000000001",
+    );
+    rerender(<DetailNavigationPresentation />);
+    await waitFor(() =>
+      expect(screen.queryByRole("status")).not.toBeInTheDocument(),
+    );
+
+    usePathname.mockReturnValue("/explore");
+    rerender(<DetailNavigationPresentation />);
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("does not intercept navigation from Studio", () => {

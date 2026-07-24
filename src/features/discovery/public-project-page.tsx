@@ -62,7 +62,7 @@ export function PublicProjectPage({
       <Container className="py-6 sm:py-10">
         <Reveal>
           <Link
-            href="/library"
+            href="/explore"
             prefetch={false}
             className="text-muted hover:text-accent group inline-flex items-center gap-1.5 text-sm font-semibold transition-colors"
           >
@@ -70,7 +70,7 @@ export function PublicProjectPage({
               aria-hidden="true"
               className="rotate-180 transition-transform group-hover:-translate-x-0.5"
             />
-            The MIDI library
+            Explore projects
           </Link>
         </Reveal>
 

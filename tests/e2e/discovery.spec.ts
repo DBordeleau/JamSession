@@ -18,6 +18,7 @@ type DetailLoadingFrame = {
   busy: string | null;
   animationName: string | null;
   fitsViewport: boolean;
+  overlayOpaque: boolean;
 };
 
 function seedDiscoveryFixture() {
@@ -211,12 +212,20 @@ test.describe("anonymous public discovery", () => {
         const busy = document.querySelector('[aria-busy="true"]');
         if (!status || !busy) return;
         const pulse = busy.querySelector(".animate-pulse");
+        const overlay = status.closest("[data-detail-navigation-overlay]");
+        const overlayBackground = overlay
+          ? getComputedStyle(overlay).backgroundColor
+          : null;
         frames.push({
           status: status.textContent?.trim() ?? "",
           body: busy.textContent ?? "",
           busy: busy.getAttribute("aria-busy"),
           animationName: pulse ? getComputedStyle(pulse).animationName : null,
           fitsViewport: document.documentElement.scrollWidth <= innerWidth,
+          overlayOpaque:
+            overlayBackground !== null &&
+            overlayBackground !== "transparent" &&
+            !overlayBackground.endsWith(", 0)"),
         });
         window.sessionStorage.setItem(
           "openMidiDetailLoadingFrames",
@@ -273,11 +282,20 @@ test.describe("anonymous public discovery", () => {
         busy: "true",
         animationName: "none",
         fitsViewport: true,
+        overlayOpaque: true,
       }),
     );
     expect(
       projectFrames.some((frame) => frame.body.includes("My projects")),
     ).toBe(false);
+    await expect(
+      page.getByRole("link", { name: "Explore projects" }),
+    ).toHaveAttribute("href", "/explore");
+    await page.getByRole("link", { name: "Explore projects" }).click();
+    await expect(page).toHaveURL(/\/explore$/);
+    await expect(page.locator("[data-detail-navigation-overlay]")).toHaveCount(
+      0,
+    );
     await page.evaluate(() =>
       window.sessionStorage.removeItem("openMidiDetailLoadingFrames"),
     );
@@ -301,11 +319,20 @@ test.describe("anonymous public discovery", () => {
         busy: "true",
         animationName: "none",
         fitsViewport: true,
+        overlayOpaque: true,
       }),
     );
     expect(
       patternFrames.some((frame) => frame.body.includes("Find a pattern")),
     ).toBe(false);
+    await page.getByRole("link", { name: "← Back to library" }).click();
+    await expect(page).toHaveURL(/\/library$/);
+    await expect(page.locator("[data-detail-navigation-overlay]")).toHaveCount(
+      0,
+    );
+    await expect(
+      page.getByRole("link", { name: "Midnight pulse" }),
+    ).toBeEnabled();
 
     expect(avatarRequests).toEqual([]);
   });

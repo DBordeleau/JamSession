@@ -10,6 +10,7 @@ type DetailKind = "project" | "pattern";
 type PendingDetail = {
   kind: DetailKind;
   fromPathname: string;
+  toPathname: string;
 };
 
 const PROJECT_DETAIL_PATH =
@@ -48,17 +49,25 @@ export function DetailNavigationPresentation() {
       }
       const destination = new URL(target.href, window.location.href);
       if (destination.origin !== window.location.origin) return;
+      if (destination.pathname === pathname) return;
       let nextDetail: DetailKind | null = null;
       if (PROJECT_DETAIL_PATH.test(destination.pathname)) {
         nextDetail = "project";
       } else if (PATTERN_DETAIL_PATH.test(destination.pathname)) {
         nextDetail = "pattern";
       }
-      if (!nextDetail) return;
+      if (!nextDetail) {
+        setPendingDetail(null);
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
       flushSync(() =>
-        setPendingDetail({ kind: nextDetail, fromPathname: pathname }),
+        setPendingDetail({
+          kind: nextDetail,
+          fromPathname: pathname,
+          toPathname: destination.pathname,
+        }),
       );
       window.requestAnimationFrame(() => {
         router.push(
@@ -75,6 +84,15 @@ export function DetailNavigationPresentation() {
   }, [pathname, router]);
 
   useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setPendingDetail((current) =>
+        current && pathname !== current.fromPathname ? null : current,
+      );
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [pathname]);
+
+  useEffect(() => {
     if (!pendingDetail) return;
     const timeout = window.setTimeout(() => setPendingDetail(null), 15_000);
     return () => window.clearTimeout(timeout);
@@ -84,7 +102,10 @@ export function DetailNavigationPresentation() {
     pendingDetail?.fromPathname === pathname ? pendingDetail.kind : null;
   if (!detailKind) return null;
   return (
-    <div className="bg-page fixed inset-0 z-50 overflow-y-auto overscroll-contain">
+    <div
+      className="bg-canvas fixed inset-0 isolate z-50 overflow-y-auto overscroll-contain"
+      data-detail-navigation-overlay={pendingDetail?.toPathname}
+    >
       {detailKind === "project" ? (
         <PublicProjectDetailLoading overlay />
       ) : (
