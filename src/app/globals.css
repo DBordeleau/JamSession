@@ -26,6 +26,21 @@
     padding: 0.7rem 0.85rem;
     text-transform: none;
   }
+
+  .settings-field:focus-visible {
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--color-focus) 18%, transparent),
+      inset 0 1px 0 rgb(255 255 255 / 5%);
+  }
+
+  .settings-field:-webkit-autofill,
+  .settings-field:-webkit-autofill:hover,
+  .settings-field:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--color-text);
+    caret-color: var(--color-text);
+    box-shadow: 0 0 0 1000px
+      color-mix(in srgb, var(--color-surface-soft) 88%, transparent) inset;
+  }
 }
 
 :root {

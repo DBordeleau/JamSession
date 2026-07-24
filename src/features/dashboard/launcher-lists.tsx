@@ -26,12 +26,14 @@ export function ArrowLink({
   return (
     <IntentPrefetchLink
       href={href}
-      className="text-muted hover:text-accent group inline-flex items-center gap-1.5 text-sm font-semibold transition-colors"
+      className="group inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold"
     >
-      {children}
+      <span className="text-muted group-hover:text-accent group-focus-visible:text-accent transition-colors">
+        {children}
+      </span>
       <FiArrowRight
         aria-hidden="true"
-        className="transition-transform group-hover:translate-x-0.5"
+        className="text-muted group-hover:text-accent group-focus-visible:text-accent transition-[color,translate] group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:translate-x-0 motion-reduce:transition-none"
       />
     </IntentPrefetchLink>
   );
@@ -107,12 +109,9 @@ export function EmptyState({
   return (
     <div className="border-strong rounded-card border border-dashed p-6 text-center">
       <p className="text-muted">{children}</p>
-      <IntentPrefetchLink
-        className="text-accent mt-3 inline-block font-semibold"
-        href={href}
-      >
-        {action} →
-      </IntentPrefetchLink>
+      <div className="mt-3 flex justify-center">
+        <ArrowLink href={href}>{action}</ArrowLink>
+      </div>
     </div>
   );
 }
@@ -309,7 +308,7 @@ export function ContributionRows({
       {contributions.map((contribution) => (
         <li
           key={contribution.contributionId}
-          className="dash-card dash-card-action rounded-card group relative grid content-start gap-2 px-5 py-4"
+          className="dash-card dash-card-action rounded-card group relative grid content-start gap-2 px-4 py-3 sm:px-5 sm:py-4"
         >
           <span className="flex flex-wrap items-center gap-2">
             <IntentPrefetchLink

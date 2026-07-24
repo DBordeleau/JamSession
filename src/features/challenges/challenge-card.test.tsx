@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import { canonicalizeChallengeConstraintsV1 } from "./constraint-v1";
 import { ChallengeCard } from "./challenge-card";
 import { ChallengeRules } from "./challenge-rules";
+import { FeaturedChallengeCard } from "./featured-challenge-card";
 import type { Challenge } from "./types";
 
 const challenge: Challenge = {
@@ -53,6 +54,8 @@ const challenge: Challenge = {
   result: null,
 };
 
+afterEach(cleanup);
+
 describe("public challenge presentation", () => {
   it("renders phase and rules without entry or voting actions", () => {
     render(
@@ -69,5 +72,24 @@ describe("public challenge presentation", () => {
     expect(
       screen.queryByRole("button", { name: /enter|submit|vote/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("gives the dashboard feature phase, prompt, rules, and one clear action", () => {
+    render(
+      <FeaturedChallengeCard
+        featured={{
+          selectionKind: "active",
+          label: "Featured challenge",
+          challenge,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Ongoing")).toBeVisible();
+    expect(screen.getByText(challenge.prompt)).toHaveClass("text-accent-2");
+    expect(screen.getByText("Use 4 tracks")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Enter the challenge" }),
+    ).toHaveAttribute("href", `/challenges/${challenge.slug}`);
   });
 });

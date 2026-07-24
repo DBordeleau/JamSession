@@ -209,7 +209,10 @@ describe("dashboard launcher", () => {
         slug: "one-note-sprint",
         title: "One-note sprint",
         prompt: "Build momentum from one pitch.",
+        phase: "open",
         submissionsCloseAt: "2099-01-01T00:00:00.000Z",
+        votingOpensAt: "2099-01-02T00:00:00.000Z",
+        votingClosesAt: "2099-01-03T00:00:00.000Z",
         constraints: {},
       },
     } as never);
@@ -299,7 +302,7 @@ describe("dashboard launcher", () => {
         .every((link) => link.getAttribute("data-prefetch") === "false"),
     ).toBe(true);
     expect(
-      screen.getByRole("link", { name: /Open featured challenge/ }),
+      screen.getByRole("link", { name: "Enter the challenge" }),
     ).toHaveAttribute("href", "/challenges/one-note-sprint");
 
     fireEvent.focus(screen.getByRole("link", { name: "Owned project" }));
@@ -324,5 +327,17 @@ describe("dashboard launcher", () => {
         "data-prefetch",
         "false",
       );
+
+    const exploreLink = screen.getByRole("link", {
+      name: "Explore open projects",
+    });
+    expect(exploreLink.querySelector("span")).toHaveClass(
+      "group-hover:text-accent",
+      "group-focus-visible:text-accent",
+    );
+    expect(exploreLink.querySelector("svg")).toHaveClass(
+      "group-hover:translate-x-1",
+      "group-focus-visible:translate-x-1",
+    );
   });
 });
