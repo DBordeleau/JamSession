@@ -206,6 +206,16 @@ Users can:
 
 The in-Studio clip collection has two explicit sources: **My clips** contains non-deleted exact pattern versions owned by the actor, while **Saved clips** contains only exact public-library versions the actor explicitly bookmarked. An exact version qualifying for both is represented once with owner authority taking precedence. Collection metadata is bounded and excludes note arrays; exact preview detail is loaded only on demand. Import rechecks current source and editable-workspace authority, creates one exact-version clip on a new MIDI track at the caller's playhead tick, and advances the workspace through its existing optimistic lock. CLIP-IMPORT-01 provides this data/command contract; CLIP-IMPORT-02 consumes it through the responsive **Add from clips** Studio drawer.
 
+Integrated piano-roll edits autosave into one validated, bounded device-local
+draft per exact workspace clip or pending track. That draft survives closing,
+reopening, and reloading Studio in the same browser, but it is not account data
+and does not follow the musician to another device. Autosave and close never
+create an immutable pattern version. **Apply changes** creates one version only
+when the MIDI content differs from the clip's current exact version; an
+identical apply reuses that version while still allowing legitimate track name
+or preset changes. Manifest-v3 clips continue to reference immutable pattern
+versions only.
+
 The Studio must open quickly without network-bound media hydration. Playback uses deterministic versioned instrument definitions so a published revision remains reproducible.
 
 #### MVP quality bar

@@ -535,6 +535,12 @@ press feedback, and a held pointer may glide across them as one continuous gestu
 Its pill-shaped Pencil/Select tool group uses visible pressed state;
 Select renders a translucent semantic-gold marquee while the synchronized note list
 and inspector retain exact, keyboard-accessible selection controls.
+Integrated editor status says **Saved on this device** and its completion action
+says **Apply changes** (or **Add pattern to arrangement** for a pending track).
+Supporting copy explains that applying changed MIDI creates a version. Restored
+drafts identify their base version without exposing UUIDs, and destructive
+**Discard device draft** uses the established focus-contained alert-dialog
+pattern with reduced-motion-safe transitions.
 Keep MIDI lanes short so more tracks fit without scrolling, and use note timing,
 pitch range, density, clip length, loop state, and preset colour rather than a fake
 audio waveform.

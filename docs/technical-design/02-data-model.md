@@ -22,6 +22,14 @@ The clean baseline is intentionally split into four ordered migrations: foundati
 
 Workspace saves are transactional and conflict-safe. No workspace table or projection contains a Storage object reference or a musical-media compatibility union.
 
+Integrated piano-roll drafts are not database rows. The browser overwrites one
+strict, expirable device-local record for an exact workspace clip or pending
+track; those records never enter normalized projections, recovery snapshots,
+manifest-v3, or immutable history. A workspace clip continues to reference only
+an exact `midi_pattern_version_id`. Applying identical MIDI reuses that exact
+version, while applying changed MIDI appends one immutable version through the
+existing command before the workspace reference is saved.
+
 `private.stale_owner_workspace_resolutions` stores owner/request-scoped idempotency receipts for stale-draft recovery and has no direct application access. `resolve_stale_owner_workspace_v3` validates exact workspace lock, stale base, and current-revision authority before performing one transaction. Restart archives the stale source only when a current-revision replacement workspace, normalized projections, snapshot, and receipt all succeed. Preserve creates a private direct fork whose source lineage points to the stale base, copies that base into immutable fork revision 1 without duplicating pattern notes, places the acknowledged stale manifest in the fork's active workspace after authority-field rewriting, then archives the old workspace. A failure rolls back the target and source archive together.
 
 `private.studio_clip_import_receipts` is the narrow actor/request-scoped CLIP-IMPORT-01 replay authority. A provisional row serializes identical concurrent requests and is rolled back with any source, lifecycle, lock, or capacity failure. The completed receipt retains the exact owner/saved source version, saved listing/license/external-credit provenance when applicable, destination workspace/contribution, new track/clip IDs, resulting lock/hash, and bounded canonical response. It has no application table grants and is not a new public domain model.

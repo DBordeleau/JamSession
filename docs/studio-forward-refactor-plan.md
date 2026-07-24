@@ -528,6 +528,17 @@ Non-goals: draft IDs in manifests, automatic version creation on every autosave,
 
 Implemented: the shared editor now accepts a narrow Studio host for project tempo/meter, transport audition, draft-state reporting, and explicit finalize behavior while standalone routes retain the same component and default publication path. Studio opens blank/imported or exact-version-derived private drafts from arrangement affordances; draft and workspace autosave/recovery remain independent. `finalize_studio_midi_draft(...)` records replay-bound intent, publishes the acknowledged draft, transforms only the requested new track or selected clip in the authoritative v2 manifest, and reuses canonical workspace projection/save validation in one transaction. Publication is disabled while the integrated draft is open, exit disposal stops transport/listeners and retains eligible recovery, and source admission remains enabled.
 
+CLIP-DRAFT-01 reconciles that historical finalization flow with the retained
+manifest-v3 application boundary. Integrated MIDI autosave now overwrites one
+validated device-local record keyed to the viewer, workspace, and exact clip or
+pending track. Close and reload retain that record without freezing MIDI or
+materializing a pending track. **Apply changes** creates one immutable pattern
+version only when canonical MIDI differs; identical MIDI reuses the current
+exact version and may persist track name or preset changes without adding
+history. The retry-stable apply intent remains with the local draft through
+freeze or workspace-save failure and is cleared only after canonical success.
+These drafts are neither cross-device account data nor manifest authority.
+
 ### STUDIO-06 — Parity, hardening, audio-lock enablement, and compatibility handoff
 
 Outcome: Studio replaces the old mental model as the complete prototype creation path, and new source admission is disabled only after that path is proven usable.

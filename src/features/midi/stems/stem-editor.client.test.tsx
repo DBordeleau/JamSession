@@ -1,7 +1,13 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MidiStemDraft } from "./types";
-import { MidiStemEditor } from "./stem-editor.client";
+import { MidiStemEditor, type MidiStemEditorHost } from "./stem-editor.client";
 
 const performanceMock = vi.hoisted(() => ({
   status: "idle" as const,
@@ -388,5 +394,88 @@ describe("MIDI editor piano interaction", () => {
     expect(screen.getByText(/of 2,048 notes/)).toHaveTextContent(
       "2 of 2,048 notes",
     );
+  });
+
+  it("flushes the device draft before closing and uses truthful apply copy", async () => {
+    const onClose = vi.fn();
+    const persistDraft = vi.fn(async () => ({
+      ok: true,
+      lockVersion: 2,
+      contentSha256: "b".repeat(64),
+    }));
+    const host: MidiStemEditorHost = {
+      tempoBpm: 120,
+      timeSignature: { numerator: 4, denominator: 4 },
+      initialSaveState: {
+        status: "saved",
+        message: "Saved on this device",
+      },
+      onTransportStart: vi.fn(),
+      onPlaybackTransportStart: vi.fn(),
+      onTransportStop: vi.fn(),
+      onDraftStatusChange: vi.fn(),
+      persistDraft,
+      finalize: vi.fn(async () => ({ ok: true, message: "Applied" })),
+      finalizeLabel: "Apply changes",
+      onClose,
+    };
+    render(
+      <MidiStemEditor
+        draft={{ ...draft, defaultPresetId: "warm-keys" }}
+        host={host}
+      />,
+    );
+    fireEvent.change(screen.getByPlaceholderText("Stem name"), {
+      target: { value: "Changed before close" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Close MIDI editor" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    expect(persistDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Changed before close" }),
+    );
+    expect(screen.getByRole("button", { name: "Apply changes" })).toBeVisible();
+  });
+
+  it("stays open when the close flush cannot reach browser storage", async () => {
+    const onClose = vi.fn();
+    const host: MidiStemEditorHost = {
+      tempoBpm: 120,
+      timeSignature: { numerator: 4, denominator: 4 },
+      initialSaveState: {
+        status: "saved",
+        message: "Saved on this device",
+      },
+      onTransportStart: vi.fn(),
+      onPlaybackTransportStart: vi.fn(),
+      onTransportStop: vi.fn(),
+      onDraftStatusChange: vi.fn(),
+      persistDraft: vi.fn(async () => ({
+        ok: false,
+        code: "storage" as const,
+        lockVersion: 1,
+        contentSha256: "",
+      })),
+      finalize: vi.fn(async () => ({ ok: true, message: "Applied" })),
+      finalizeLabel: "Apply changes",
+      onClose,
+    };
+    render(
+      <MidiStemEditor
+        draft={{ ...draft, defaultPresetId: "warm-keys" }}
+        host={host}
+      />,
+    );
+    fireEvent.change(screen.getByPlaceholderText("Stem name"), {
+      target: { value: "Still in this tab" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Close MIDI editor" }));
+
+    expect(
+      await screen.findByText(
+        "The latest changes remain only in this tab. Retry device save before closing.",
+      ),
+    ).toBeVisible();
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
